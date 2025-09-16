@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeLlevo - Prototipo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TeLlevo</div>
+    <nav class="nav">
+      <button class="nav-btn" data-route="auth">Login / Registro</button>
+      <button class="nav-btn" data-route="cliente">Cliente</button>
+      <button class="nav-btn" data-route="conductor">Conductor</button>
+      <button class="nav-btn" data-route="admin">Admin</button>
+    </nav>
+    <div class="session">
+      <select id="companySelect">
+        <option value="TeLlevo">TeLlevo</option>
+        <option value="AndesTours">AndesTours</option>
+        <option value="AmazoniaTravel">AmazoniaTravel</option>
+      </select>
+      <button id="themeToggle" class="secondary" title="Tema">🌙</button>
+      <span id="sessionUser">Sin sesión</span>
+      <button id="logoutBtn" class="secondary">Salir</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Auth View -->
+    <section id="view-auth" class="view">
+      <div class="panel two-col">
+        <div>
+          <h2>Iniciar sesión</h2>
+          <form id="loginForm" class="form">
+            <label>Cédula
+              <input id="loginCedula" type="text" required />
+            </label>
+            <label>Rol
+              <select id="loginRole" required>
+                <option value="cliente">Cliente</option>
+                <option value="conductor">Conductor</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </label>
+            <button type="submit">Entrar</button>
+          </form>
+          <div id="loginMsg" class="msg"></div>
+          <div class="panel" style="margin-top:12px;">
+            <h3>Credenciales de prueba</h3>
+            <div class="list">
+              <div class="list-item">Cliente: cédula 1234567890</div>
+              <div class="list-item">Conductor: cédula 0987654321</div>
+              <div class="list-item">Administrador: cédula 0000000000</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h2>Registro</h2>
+          <form id="registerForm" class="form">
+            <label>Nombre completo
+              <input id="regNombre" type="text" required />
+            </label>
+            <label>Cédula
+              <input id="regCedula" type="text" required />
+            </label>
+            <label>Foto (selfie)
+              <input id="regFoto" type="file" accept="image/*" />
+            </label>
+            <label>Rol
+              <select id="regRole" required>
+                <option value="cliente">Cliente</option>
+                <option value="conductor">Conductor</option>
+              </select>
+            </label>
+            <button type="submit" class="accent">Registrar</button>
+          </form>
+          <div id="registerMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cliente View -->
+    <section id="view-cliente" class="view cliente-layout">
+      <div class="panel cliente-left">
+        <h2>Servicios</h2>
+        <div class="row" style="gap:8px; flex-wrap: wrap;">
+          <label class="badge">Elegir servicio</label>
+          <select id="servicioTipo">
+            <option value="compartido">Compartido (por asiento)</option>
+            <option value="privado">Privado (unidad exclusiva)</option>
+            <option value="encomienda">Encomienda express</option>
+            <option value="transfer">Transfer (punto a punto)</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel cliente-left" id="compartidoPanel">
+        <h2>Rutas disponibles (compartido)</h2>
+        <div id="rutasList" class="grid"></div>
+      </div>
+      <div class="panel cliente-left" id="customServicePanel" hidden>
+        <h3>Configurar servicio</h3>
+        <form id="customServiceForm" class="form">
+          <div class="two-col">
+            <label>Origen
+              <input id="csOrigen" placeholder="Ciudad/Barrio" required />
+            </label>
+            <label>Destino
+              <input id="csDestino" placeholder="Ciudad/Barrio" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Horario
+              <input id="csHorario" placeholder="HH:MM" required />
+            </label>
+            <label>Precio estimado
+              <input id="csPrecio" type="number" placeholder="Ej. 20" required />
+            </label>
+          </div>
+          <label id="csExtraLabel" hidden>Detalle encomienda
+            <input id="csExtra" placeholder="Tamaño/Notas" />
+          </label>
+          <button type="submit" class="accent">Solicitar</button>
+        </form>
+      </div>
+      <div class="panel cliente-right" id="reservaPanel" hidden>
+        <h3>Reservar</h3>
+        <div id="reservaInfo"></div>
+        <form id="reservaForm" class="form">
+          <label>Tipo
+            <select id="tipoReserva">
+              <option value="asiento">Asiento</option>
+              <option value="encomienda">Encomienda</option>
+            </select>
+          </label>
+          <label>Dirección de recogida
+            <input id="direccion" type="text" placeholder="Calle y número" required />
+          </label>
+          <div class="two-col">
+            <label>Método de pago
+              <select id="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="voucher">Voucher empresarial</option>
+              </select>
+            </label>
+            <label>Cupón/Voucher (opcional)
+              <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
+            </label>
+          </div>
+          <button type="submit" class="accent">Confirmar reserva</button>
+        </form>
+        <div id="reservaMsg" class="msg"></div>
+      </div>
+      <div class="panel cliente-right" id="trackingPanel" hidden>
+        <h3>Tracking en vivo</h3>
+        <div id="trackingInfo" class="list"></div>
+      </div>
+      <div class="panel cliente-right">
+        <h2>Historial de reservas</h2>
+        <div id="historialList" class="list"></div>
+        <form id="ratingForm" class="form" style="margin-top:10px">
+          <div class="two-col">
+            <label>Reserva
+              <select id="ratingReserva"></select>
+            </label>
+            <label>Puntaje (1-5)
+              <input id="ratingValor" type="number" min="1" max="5" step="1" />
+            </label>
+          </div>
+          <label>Comentario (opcional)
+            <input id="ratingComentario" placeholder="Tu experiencia" />
+          </label>
+          <button type="submit">Enviar calificación</button>
+          <div id="ratingMsg" class="msg"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Conductor View -->
+    <section id="view-conductor" class="view">
+      <div class="panel">
+        <h2>Viajes asignados</h2>
+        <div id="viajesAsignados" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>GPS</h3>
+        <div class="row" style="gap:8px; flex-wrap: wrap;">
+          <button id="gpsStart">Compartir GPS</button>
+          <button id="gpsStop" class="secondary">Detener</button>
+          <span class="badge" id="gpsStatus">Off</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin View -->
+    <section id="view-admin" class="view">
+      <div class="panel">
+        <h2>Dashboard</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-num" id="kpiReservas">0</div><div class="kpi-label">Reservas</div></div>
+          <div class="kpi"><div class="kpi-num" id="kpiRutas">0</div><div class="kpi-label">Rutas</div></div>
+          <div class="kpi"><div class="kpi-num" id="kpiFlota">0</div><div class="kpi-label">Vehículos</div></div>
+        </div>
+      </div>
+
+      <div class="panel two-col">
+        <div>
+          <h3>Gestión de rutas</h3>
+          <div id="adminRutas" class="list"></div>
+          <form id="rutaForm" class="form inline">
+            <input id="rutaOrigen" placeholder="Origen" required />
+            <input id="rutaDestino" placeholder="Destino" required />
+            <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
+            <input id="rutaPrecio" type="number" placeholder="Precio" required />
+            <input id="rutaAsientos" type="number" placeholder="Asientos" required />
+            <button type="submit">Añadir ruta</button>
+          </form>
+          <div id="rutaMsg" class="msg"></div>
+        </div>
+        <div>
+          <h3>Flota</h3>
+          <div id="adminFlota" class="list"></div>
+          <h3 style="margin-top:24px">Reservas</h3>
+          <div id="adminReservas" class="list"></div>
+          <h3 style="margin-top:24px">Facturas</h3>
+          <div id="adminInvoices" class="list"></div>
+          <h3 style="margin-top:24px">Calificaciones (promedio)</h3>
+          <div id="adminRatingKpi" class="kpi" style="max-width:200px"><div class="kpi-num" id="kpiRating">-</div><div class="kpi-label">/ 5</div></div>
+          <h3 style="margin-top:24px">Asignación de viajes</h3>
+          <form id="assignForm" class="form inline" style="grid-template-columns: 2fr 2fr auto;">
+            <select id="assignReserva"></select>
+            <select id="assignConductor"></select>
+            <button type="submit">Asignar</button>
+          </form>
+          <div id="assignMsg" class="msg"></div>
+          <h3 style="margin-top:24px">Cupones y Vouchers</h3>
+          <div id="adminPromos" class="list"></div>
+          <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
+            <select id="promoTipo">
+              <option value="cupon">Cupón</option>
+              <option value="voucher">Voucher</option>
+            </select>
+            <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
+            <button type="submit">Agregar</button>
+          </form>
+          <div id="promoMsg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Prototipo educativo • Sin backend • JS/HTML/CSS puros</footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+
