@@ -120,7 +120,6 @@ body {
 .dark .list-item { background: #0e1526; border-color: #1f2a44; }
 .dark .kpi { background: linear-gradient(180deg, #0e1526, #0b1220); border-color: #1f2a44; }
 .dark .toast { background: #0b1220; color: #e5e7eb; border: 1px solid #1f2a44; }
-.
 @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
 
 .form { display: grid; gap: 12px; }
