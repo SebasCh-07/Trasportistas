@@ -92,6 +92,7 @@ const views = {
   cliente: document.getElementById("view-cliente"),
   conductor: document.getElementById("view-conductor"),
   admin: document.getElementById("view-admin"),
+  'admin-user-new': document.getElementById('view-admin-user-new'),
 };
 
 function showAuthScreen(which) {
@@ -714,14 +715,56 @@ function wireEvents() {
 
   // admin CRUD buttons
   document.getElementById('addUsuarioBtn')?.addEventListener('click', () => {
-    toast('Función de agregar usuario en desarrollo');
-  });
-  document.getElementById('addClienteBtn')?.addEventListener('click', () => {
-    toast('Función de agregar cliente en desarrollo');
+    showView('admin-user-new');
   });
   document.getElementById('addFlotaBtn')?.addEventListener('click', () => {
     toast('Función de agregar vehículo en desarrollo');
   });
+
+  // admin create user form
+  const auForm = document.getElementById('adminCreateUserForm');
+  if (auForm) {
+    document.getElementById('auCancelar')?.addEventListener('click', () => {
+      showView('admin');
+      renderAdmin();
+    });
+    const fotoInput = document.getElementById('auFoto');
+    const fotoBtn = document.getElementById('auFotoBtn');
+    const fotoPreview = document.getElementById('auFotoPreview');
+    fotoBtn?.addEventListener('click', () => fotoInput?.click());
+    fotoInput?.addEventListener('change', () => {
+      const f = fotoInput.files?.[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        if (fotoPreview) {
+          fotoPreview.src = r.result;
+          fotoPreview.hidden = false;
+        }
+      };
+      r.readAsDataURL(f);
+    });
+    auForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('auNombre').value.trim();
+      const cedula = document.getElementById('auCedula').value.trim();
+      const role = document.getElementById('auRole').value;
+      const telefono = document.getElementById('auTelefono').value.trim();
+      const email = document.getElementById('auEmail').value.trim();
+      const password = document.getElementById('auPassword').value;
+      const direccion = document.getElementById('auDireccion').value.trim();
+      const foto = fotoPreview && !fotoPreview.hidden ? fotoPreview.src : null;
+      const users = storage.get('users', []);
+      if (users.some(u => u.cedula === cedula)) { document.getElementById('auMsg').textContent = 'CI ya registrada'; return; }
+      if (users.some(u => (u.email||'').toLowerCase() === email.toLowerCase())) { document.getElementById('auMsg').textContent = 'Correo ya registrado'; return; }
+      const nuevo = { id: Date.now(), role, nombre, cedula, telefono, email, password, direccion, foto };
+      users.push(nuevo);
+      storage.set('users', users);
+      toast('Usuario creado');
+      showView('admin');
+      renderAdmin();
+    });
+  }
 }
 
 // Admin CRUD functions

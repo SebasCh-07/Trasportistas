@@ -280,7 +280,6 @@
               <h3>Clientes</h3>
               <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <span class="text-muted">Gestión de clientes registrados</span>
-                <button class="btn primary" id="addClienteBtn">+ Agregar Cliente</button>
               </div>
               <div id="adminClientes" class="list"></div>
             </div>
@@ -345,6 +344,58 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Admin Create User View -->
+    <section id="view-admin-user-new" class="view" hidden>
+      <div class="panel" style="max-width: 900px; margin: 0 auto;">
+        <h2>Nuevo usuario</h2>
+        <form id="adminCreateUserForm" class="form">
+          <div class="two-col">
+            <label>Nombre completo
+              <input id="auNombre" type="text" required />
+            </label>
+            <label>CI
+              <input id="auCedula" type="text" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Rol
+              <select id="auRole" required>
+                <option value="conductor">Conductor</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </label>
+            <label>Teléfono
+              <input id="auTelefono" type="tel" />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Correo
+              <input id="auEmail" type="email" required />
+            </label>
+            <label>Contraseña
+              <input id="auPassword" type="password" required />
+            </label>
+          </div>
+          <label>Dirección
+            <input id="auDireccion" type="text" />
+          </label>
+          <div class="two-col">
+            <div class="photo-box">
+              <img id="auFotoPreview" alt="Vista previa" hidden />
+              <button id="auFotoBtn" class="secondary" type="button">Subir foto</button>
+              <input id="auFoto" type="file" accept="image/*" hidden />
+            </div>
+            <div class="text-muted" style="display:flex; align-items:center">Foto del usuario (opcional)</div>
+          </div>
+          <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px;">
+            <button type="button" id="auCancelar" class="secondary">Cancelar</button>
+            <button type="submit" class="accent">Crear usuario</button>
+          </div>
+          <div id="auMsg" class="msg"></div>
+        </form>
       </div>
     </section>
   </main>
