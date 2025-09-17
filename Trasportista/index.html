@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TeLlevo - Prototipo</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
@@ -17,9 +20,8 @@
         <option value="AndesTours">AndesTours</option>
         <option value="AmazoniaTravel">AmazoniaTravel</option>
       </select>
-      <button id="themeToggle" class="secondary" title="Tema">🌙</button>
       <span id="sessionUser">Sin sesión</span>
-      <button id="logoutBtn" class="secondary">Salir</button>
+      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
     </div>
   </header>
 
@@ -265,6 +267,10 @@
           <div class="tab-panel" id="tab-usuarios">
             <div class="panel">
               <h3>Usuarios</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span class="text-muted">Gestión de conductores y administradores</span>
+                <button class="btn primary" id="addUsuarioBtn">+ Agregar Usuario</button>
+              </div>
               <div id="adminUsuarios" class="list"></div>
             </div>
           </div>
@@ -272,6 +278,10 @@
           <div class="tab-panel" id="tab-clientes">
             <div class="panel">
               <h3>Clientes</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span class="text-muted">Gestión de clientes registrados</span>
+                <button class="btn primary" id="addClienteBtn">+ Agregar Cliente</button>
+              </div>
               <div id="adminClientes" class="list"></div>
             </div>
           </div>
@@ -279,6 +289,10 @@
           <div class="tab-panel" id="tab-flota">
             <div class="panel">
               <h3>Flota</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span class="text-muted">Gestión de vehículos de la flota</span>
+                <button class="btn primary" id="addFlotaBtn">+ Agregar Vehículo</button>
+              </div>
               <div id="adminFlota" class="list"></div>
             </div>
           </div>
@@ -335,7 +349,6 @@
     </section>
   </main>
 
-  <footer class="footer">Prototipo educativo • Sin backend • JS/HTML/CSS puros</footer>
 
   <div id="toast" class="toast" hidden></div>
 

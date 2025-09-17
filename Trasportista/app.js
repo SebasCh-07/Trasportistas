@@ -383,7 +383,14 @@ function renderAdmin() {
   displayFlota.forEach(v => {
     const div = document.createElement("div");
     div.className = "list-item";
-    div.textContent = `${v.placa} • Conductor: ${v.conductor} • Capacidad: ${v.capacidad}`;
+    div.innerHTML = `<div class="row"><strong>${v.placa}</strong><span class="badge">${v.tipo || 'Vehículo'}</span></div>
+      <div>Conductor: ${v.conductor} • Capacidad: ${v.capacidad} personas</div>
+      <div>Modelo: ${v.modelo || 'N/A'} • Año: ${v.año || 'N/A'}</div>
+      <div class="row" style="margin-top:8px; gap:8px;">
+        <button class="btn secondary" onclick="viewFlota('${v.placa}')">Ver</button>
+        <button class="btn secondary" onclick="editFlota('${v.placa}')">Editar</button>
+        <button class="btn danger" onclick="deleteFlota('${v.placa}')">Eliminar</button>
+      </div>`;
     flotaCont.appendChild(div);
   });
 
@@ -400,7 +407,12 @@ function renderAdmin() {
       div.className = 'list-item';
       div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">${u.role}</span></div>
         <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Vehículo: ${vehiculo}</div>
-        <div>Reservas asignadas: ${resAsignadas}</div>`;
+        <div>Reservas asignadas: ${resAsignadas}</div>
+        <div class="row" style="margin-top:8px; gap:8px;">
+          <button class="btn secondary" onclick="viewUsuario(${u.id})">Ver</button>
+          <button class="btn secondary" onclick="editUsuario(${u.id})">Editar</button>
+          <button class="btn danger" onclick="deleteUsuario(${u.id})">Eliminar</button>
+        </div>`;
       usuariosCont.appendChild(div);
     });
   }
@@ -476,7 +488,12 @@ function renderAdmin() {
       div.className = 'list-item';
       div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">Cliente</span></div>
         <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Tel: ${u.telefono ?? '-'}</div>
-        <div>Reservas: ${mias.length} • Completadas: ${entregadas.length} • ★ Promedio: ${avg}</div>`;
+        <div>Reservas: ${mias.length} • Completadas: ${entregadas.length} • ★ Promedio: ${avg}</div>
+        <div class="row" style="margin-top:8px; gap:8px;">
+          <button class="btn secondary" onclick="viewCliente(${u.id})">Ver</button>
+          <button class="btn secondary" onclick="editCliente(${u.id})">Editar</button>
+          <button class="btn danger" onclick="deleteCliente(${u.id})">Eliminar</button>
+        </div>`;
       clientesCont.appendChild(div);
     });
   }
@@ -564,12 +581,8 @@ function wireEvents() {
     if (session) navigateByRole(session.role); else showView("auth");
   });
 
-  // theme toggle
-  const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", toggleTheme);
+  // theme toggle (removed button; keep applying saved or default theme)
     applySavedTheme();
-  }
 
   // admin tabs
   document.querySelectorAll('#view-admin .tab-btn').forEach(btn => {
@@ -698,6 +711,95 @@ function wireEvents() {
   // ratings form
   const ratingForm = document.getElementById("ratingForm");
   ratingForm?.addEventListener("submit", handleAddRating);
+
+  // admin CRUD buttons
+  document.getElementById('addUsuarioBtn')?.addEventListener('click', () => {
+    toast('Función de agregar usuario en desarrollo');
+  });
+  document.getElementById('addClienteBtn')?.addEventListener('click', () => {
+    toast('Función de agregar cliente en desarrollo');
+  });
+  document.getElementById('addFlotaBtn')?.addEventListener('click', () => {
+    toast('Función de agregar vehículo en desarrollo');
+  });
+}
+
+// Admin CRUD functions
+function viewUsuario(id) {
+  const users = storage.get("users", []);
+  const user = users.find(u => u.id === id);
+  if (user) {
+    alert(`Usuario: ${user.nombre}\nCI: ${user.cedula}\nEmail: ${user.email}\nRol: ${user.role}`);
+  }
+}
+
+function editUsuario(id) {
+  toast('Función de editar usuario en desarrollo');
+}
+
+function deleteUsuario(id) {
+  if (confirm('¿Eliminar este usuario?')) {
+    const users = storage.get("users", []);
+    const filtered = users.filter(u => u.id !== id);
+    storage.set("users", filtered);
+    renderAdmin();
+    toast('Usuario eliminado');
+  }
+}
+
+function viewCliente(id) {
+  const users = storage.get("users", []);
+  const mockClients = storage.get('mockClients', []);
+  const allClients = [...users.filter(u => u.role === 'cliente'), ...mockClients.map(m => ({ ...m, role: 'cliente' }))];
+  const cliente = allClients.find(u => u.id === id);
+  if (cliente) {
+    alert(`Cliente: ${cliente.nombre}\nCI: ${cliente.cedula}\nEmail: ${cliente.email}\nTel: ${cliente.telefono || 'N/A'}`);
+  }
+}
+
+function editCliente(id) {
+  toast('Función de editar cliente en desarrollo');
+}
+
+function deleteCliente(id) {
+  if (confirm('¿Eliminar este cliente?')) {
+    const users = storage.get("users", []);
+    const mockClients = storage.get('mockClients', []);
+    const filteredUsers = users.filter(u => u.id !== id);
+    const filteredMock = mockClients.filter(u => u.id !== id);
+    storage.set("users", filteredUsers);
+    storage.set("mockClients", filteredMock);
+    renderAdmin();
+    toast('Cliente eliminado');
+  }
+}
+
+// Flota CRUD functions
+function viewFlota(placa) {
+  const flota = storage.get("flota", []);
+  const mockFlota = storage.get('mockFlota', []);
+  const allFlota = [...flota, ...mockFlota];
+  const vehiculo = allFlota.find(v => v.placa === placa);
+  if (vehiculo) {
+    alert(`Vehículo: ${vehiculo.placa}\nConductor: ${vehiculo.conductor}\nCapacidad: ${vehiculo.capacidad}\nModelo: ${vehiculo.modelo || 'N/A'}\nAño: ${vehiculo.año || 'N/A'}`);
+  }
+}
+
+function editFlota(placa) {
+  toast('Función de editar vehículo en desarrollo');
+}
+
+function deleteFlota(placa) {
+  if (confirm('¿Eliminar este vehículo?')) {
+    const flota = storage.get("flota", []);
+    const mockFlota = storage.get('mockFlota', []);
+    const filteredFlota = flota.filter(v => v.placa !== placa);
+    const filteredMock = mockFlota.filter(v => v.placa !== placa);
+    storage.set("flota", filteredFlota);
+    storage.set("mockFlota", filteredMock);
+    renderAdmin();
+    toast('Vehículo eliminado');
+  }
 }
 
 // Admin: add route
@@ -898,18 +1000,19 @@ function toast(message) {
 }
 
 function toggleTheme() {
-  const isDark = document.documentElement.classList.toggle('dark');
+  const root = document.documentElement;
+  const isDark = root.classList.toggle('dark');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  const btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
 }
 
 function applySavedTheme() {
   const saved = localStorage.getItem('theme');
-  if (saved === 'dark') {
-    document.documentElement.classList.add('dark');
-    const btn = document.getElementById('themeToggle');
-    if (btn) btn.textContent = '☀️';
+  const root = document.documentElement;
+  if (saved === 'light') {
+    root.classList.remove('dark');
+  } else {
+    // default to dark
+    root.classList.add('dark');
   }
 }
 
