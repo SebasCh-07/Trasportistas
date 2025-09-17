@@ -5,16 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TeLlevo - Prototipo</title>
   <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">TeLlevo</div>
-    <nav class="nav">
-      <button class="nav-btn" data-route="auth">Login / Registro</button>
-      <button class="nav-btn" data-route="cliente">Cliente</button>
-      <button class="nav-btn" data-route="conductor">Conductor</button>
-      <button class="nav-btn" data-route="admin">Admin</button>
-    </nav>
+    
     <div class="session">
       <select id="companySelect">
         <option value="TeLlevo">TeLlevo</option>
@@ -30,53 +26,84 @@
   <main id="app">
     <!-- Auth View -->
     <section id="view-auth" class="view">
-      <div class="panel two-col">
-        <div>
-          <h2>Iniciar sesión</h2>
-          <form id="loginForm" class="form">
-            <label>Cédula
-              <input id="loginCedula" type="text" required />
-            </label>
-            <label>Rol
-              <select id="loginRole" required>
-                <option value="cliente">Cliente</option>
-                <option value="conductor">Conductor</option>
-                <option value="admin">Administrador</option>
-              </select>
-            </label>
-            <button type="submit">Entrar</button>
-          </form>
-          <div id="loginMsg" class="msg"></div>
-          <div class="panel" style="margin-top:12px;">
-            <h3>Credenciales de prueba</h3>
-            <div class="list">
-              <div class="list-item">Cliente: cédula 1234567890</div>
-              <div class="list-item">Conductor: cédula 0987654321</div>
-              <div class="list-item">Administrador: cédula 0000000000</div>
-            </div>
-          </div>
+      <div id="auth-login" class="panel">
+        <h2>Iniciar sesión</h2>
+        <form id="loginForm" class="form">
+          <label>Correo
+            <input id="loginEmail" type="email" required />
+          </label>
+          <label>Contraseña
+            <input id="loginPassword" type="password" required />
+          </label>
+          <button type="submit">Entrar</button>
+        </form>
+        <div id="loginMsg" class="msg"></div>
+        <div class="msg" style="margin-top:10px">
+          ¿No tienes cuenta? <a href="#" id="goToRegister">Regístrate</a>
         </div>
-        <div>
-          <h2>Registro</h2>
-          <form id="registerForm" class="form">
-            <label>Nombre completo
-              <input id="regNombre" type="text" required />
-            </label>
-            <label>Cédula
-              <input id="regCedula" type="text" required />
-            </label>
-            <label>Foto (selfie)
-              <input id="regFoto" type="file" accept="image/*" />
-            </label>
-            <label>Rol
-              <select id="regRole" required>
-                <option value="cliente">Cliente</option>
-                <option value="conductor">Conductor</option>
-              </select>
-            </label>
-            <button type="submit" class="accent">Registrar</button>
-          </form>
-          <div id="registerMsg" class="msg"></div>
+        
+      </div>
+      <div id="auth-register" class="panel" hidden>
+        <h2>Registro</h2>
+        <form id="registerForm" class="reg-grid">
+          <div class="reg-left">
+            <div class="two-col">
+              <label>Nombres
+                <input id="regNombres" type="text" required />
+              </label>
+              <label>Apellidos
+                <input id="regApellidos" type="text" required />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>CI
+                <input id="regCedula" type="text" required />
+              </label>
+              <label>Teléfono
+                <input id="regTelefono" type="tel" />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>Correo
+                <input id="regEmail" type="email" required />
+              </label>
+              <label>Contraseña
+                <input id="regPassword" type="password" required />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>Rol
+                <select id="regRole" required>
+                  <option value="cliente">Cliente</option>
+                  <option value="conductor">Conductor</option>
+                </select>
+              </label>
+            </div>
+            <div class="two-col">
+              <div class="map-box">
+                <button id="openMapPicker" type="button" class="btn ghost" style="width:100%">Ubicar Dirección en mapa</button>
+                <div class="text-muted" id="pickedAddress" style="margin-top:6px"></div>
+                <input id="regLat" type="hidden" />
+                <input id="regLng" type="hidden" />
+              </div>
+              <label class="span-1">Referencia
+                <input id="regReferencia" type="text" />
+              </label>
+            </div>
+            <button type="submit" class="accent" style="margin-top:10px">Registrar</button>
+          </div>
+          <div class="reg-right">
+            <div class="photo-box">
+              <img id="regFotoPreview" alt="Vista previa" hidden />
+              <button id="regFotoBtn" class="secondary" type="button">Subir foto</button>
+              <input id="regFoto" type="file" accept="image/*" hidden />
+            </div>
+            <div class="text-muted" style="text-align:center; margin-top:6px">Subir Foto</div>
+          </div>
+        </form>
+        <div id="registerMsg" class="msg"></div>
+        <div class="msg" style="margin-top:10px">
+          ¿Ya tienes cuenta? <a href="#" id="goToLogin">Inicia sesión</a>
         </div>
       </div>
     </section>
@@ -197,56 +224,112 @@
 
     <!-- Admin View -->
     <section id="view-admin" class="view">
-      <div class="panel">
-        <h2>Dashboard</h2>
-        <div class="kpis">
-          <div class="kpi"><div class="kpi-num" id="kpiReservas">0</div><div class="kpi-label">Reservas</div></div>
-          <div class="kpi"><div class="kpi-num" id="kpiRutas">0</div><div class="kpi-label">Rutas</div></div>
-          <div class="kpi"><div class="kpi-num" id="kpiFlota">0</div><div class="kpi-label">Vehículos</div></div>
-        </div>
-      </div>
+      <div class="admin-layout">
+        <aside class="admin-tabs">
+          <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+          <button class="tab-btn" data-tab="usuarios">Usuarios</button>
+          <button class="tab-btn" data-tab="clientes">Clientes</button>
+          <button class="tab-btn" data-tab="flota">Flota</button>
+          <button class="tab-btn" data-tab="rutas">Rutas</button>
+          <button class="tab-btn" data-tab="reservas">Reservas</button>
+          <button class="tab-btn" data-tab="promos">Cupones/Vouchers</button>
+        </aside>
+        <div class="admin-content">
+          <div class="tab-panel active" id="tab-dashboard">
+            <div class="panel">
+              <h2>Dashboard</h2>
+              <div class="kpis">
+                <div class="kpi"><div class="kpi-num" id="kpiReservas">0</div><div class="kpi-label">Reservas</div></div>
+                <div class="kpi"><div class="kpi-num" id="kpiRutas">0</div><div class="kpi-label">Rutas</div></div>
+                <div class="kpi"><div class="kpi-num" id="kpiFlota">0</div><div class="kpi-label">Vehículos</div></div>
+                <div class="kpi" style="max-width:200px"><div class="kpi-num" id="kpiRating">-</div><div class="kpi-label">Promedio ★</div></div>
+                <div class="kpi" style="max-width:220px"><div class="kpi-num" id="kpiRevenue">$0</div><div class="kpi-label">Ingresos estimados</div></div>
+              </div>
+            </div>
+            <div class="panel two-col">
+              <div>
+                <h3>Reservas recientes</h3>
+                <div id="adminRecent" class="list"></div>
+                <h3 style="margin-top:16px">Top rutas</h3>
+                <div id="adminTopRutas" class="list"></div>
+              </div>
+              <div>
+                <h3>Uso de flota</h3>
+                <div id="adminFleetStats" class="list"></div>
+                <h3 style="margin-top:16px">Uso de promociones</h3>
+                <div id="adminPromoStats" class="list"></div>
+              </div>
+            </div>
+          </div>
 
-      <div class="panel two-col">
-        <div>
-          <h3>Gestión de rutas</h3>
-          <div id="adminRutas" class="list"></div>
-          <form id="rutaForm" class="form inline">
-            <input id="rutaOrigen" placeholder="Origen" required />
-            <input id="rutaDestino" placeholder="Destino" required />
-            <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
-            <input id="rutaPrecio" type="number" placeholder="Precio" required />
-            <input id="rutaAsientos" type="number" placeholder="Asientos" required />
-            <button type="submit">Añadir ruta</button>
-          </form>
-          <div id="rutaMsg" class="msg"></div>
-        </div>
-        <div>
-          <h3>Flota</h3>
-          <div id="adminFlota" class="list"></div>
-          <h3 style="margin-top:24px">Reservas</h3>
-          <div id="adminReservas" class="list"></div>
-          <h3 style="margin-top:24px">Facturas</h3>
-          <div id="adminInvoices" class="list"></div>
-          <h3 style="margin-top:24px">Calificaciones (promedio)</h3>
-          <div id="adminRatingKpi" class="kpi" style="max-width:200px"><div class="kpi-num" id="kpiRating">-</div><div class="kpi-label">/ 5</div></div>
-          <h3 style="margin-top:24px">Asignación de viajes</h3>
-          <form id="assignForm" class="form inline" style="grid-template-columns: 2fr 2fr auto;">
-            <select id="assignReserva"></select>
-            <select id="assignConductor"></select>
-            <button type="submit">Asignar</button>
-          </form>
-          <div id="assignMsg" class="msg"></div>
-          <h3 style="margin-top:24px">Cupones y Vouchers</h3>
-          <div id="adminPromos" class="list"></div>
-          <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
-            <select id="promoTipo">
-              <option value="cupon">Cupón</option>
-              <option value="voucher">Voucher</option>
-            </select>
-            <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
-            <button type="submit">Agregar</button>
-          </form>
-          <div id="promoMsg" class="msg"></div>
+          <div class="tab-panel" id="tab-usuarios">
+            <div class="panel">
+              <h3>Usuarios</h3>
+              <div id="adminUsuarios" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-clientes">
+            <div class="panel">
+              <h3>Clientes</h3>
+              <div id="adminClientes" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-flota">
+            <div class="panel">
+              <h3>Flota</h3>
+              <div id="adminFlota" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-rutas">
+            <div class="panel">
+              <h3>Gestión de rutas</h3>
+              <div id="adminRutas" class="list"></div>
+              <form id="rutaForm" class="form inline">
+                <input id="rutaOrigen" placeholder="Origen" required />
+                <input id="rutaDestino" placeholder="Destino" required />
+                <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
+                <input id="rutaPrecio" type="number" placeholder="Precio" required />
+                <input id="rutaAsientos" type="number" placeholder="Asientos" required />
+                <button type="submit">Añadir ruta</button>
+              </form>
+              <div id="rutaMsg" class="msg"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-reservas">
+            <div class="panel">
+              <h3>Gestión de reservas</h3>
+              <div id="adminReservas" class="list"></div>
+              <h3 style="margin-top:16px">Asignación de viajes</h3>
+              <form id="assignForm" class="form inline" style="grid-template-columns: 2fr 2fr auto;">
+                <select id="assignReserva"></select>
+                <select id="assignConductor"></select>
+                <button type="submit">Asignar</button>
+              </form>
+              <div id="assignMsg" class="msg"></div>
+              <h3 style="margin-top:16px">Facturas</h3>
+              <div id="adminInvoices" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-promos">
+            <div class="panel">
+              <h3>Cupones y Vouchers</h3>
+              <div id="adminPromos" class="list"></div>
+              <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
+                <select id="promoTipo">
+                  <option value="cupon">Cupón</option>
+                  <option value="voucher">Voucher</option>
+                </select>
+                <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
+                <button type="submit">Agregar</button>
+              </form>
+              <div id="promoMsg" class="msg"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -256,6 +339,21 @@
 
   <div id="toast" class="toast" hidden></div>
 
+  <!-- Map Picker Modal -->
+  <div id="mapModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 900px; max-height: 80vh; z-index: 60; grid-template-rows: auto 1fr auto; gap: 10px;">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <strong>Seleccionar ubicación</strong>
+      <button id="closeMapPicker" class="secondary">Cerrar</button>
+    </div>
+    <div id="map" style="height: 60vh; border:1px solid var(--border); border-radius: 10px;"></div>
+    <div class="row" style="gap:10px; flex-wrap: wrap;">
+      <span class="badge" id="mapCoords">-,-</span>
+      <span class="text-muted" id="mapAddress"></span>
+      <button id="saveMapPicker" class="accent">Usar esta ubicación</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

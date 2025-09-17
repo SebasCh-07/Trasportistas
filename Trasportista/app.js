@@ -21,9 +21,9 @@ function setCompanyNamespace(ns) {
 
 const SEED = {
   users: [
-    { id: 1, role: "cliente", nombre: "Juan Pérez", cedula: "1234567890" },
-    { id: 2, role: "conductor", nombre: "Carlos Ruiz", cedula: "0987654321" },
-    { id: 3, role: "admin", nombre: "Administrador", cedula: "0000000000" },
+    { id: 1, role: "cliente", nombre: "Juan Pérez", cedula: "1234567890", email: "cliente@demo.com", password: "123456", direccion: "Av. Siempre Viva 123", foto: null },
+    { id: 2, role: "conductor", nombre: "Carlos Ruiz", cedula: "0987654321", email: "conductor@demo.com", password: "123456", direccion: "Calle 10 #20", foto: null },
+    { id: 3, role: "admin", nombre: "Administrador", cedula: "0000000000", email: "admin@demo.com", password: "123456", direccion: "Oficina Central", foto: null },
   ],
   rutas: [
     { id: 1, origen: "Quito", destino: "Tena", horario: "08:00", precio: 10, asientos: 3 },
@@ -37,10 +37,42 @@ const SEED = {
     { type: "cupon", code: "CUPON10", discountPct: 10 },
     { type: "voucher", code: "VOC-001", balance: 100 },
   ],
+  mockClients: [
+    { id: 10001, nombre: "María González", cedula: "1102233445", email: "maria@example.com", telefono: "+593987654321" },
+    { id: 10002, nombre: "Luis Andrade", cedula: "1719988776", email: "luis@example.com", telefono: "+593987650000" },
+    { id: 10003, nombre: "Ana Torres", cedula: "0911122233", email: "ana@example.com", telefono: "+593999111222" },
+  ],
 };
 
 function seedIfEmpty() {
-  if (!localStorage.getItem(namespacedKey("users"))) storage.set("users", SEED.users);
+  const key = namespacedKey("users");
+  if (!localStorage.getItem(key)) {
+    storage.set("users", SEED.users);
+  } else {
+    // migrate existing users to include email/password if missing (avoid breaking login)
+    try {
+      const current = JSON.parse(localStorage.getItem(key));
+      if (Array.isArray(current)) {
+        const migrated = current.map((u, idx) => {
+          let email = u.email;
+          if (!email) {
+            if (u.role === 'cliente' && u.cedula === '1234567890') email = 'cliente@demo.com';
+            else if (u.role === 'conductor' && u.cedula === '0987654321') email = 'conductor@demo.com';
+            else if (u.role === 'admin' && u.cedula === '0000000000') email = 'admin@demo.com';
+            else email = (u.role ? `${u.role}${idx}@demo.com` : `user${idx}@demo.com`);
+          }
+          return {
+            ...u,
+            email,
+            password: u.password || '123456',
+            direccion: u.direccion || '',
+          };
+        });
+        localStorage.setItem(key, JSON.stringify(migrated));
+      }
+    } catch {}
+  }
+  if (!localStorage.getItem(namespacedKey('mockClients'))) storage.set('mockClients', SEED.mockClients);
   if (!localStorage.getItem(namespacedKey("rutas"))) storage.set("rutas", SEED.rutas);
   if (!localStorage.getItem(namespacedKey("flota"))) storage.set("flota", SEED.flota);
   if (!localStorage.getItem(namespacedKey("reservas"))) storage.set("reservas", SEED.reservas);
@@ -52,7 +84,7 @@ function seedIfEmpty() {
 // Session
 function getSession() { return storage.get("session", null); }
 function setSession(session) { storage.set("session", session); }
-function clearSession() { localStorage.removeItem("session"); }
+function clearSession() { try { localStorage.removeItem(namespacedKey("session")); } catch {} }
 
 // Router
 const views = {
@@ -61,6 +93,15 @@ const views = {
   conductor: document.getElementById("view-conductor"),
   admin: document.getElementById("view-admin"),
 };
+
+function showAuthScreen(which) {
+  const loginPanel = document.getElementById('auth-login');
+  const registerPanel = document.getElementById('auth-register');
+  if (!loginPanel || !registerPanel) return;
+  const showRegister = which === 'register';
+  registerPanel.hidden = !showRegister;
+  loginPanel.hidden = showRegister;
+}
 
 function showView(name) {
   Object.entries(views).forEach(([key, v]) => {
@@ -71,7 +112,9 @@ function showView(name) {
     views[name].classList.add("active");
     views[name].hidden = false;
   }
+  if (name === 'auth') showAuthScreen('login');
   highlightActiveNav(name);
+  try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0,0); }
 }
 
 function updateSessionUi() {
@@ -89,10 +132,10 @@ function updateSessionUi() {
 // Auth logic
 function handleLogin(e) {
   e.preventDefault();
-  const cedula = document.getElementById("loginCedula").value.trim();
-  const role = document.getElementById("loginRole").value;
+  const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+  const password = document.getElementById("loginPassword").value;
   const users = storage.get("users", []);
-  const user = users.find(u => u.cedula === cedula && u.role === role);
+  const user = users.find(u => (u.email?.toLowerCase() === email) && u.password === password);
   const msg = document.getElementById("loginMsg");
   if (!user) { msg.textContent = "Credenciales inválidas"; return; }
   setSession(user);
@@ -104,17 +147,30 @@ function handleLogin(e) {
 
 function handleRegister(e) {
   e.preventDefault();
-  const nombre = document.getElementById("regNombre").value.trim();
+  const nombres = document.getElementById("regNombres").value.trim();
+  const apellidos = document.getElementById("regApellidos").value.trim();
+  const nombre = `${nombres} ${apellidos}`.trim();
   const cedula = document.getElementById("regCedula").value.trim();
   const role = document.getElementById("regRole").value;
   const fotoFile = document.getElementById("regFoto")?.files?.[0] || null;
+  const direccion = document.getElementById("pickedAddress")?.textContent?.replace(/^Dirección:\s*/, '')?.trim() || '';
+  const lat = Number(document.getElementById('regLat')?.value || 0);
+  const lng = Number(document.getElementById('regLng')?.value || 0);
+  const telefono = document.getElementById('regTelefono')?.value?.trim() || '';
+  const referencia = document.getElementById('regReferencia')?.value?.trim() || '';
+  const email = document.getElementById("regEmail").value.trim();
+  const password = document.getElementById("regPassword").value;
   const users = storage.get("users", []);
   if (users.some(u => u.cedula === cedula)) {
     document.getElementById("registerMsg").textContent = "Ya existe un usuario con esa cédula";
     return;
   }
+  if (users.some(u => u.email?.toLowerCase() === email.toLowerCase())) {
+    document.getElementById("registerMsg").textContent = "Ya existe un usuario con ese correo";
+    return;
+  }
   const finalize = (photoDataUrl) => {
-    const newUser = { id: Date.now(), role, nombre, cedula, foto: photoDataUrl || null };
+    const newUser = { id: Date.now(), role, nombre, cedula, direccion, lat, lng, telefono, referencia, email, password, foto: photoDataUrl || null };
     users.push(newUser);
     storage.set("users", users);
     document.getElementById("registerMsg").textContent = "Registro exitoso. Ahora inicie sesión.";
@@ -292,9 +348,25 @@ function renderAdmin() {
   const reservas = storage.get("reservas", []);
   const rutas = storage.get("rutas", []);
   const flota = storage.get("flota", []);
+  const users = storage.get("users", []);
+  // Datos visuales adicionales (no persistidos)
+  const mockDrivers = [
+    { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1', cedula: '000000001', email: 'conductor1@demo.com' },
+    { id: 9002, role: 'conductor', nombre: 'Conductor Demo 2', cedula: '000000002', email: 'conductor2@demo.com' },
+    { id: 9003, role: 'conductor', nombre: 'Conductor Demo 3', cedula: '000000003', email: 'conductor3@demo.com' },
+  ];
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5 },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7 },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4 },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5 },
+  ];
   document.getElementById("kpiReservas").textContent = reservas.length;
   document.getElementById("kpiRutas").textContent = rutas.length;
   document.getElementById("kpiFlota").textContent = flota.length;
+  const revenue = reservas.reduce((sum, r) => sum + (Number(r.precio)||0), 0);
+  const kpiRevenue = document.getElementById('kpiRevenue');
+  if (kpiRevenue) kpiRevenue.textContent = `$${revenue}`;
 
   const rutasCont = document.getElementById("adminRutas");
   rutasCont.innerHTML = "";
@@ -307,12 +379,107 @@ function renderAdmin() {
 
   const flotaCont = document.getElementById("adminFlota");
   flotaCont.innerHTML = "";
-  flota.forEach(v => {
+  const displayFlota = [...flota, ...mockFlota];
+  displayFlota.forEach(v => {
     const div = document.createElement("div");
     div.className = "list-item";
     div.textContent = `${v.placa} • Conductor: ${v.conductor} • Capacidad: ${v.capacidad}`;
     flotaCont.appendChild(div);
   });
+
+  // usuarios (conductor y admin)
+  const usuariosCont = document.getElementById('adminUsuarios');
+  if (usuariosCont) {
+    usuariosCont.innerHTML = '';
+    const realStaff = users.filter(u => u.role !== 'cliente');
+    const displayStaff = [...realStaff, ...mockDrivers];
+    displayStaff.forEach(u => {
+      const vehiculo = displayFlota.find(f => f.conductor === u.nombre)?.placa ?? '-';
+      const resAsignadas = reservas.filter(r => r.conductorId === u.id).length;
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">${u.role}</span></div>
+        <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Vehículo: ${vehiculo}</div>
+        <div>Reservas asignadas: ${resAsignadas}</div>`;
+      usuariosCont.appendChild(div);
+    });
+  }
+
+  // clientes
+  // recientes
+  const recentCont = document.getElementById('adminRecent');
+  if (recentCont) {
+    recentCont.innerHTML = '';
+    [...reservas].sort((a,b)=>b.id-a.id).slice(0,5).forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.textContent = `#${r.id} • ${r.origen}→${r.destino} • ${r.horario} • ${getUserName(r.clienteId)} • ${r.tipo} • ${r.estado}`;
+      recentCont.appendChild(div);
+    });
+  }
+
+  // top rutas por reservas
+  const topRutas = document.getElementById('adminTopRutas');
+  if (topRutas) {
+    topRutas.innerHTML = '';
+    const countByRuta = reservas.reduce((acc, r) => { const k = `${r.origen}→${r.destino}`; acc[k] = (acc[k]||0)+1; return acc; }, {});
+    Object.entries(countByRuta).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([k, c]) => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.textContent = `${k} • ${c} reservas`;
+      topRutas.appendChild(div);
+    });
+    if (topRutas.children.length === 0) topRutas.innerHTML = 'Sin datos';
+  }
+
+  // uso de flota (conteo por vehículo)
+  const fleetStats = document.getElementById('adminFleetStats');
+  if (fleetStats) {
+    fleetStats.innerHTML = '';
+    const countByVeh = reservas.reduce((acc, r) => { const k = r.vehiculo || '-'; acc[k] = (acc[k]||0)+1; return acc; }, {});
+    Object.entries(countByVeh).sort((a,b)=>b[1]-a[1]).forEach(([k,c]) => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.textContent = `${k} • ${c} viajes`;
+      fleetStats.appendChild(div);
+    });
+    if (fleetStats.children.length === 0) fleetStats.innerHTML = 'Sin datos';
+  }
+
+  // uso de promos
+  const promoStats = document.getElementById('adminPromoStats');
+  if (promoStats) {
+    promoStats.innerHTML = '';
+    const countByPromo = reservas.filter(r=>r.promo).reduce((acc, r) => { const k = r.promo; acc[k] = (acc[k]||0)+1; return acc; }, {});
+    Object.entries(countByPromo).sort((a,b)=>b[1]-a[1]).forEach(([k,c]) => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.textContent = `${k} • ${c} usos`;
+      promoStats.appendChild(div);
+    });
+    if (promoStats.children.length === 0) promoStats.innerHTML = 'Sin datos';
+  }
+  const clientesCont = document.getElementById('adminClientes');
+  if (clientesCont) {
+    clientesCont.innerHTML = '';
+    const mockClients = storage.get('mockClients', []);
+    const clientesAll = [
+      ...users.filter(u => u.role === 'cliente'),
+      ...mockClients.map(m => ({ ...m, role: 'cliente' })),
+    ];
+    clientesAll.forEach(u => {
+      const mias = reservas.filter(r => r.clienteId === u.id);
+      const entregadas = mias.filter(r => r.estado === 'recogido');
+      const rated = mias.filter(r => typeof r.rating === 'number');
+      const avg = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(2) : '-';
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">Cliente</span></div>
+        <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Tel: ${u.telefono ?? '-'}</div>
+        <div>Reservas: ${mias.length} • Completadas: ${entregadas.length} • ★ Promedio: ${avg}</div>`;
+      clientesCont.appendChild(div);
+    });
+  }
 
   const resCont = document.getElementById("adminReservas");
   resCont.innerHTML = "";
@@ -404,13 +571,106 @@ function wireEvents() {
     applySavedTheme();
   }
 
-  document.querySelectorAll(".nav-btn").forEach(btn => btn.addEventListener("click", () => {
-    const route = btn.getAttribute("data-route");
-    if (route === "auth") { showView("auth"); return; }
-    const session = getSession();
-    if (!session) { showView("auth"); return; }
-    navigateByRole(session.role);
-  }));
+  // admin tabs
+  document.querySelectorAll('#view-admin .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('#view-admin .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#view-admin .tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`tab-${tab}`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // auth toggles
+  const goToRegister = document.getElementById('goToRegister');
+  const goToLogin = document.getElementById('goToLogin');
+  goToRegister?.addEventListener('click', (e) => { e.preventDefault(); showAuthScreen('register'); });
+  goToLogin?.addEventListener('click', (e) => { e.preventDefault(); showAuthScreen('login'); });
+
+  // pretty uploader
+  const regFotoBtn = document.getElementById('regFotoBtn');
+  const regFotoInput = document.getElementById('regFoto');
+  const regFotoPreview = document.getElementById('regFotoPreview');
+  regFotoBtn?.addEventListener('click', () => regFotoInput?.click());
+  regFotoInput?.addEventListener('change', () => {
+    const file = regFotoInput.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast('La imagen supera 2MB'); regFotoInput.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (regFotoPreview) {
+        regFotoPreview.src = String(reader.result);
+        regFotoPreview.hidden = false;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // map picker
+  const openMapPicker = document.getElementById('openMapPicker');
+  const mapModal = document.getElementById('mapModal');
+  const closeMapPicker = document.getElementById('closeMapPicker');
+  const saveMapPicker = document.getElementById('saveMapPicker');
+  const mapCoords = document.getElementById('mapCoords');
+  const mapAddress = document.getElementById('mapAddress');
+  const regLat = document.getElementById('regLat');
+  const regLng = document.getElementById('regLng');
+  const pickedAddress = document.getElementById('pickedAddress');
+
+  let leafletMap = null;
+  let leafletMarker = null;
+
+  function openPicker() {
+    if (!mapModal) return;
+    mapModal.style.display = 'grid';
+    mapModal.hidden = false;
+    setTimeout(() => {
+      if (!leafletMap) {
+        leafletMap = L.map('map').setView([-0.1807, -78.4678], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(leafletMap);
+        leafletMap.on('click', onMapClick);
+      }
+      leafletMap.invalidateSize();
+    }, 50);
+  }
+
+  function closePicker() {
+    if (!mapModal) return;
+    mapModal.hidden = true;
+    mapModal.style.display = 'none';
+  }
+
+  function onMapClick(e) {
+    const { lat, lng } = e.latlng;
+    if (leafletMarker) leafletMap.removeLayer(leafletMarker);
+    leafletMarker = L.marker([lat, lng]).addTo(leafletMap);
+    mapCoords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    reverseGeocode(lat, lng).then(addr => { mapAddress.textContent = addr || ''; });
+  }
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      return data.display_name || '';
+    } catch { return ''; }
+  }
+
+  openMapPicker?.addEventListener('click', openPicker);
+  closeMapPicker?.addEventListener('click', closePicker);
+  saveMapPicker?.addEventListener('click', async () => {
+    if (!leafletMarker) { toast('Seleccione una ubicación en el mapa'); return; }
+    const { lat, lng } = leafletMarker.getLatLng();
+    regLat.value = String(lat);
+    regLng.value = String(lng);
+    const addr = mapAddress.textContent || await reverseGeocode(lat, lng);
+    pickedAddress.textContent = addr ? `Dirección: ${addr}` : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    closePicker();
+  });
+
+  // removed top nav buttons
 
   // servicio selector
   const servicioTipo = document.getElementById("servicioTipo");
