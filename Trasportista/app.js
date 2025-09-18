@@ -252,7 +252,7 @@ function handleReserva(e) {
     tipo, direccion, horario: ruta.horario, origen: ruta.origen, destino: ruta.destino, precio: ruta.precio,
     estado: "pendiente", recogido: false,
     servicio: getServicioTipo(), metodoPago, promo: promoApplied?.code ?? null,
-    conductorId: 2, vehiculo: "ABC-123",
+    conductorId: null, vehiculo: null,
   };
   reservas.push(nuevaReserva);
   storage.set("reservas", reservas);
@@ -632,97 +632,82 @@ function renderAsignacionesEnContenedor(containerId, reservas, tipo) {
 }
 
 function verDetallesAsignacion(reservaId) {
-  const reservas = storage.get("reservas", []);
-  const reserva = reservas.find(r => r.id === reservaId);
-  
-  if (!reserva) {
-    toast("No se encontró la reserva");
-    return;
+  const reservas = storage.get('reservas', []);
+  const users = storage.get('users', []);
+  const r = reservas.find(x => x.id === reservaId);
+  if (!r) return;
+  const cliente = users.find(u => u.id === r.clienteId)?.nombre || 'Cliente';
+  const body = document.getElementById('driverDetailBody');
+  if (body) {
+    body.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `
+      <div class=\"row\"><strong>${r.origen} → ${r.destino}</strong><span class=\"badge\">${r.horario}</span></div>
+      <div><strong>Cliente:</strong> ${cliente}</div>
+      <div><strong>Tipo:</strong> ${r.tipo} • <strong>Servicio:</strong> ${r.servicio}</div>
+      <div><strong>Dirección:</strong> ${r.direccion}</div>
+      <div><strong>Método de pago:</strong> ${r.metodoPago}${r.promo?` • <strong>Cupón:</strong> ${r.promo}`:''}</div>
+      <div><strong>Precio:</strong> $${r.precio}</div>
+    `;
+    body.appendChild(div);
   }
+  const modal = document.getElementById('driverDetailModal');
+  if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
+}
 
-  const cliente = getUserName(reserva.clienteId);
-  const users = storage.get("users", []);
-  const clienteCompleto = users.find(u => u.id === reserva.clienteId);
-  
-  const estadoTexto = reserva.estado === 'recogido' ? 'Finalizado' :
-                     reserva.estado === 'en-curso' ? 'En Curso' :
-                     'Asignado';
-  
-  const detallesHTML = `
-    <div class="detalle-section">
-      <h4>📍 Información del Viaje</h4>
-      <div class="detalle-item">
-        <span class="detalle-label">Ruta:</span>
-        <span class="detalle-value">${reserva.origen} → ${reserva.destino}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Horario:</span>
-        <span class="detalle-value">${reserva.horario}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Precio:</span>
-        <span class="detalle-value">$${reserva.precio}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Estado:</span>
-        <span class="detalle-value"><span class="badge">${estadoTexto}</span></span>
-      </div>
-    </div>
+// Wire botones del modal conductor
+(function wireDriverDetailModal(){
+  const close = () => { const m = document.getElementById('driverDetailModal'); if (m) { m.hidden = true; m.style.display = 'none'; } };
+  document.getElementById('driverDetailClose')?.addEventListener('click', close);
+  document.getElementById('driverDetailOk')?.addEventListener('click', close);
+})();
 
-    <div class="detalle-section">
-      <h4>👤 Información del Cliente</h4>
-      <div class="detalle-item">
-        <span class="detalle-label">Nombre:</span>
-        <span class="detalle-value">${cliente}</span>
+// Ajustar wiring en listas del conductor
+function renderAsignacionesEnContenedor(containerId, reservas, tipo) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = "";
+  if (reservas.length === 0) { 
+    cont.innerHTML = `<div class='text-muted'>No hay viajes ${tipo}s</div>`; 
+    return; 
+  }
+  reservas.forEach(res => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    let actionButtons = "";
+    if (tipo === "asignado") {
+      actionButtons = `
+        <button class=\"btn secondary detailBtn\" data-id=\"${res.id}\">Ver detalles</button>
+        <button class=\"btn primary startBtn\" data-id=\"${res.id}\">Cambiar a En Curso</button>
+      `;
+    } else if (tipo === "en-curso") {
+      actionButtons = `
+        <button class=\"btn secondary detailBtn\" data-id=\"${res.id}\">Ver detalles</button>
+        <button class=\"btn accent pickupBtn\" data-id=\"${res.id}\">Cambiar a Finalizado</button>
+      `;
+    } else if (tipo === "finalizado") {
+      actionButtons = `
+        <button class=\"btn secondary detailBtn\" data-id=\"${res.id}\">Ver detalles</button>
+      `;
+    }
+    const estado = tipo === "finalizado" ? "Completado" : 
+                  tipo === "en-curso" ? "En curso" : "Asignado";
+    div.innerHTML = `
+      <div class=\"row\"><strong>${res.origen} → ${res.destino}</strong><span class=\"badge\">${res.horario}</span></div>
+      <div>Cliente: ${getUserName(res.clienteId)} • Tipo: ${res.tipo}</div>
+      <div>Dirección: ${res.direccion}</div>
+      <div class=\"row\" style=\"justify-content: space-between;\">
+        <span>Estado: ${estado}</span>
+        <div class=\"row\" style=\"gap: 8px;\">
+          ${actionButtons}
+        </div>
       </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Teléfono:</span>
-        <span class="detalle-value">${clienteCompleto?.telefono || 'No disponible'}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Email:</span>
-        <span class="detalle-value">${clienteCompleto?.email || 'No disponible'}</span>
-      </div>
-    </div>
-
-    <div class="detalle-section">
-      <h4>🚗 Detalles del Servicio</h4>
-      <div class="detalle-item">
-        <span class="detalle-label">Tipo:</span>
-        <span class="detalle-value">${reserva.tipo}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Dirección de recogida:</span>
-        <span class="detalle-value">${reserva.direccion}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">Método de pago:</span>
-        <span class="detalle-value">${reserva.metodoPago}</span>
-      </div>
-      ${reserva.promo ? `
-      <div class="detalle-item">
-        <span class="detalle-label">Promoción:</span>
-        <span class="detalle-value">${reserva.promo}</span>
-      </div>
-      ` : ''}
-    </div>
-
-    <div class="detalle-section">
-      <h4>🚙 Vehículo Asignado</h4>
-      <div class="detalle-item">
-        <span class="detalle-label">Placa:</span>
-        <span class="detalle-value">${reserva.vehiculo || 'No asignado'}</span>
-      </div>
-      <div class="detalle-item">
-        <span class="detalle-label">ID de reserva:</span>
-        <span class="detalle-value">#${reserva.id}</span>
-      </div>
-    </div>
-  `;
-  
-  // Mostrar modal
-  document.getElementById('detallesContent').innerHTML = detallesHTML;
-  document.getElementById('detallesModal').hidden = false;
+    `;
+    cont.appendChild(div);
+  });
+  cont.querySelectorAll('.detailBtn').forEach(btn => btn.addEventListener('click', () => verDetallesAsignacion(Number(btn.dataset.id))))
+  if (tipo === 'asignado') cont.querySelectorAll('.startBtn').forEach(btn => btn.addEventListener('click', () => iniciarViaje(Number(btn.dataset.id))))
+  if (tipo === 'en-curso') cont.querySelectorAll('.pickupBtn').forEach(btn => btn.addEventListener('click', () => confirmarRecogida(Number(btn.dataset.id))))
 }
 
 function iniciarViaje(reservaId) {
@@ -1348,7 +1333,7 @@ function renderAdmin() {
   }
 
   // Renderizar todas las reservas con estadísticas
-  renderTodasReservas();
+  // renderTodasReservas();
 
   // invoices mock
   const invCont = document.getElementById("adminInvoices");
@@ -1384,6 +1369,14 @@ function renderAdmin() {
     ratingEl.textContent = String(avg);
   }
 
+  renderAdminReservas();
+
+  // dentro de renderAdmin(), después de KPIs y otros renders, añadimos:
+  const resFilterBtns = document.querySelectorAll('.res-filter-btn');
+  resFilterBtns.forEach(b => b.classList.remove('active'));
+  const first = document.querySelector('.res-filter-btn[data-filter="pendiente"]');
+  first?.classList.add('active');
+  renderAdminReservas('pendiente');
 }
 
 function renderTodasReservas() {
@@ -2193,6 +2186,22 @@ function wireEvents() {
   document.querySelectorAll('.modal').forEach(modal => {
     modal.style.display = 'none';
   });
+
+  // filtros de reservas
+  document.querySelectorAll('.res-filter-btn')?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.res-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.getAttribute('data-filter');
+      renderAdminReservas(f);
+    });
+  });
+  // modal asignación
+  document.getElementById('assignClose')?.addEventListener('click', closeAssignModal);
+  document.getElementById('assignSave')?.addEventListener('click', saveAssignModal);
+
+  // set inicial
+  renderAdminReservas('pendiente');
 }
 
 // Funciones para modales de usuarios
@@ -3234,6 +3243,141 @@ function applySavedTheme() {
     // default to dark
     root.classList.add('dark');
   }
+}
+
+function renderAdminReservas(filter = 'pendiente') {
+  const cont = document.getElementById('adminReservas');
+  if (!cont) return;
+  const reservas = storage.get('reservas', []).sort((a,b)=>b.id-a.id);
+  const users = storage.get('users', []);
+  const rutas = storage.get('rutas', []);
+  let visibles = [];
+  if (filter === 'pendiente') visibles = reservas.filter(r => r.estado === 'pendiente' && !r.conductorId);
+  else if (filter === 'asignadas') visibles = reservas.filter(r => r.conductorId && (r.estado === 'pendiente' || r.estado === 'en-curso'));
+  else if (filter === 'recogido') visibles = reservas.filter(r => r.estado === 'recogido');
+  cont.innerHTML = '';
+  if (visibles.length === 0) {
+    cont.innerHTML = `<div class='text-muted'>No hay reservas ${filter}</div>`;
+    return;
+  }
+  visibles.forEach(r => {
+    const cliente = users.find(u => u.id === r.clienteId)?.nombre || 'Cliente';
+    const resumen = `${r.origen} → ${r.destino} • ${r.horario} • $${r.precio}`;
+    let actions = '';
+    if (filter === 'pendiente') {
+      actions = `<button class=\"btn primary\" data-act=\"open-assign\" data-id=\"${r.id}\">Asignar</button>`;
+    } else if (filter === 'asignadas') {
+      const estadoLabel = r.estado === 'en-curso' ? 'En curso' : 'Asignado';
+      actions = `<span class=\"badge ${r.estado==='en-curso'?'warn':'info'}\">${estadoLabel}</span>
+                 <button class=\"btn secondary\" data-act=\"finish\" data-id=\"${r.id}\">Marcar completada</button>`;
+    } else if (filter === 'recogido') {
+      actions = `<span class=\"badge success\">Completada</span>`;
+    }
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `
+      <div class=\"row\">
+        <strong>#${r.id}</strong>
+        <span class=\"badge\">${cliente}</span>
+      </div>
+      <div>${resumen}</div>
+      <div>Dirección: ${r.direccion}</div>
+      <div class=\"row\" style=\"gap:6px; flex-wrap:wrap; margin-top:6px\">${actions}</div>
+    `;
+    cont.appendChild(div);
+  });
+  cont.querySelectorAll('[data-act]')?.forEach(btn => {
+    const act = btn.getAttribute('data-act');
+    const id = Number(btn.getAttribute('data-id'));
+    btn.addEventListener('click', () => handleAdminReservaAction(act, id, filter));
+  });
+}
+
+let assignTargetId = null;
+function openAssignModal(reservaId) {
+  assignTargetId = reservaId;
+  const modal = document.getElementById('assignModal');
+  if (!modal) return;
+  const users = storage.get('users', []);
+  const flota = storage.get('flota', []);
+  // incluir elementos mock como en Admin
+  const mockDrivers = [
+    { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1', cedula: '000000001', email: 'conductor1@demo.com' },
+    { id: 9002, role: 'conductor', nombre: 'Conductor Demo 2', cedula: '000000002', email: 'conductor2@demo.com' },
+    { id: 9003, role: 'conductor', nombre: 'Conductor Demo 3', cedula: '000000003', email: 'conductor3@demo.com' },
+  ];
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5 },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7 },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4 },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5 },
+  ];
+  const reservas = storage.get('reservas', []);
+  const r = reservas.find(x => x.id === reservaId);
+  const conductores = [...users.filter(u => u.role === 'conductor'), ...mockDrivers];
+  const displayFlota = [...flota, ...mockFlota];
+  const selCon = document.getElementById('assignConductorSelect');
+  const selVeh = document.getElementById('assignVehiculoSelect');
+  selCon.innerHTML = '';
+  selVeh.innerHTML = '';
+  conductores.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = String(c.id); opt.textContent = c.nombre; selCon.appendChild(opt);
+  });
+  displayFlota.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.placa; opt.textContent = `${v.placa} • ${v.conductor||'-'}`; selVeh.appendChild(opt);
+  });
+  const info = document.getElementById('assignInfo');
+  const details = document.getElementById('assignDetails');
+  if (info && r) info.textContent = `${r.origen} → ${r.destino} • ${r.horario}`;
+  if (details && r) {
+    const cliente = users.find(u => u.id === r.clienteId)?.nombre || 'Cliente';
+    details.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div><strong>Cliente:</strong> ${cliente}</div>
+      <div><strong>Tipo:</strong> ${r.tipo} • <strong>Servicio:</strong> ${r.servicio}</div>
+      <div><strong>Dirección:</strong> ${r.direccion}</div>
+      <div><strong>Método de pago:</strong> ${r.metodoPago}${r.promo?` • <strong>Cupón:</strong> ${r.promo}`:''}</div>
+      <div><strong>Precio:</strong> $${r.precio}</div>
+    `;
+    details.appendChild(item);
+  }
+  modal.hidden = false;
+  modal.style.display = 'grid';
+}
+function closeAssignModal() {
+  const modal = document.getElementById('assignModal');
+  if (!modal) return; modal.hidden = true; modal.style.display = 'none'; assignTargetId = null;
+}
+function saveAssignModal() {
+  if (!assignTargetId) return;
+  const selCon = document.getElementById('assignConductorSelect');
+  const selVeh = document.getElementById('assignVehiculoSelect');
+  const reservas = storage.get('reservas', []);
+  const idx = reservas.findIndex(r => r.id === assignTargetId);
+  if (idx < 0) return;
+  reservas[idx] = { ...reservas[idx], conductorId: Number(selCon.value), vehiculo: selVeh.value, estado: 'pendiente' };
+  storage.set('reservas', reservas);
+  closeAssignModal();
+  const activeBtn = document.querySelector('.res-filter-btn.active');
+  const current = activeBtn ? activeBtn.getAttribute('data-filter') : 'pendiente';
+  renderAdminReservas(current);
+  renderAdmin();
+}
+
+function handleAdminReservaAction(action, id, currentFilter) {
+  if (action === 'open-assign') { openAssignModal(id); return; }
+  const reservas = storage.get('reservas', []);
+  const idx = reservas.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  if (action === 'start') reservas[idx] = { ...reservas[idx], estado: 'en-curso', enCurso: true };
+  if (action === 'finish') reservas[idx] = { ...reservas[idx], estado: 'recogido', enCurso: false, recogido: true };
+  storage.set('reservas', reservas);
+  renderAdminReservas(currentFilter);
+  renderAdmin();
 }
 
 

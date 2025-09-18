@@ -528,46 +528,13 @@
 
           <div class="tab-panel" id="tab-reservas">
             <div class="panel">
-              <h3>Gestión de Reservas</h3>
-              <div class="reservas-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
-                <div class="stat-item">
-                  <div class="stat-num" id="statTotalReservas">0</div>
-                  <div class="stat-label">Total</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-num" id="statPendientes">0</div>
-                  <div class="stat-label">Pendientes</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-num" id="statAsignadas">0</div>
-                  <div class="stat-label">Asignadas</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-num" id="statCompletadas">0</div>
-                  <div class="stat-label">Completadas</div>
-                </div>
+              <h3>Gestión de reservas</h3>
+              <div class="row" style="gap:6px; flex-wrap: wrap; margin-bottom:8px">
+                <button class="btn secondary res-filter-btn active" data-filter="pendiente">Pendientes</button>
+                <button class="btn secondary res-filter-btn" data-filter="asignadas">Asignadas</button>
+                <button class="btn secondary res-filter-btn" data-filter="recogido">Completadas</button>
               </div>
-              
-              <div class="reservas-tabs">
-                <button class="reservas-tab-btn active" data-status="pendientes">Pendientes</button>
-                <button class="reservas-tab-btn" data-status="asignadas">Asignadas</button>
-                <button class="reservas-tab-btn" data-status="completadas">Completadas</button>
-              </div>
-
-              <div class="reservas-content">
-                <div class="reservas-panel active" id="reservas-pendientes">
-                  <div id="reservasPendientesList" class="list"></div>
-                </div>
-                <div class="reservas-panel" id="reservas-asignadas">
-                  <div id="reservasAsignadasList" class="list"></div>
-                </div>
-                <div class="reservas-panel" id="reservas-completadas">
-                  <div id="reservasCompletadasList" class="list"></div>
-                </div>
-              </div>
-              
-              <h3 style="margin-top:24px">Facturas</h3>
-              <div id="adminInvoices" class="list"></div>
+              <div id="adminReservas" class="list"></div>
             </div>
           </div>
 
@@ -1047,6 +1014,41 @@
       <span class="badge" id="mapCoords">-,-</span>
       <span class="text-muted" id="mapAddress"></span>
       <button id="saveMapPicker" class="accent">Usar esta ubicación</button>
+    </div>
+  </div>
+
+  <!-- Modal Asignación -->
+  <div id="assignModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 720px; max-height: 80vh; z-index: 70; display: grid; grid-template-rows: auto 1fr auto; gap: 10px;">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <strong>Asignar reserva</strong>
+      <button id="assignClose" class="secondary">Cerrar</button>
+    </div>
+    <div style="min-height:0; overflow:auto;">
+      <div class="row" style="gap:8px; flex-wrap: wrap;">
+        <label style="flex:1">Conductor
+          <select id="assignConductorSelect"></select>
+        </label>
+        <label style="flex:1">Vehículo
+          <select id="assignVehiculoSelect"></select>
+        </label>
+      </div>
+      <div id="assignInfo" class="text-muted" style="margin-top:6px"></div>
+      <div id="assignDetails" class="list" style="margin-top:8px"></div>
+    </div>
+    <div class="row" style="justify-content: flex-end; gap: 8px;">
+      <button id="assignSave" class="accent">Asignar</button>
+    </div>
+  </div>
+
+  <!-- Modal Detalle Reserva (Conductor) -->
+  <div id="driverDetailModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 680px; max-height: 80vh; z-index: 70; grid-template-rows: auto 1fr auto; gap: 10px;">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <strong>Detalles de la reserva</strong>
+      <button id="driverDetailClose" class="secondary">Cerrar</button>
+    </div>
+    <div id="driverDetailBody" style="min-height:0; overflow:auto;"></div>
+    <div class="row" style="justify-content: flex-end; gap: 8px;">
+      <button id="driverDetailOk" class="accent">Entendido</button>
     </div>
   </div>
 

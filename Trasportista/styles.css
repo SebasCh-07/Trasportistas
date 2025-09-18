@@ -1917,7 +1917,9 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.35)
 }
 
 /* Modal backdrop basic fix (optional, keep hidden by default) */
+#assignModal[hidden] { display: none !important; }
 #mapModal[hidden] { display: none !important; }
+#driverDetailModal[hidden] { display: none !important; }
 
 /* Utility helpers */
 .hide { display: none !important; }
