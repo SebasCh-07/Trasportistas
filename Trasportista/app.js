@@ -24,6 +24,7 @@ const SEED = {
     { id: 1, role: "cliente", nombre: "Juan Pérez", cedula: "1234567890", email: "cliente@demo.com", password: "123456", direccion: "Av. Siempre Viva 123", foto: null },
     { id: 2, role: "conductor", nombre: "Carlos Ruiz", cedula: "0987654321", email: "conductor@demo.com", password: "123456", direccion: "Calle 10 #20", foto: null },
     { id: 3, role: "admin", nombre: "Administrador", cedula: "0000000000", email: "admin@demo.com", password: "123456", direccion: "Oficina Central", foto: null },
+    { id: 4, role: "empresa", nombre: "Ecuador Travel Tours", cedula: "0999999999", email: "empresa@demo.com", password: "123456", direccion: "Av. Amazonas 1234", foto: null, empresa: "Ecuador Travel Tours" },
   ],
   rutas: [
     { id: 1, origen: "Quito", destino: "Tena", horario: "08:00", precio: 10, asientos: 3 },
@@ -68,6 +69,13 @@ function seedIfEmpty() {
             direccion: u.direccion || '',
           };
         });
+        
+        // Verificar si existe el usuario de empresa, si no, agregarlo
+        const empresaExists = migrated.some(u => u.email === 'empresa@demo.com');
+        if (!empresaExists) {
+          migrated.push(SEED.users.find(u => u.email === 'empresa@demo.com'));
+        }
+        
         localStorage.setItem(key, JSON.stringify(migrated));
       }
     } catch {}
@@ -90,6 +98,7 @@ function clearSession() { try { localStorage.removeItem(namespacedKey("session")
 const views = {
   auth: document.getElementById("view-auth"),
   cliente: document.getElementById("view-cliente"),
+  empresa: document.getElementById("view-empresa"),
   conductor: document.getElementById("view-conductor"),
   admin: document.getElementById("view-admin"),
   'admin-user-new': document.getElementById('view-admin-user-new'),
@@ -192,6 +201,7 @@ function handleRegister(e) {
 
 function navigateByRole(role) {
   if (role === "cliente") { renderCliente(); showView("cliente"); }
+  else if (role === "empresa") { renderEmpresa(); showView("empresa"); }
   else if (role === "conductor") { renderConductor(); showView("conductor"); }
   else if (role === "admin") { renderAdmin(); showView("admin"); }
   else { showView("auth"); }
@@ -215,11 +225,64 @@ function renderCliente() {
     cont.appendChild(card);
   });
   cont.querySelectorAll(".reserveBtn").forEach(btn => btn.addEventListener("click", () => openReserva(Number(btn.dataset.id))));
+  
   renderHistorial();
   renderTrackingForCliente();
   // preparar opciones de origen
   populateOrigenOptions();
   wireOrigenPicker();
+}
+
+// Empresa (solo servicios privado y compartido)
+function renderEmpresa() {
+  console.log('renderEmpresa called');
+  const rutas = storage.get("rutas", []);
+  const cont = document.getElementById("rutasListEmpresa");
+  console.log('rutasListEmpresa element:', cont);
+  
+  if (!cont) {
+    console.error('rutasListEmpresa element not found');
+    return;
+  }
+  
+  cont.innerHTML = "";
+  rutas.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <h4>${r.origen} → ${r.destino}</h4>
+      <div class="row"><span class="badge">${r.horario}</span><span class="price">$${r.precio}</span></div>
+      <div class="row"><span>Asientos disp.: ${r.asientos}</span><button ${r.asientos<=0?"disabled":""} data-id="${r.id}" class="reserveBtn">Reservar</button></div>
+    `;
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll(".reserveBtn").forEach(btn => btn.addEventListener("click", () => openReservaEmpresa(Number(btn.dataset.id))));
+  
+  renderHistorialEmpresa();
+  renderMisViajesEmpresa();
+  renderTrackingForEmpresa();
+  // preparar opciones de origen para empresa
+  populateOrigenOptionsEmpresa();
+  wireOrigenPickerEmpresa();
+}
+
+function openReservaEmpresa(rutaId) {
+  selectedRutaId = rutaId;
+  selectedCustomService = null;
+  const rutas = storage.get("rutas", []);
+  const ruta = rutas.find(r => r.id === rutaId);
+  // abrir modal compartido en lugar de panel
+  const modal = document.getElementById('clientSharedModal');
+  const sum = document.getElementById('clientSharedSummary');
+  if (sum && ruta) {
+    sum.innerHTML = `
+      <div class="row"><strong>${ruta.origen} → ${ruta.destino}</strong><span class="badge">${ruta.horario}</span></div>
+      <div><strong>Precio por asiento:</strong> $${ruta.precio}</div>
+      <div><strong>Asientos disponibles:</strong> ${ruta.asientos}</div>
+    `;
+  }
+  if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
+  window.__pickerTarget = 'shared';
 }
 
 function openReserva(rutaId) {
@@ -369,11 +432,152 @@ function renderHistorial() {
   }
 }
 
+// Funciones específicas para empresa
+function renderHistorialEmpresa() {
+  const session = getSession();
+  const cont = document.getElementById("historialListEmpresa");
+  cont.innerHTML = "";
+  
+  if (!session) { 
+    cont.innerHTML = "<div class='text-muted'>Inicie sesión para ver su historial</div>"; 
+    return; 
+  }
+  
+  const reservas = storage.get("reservas", [])
+    .filter(r => r.clienteId === session.id)
+    .sort((a, b) => b.id - a.id); // Más recientes primero
+  
+  if (reservas.length === 0) { 
+    cont.innerHTML = "<div class='text-muted'>No tienes reservas aún</div>"; 
+    return; 
+  }
+  
+  reservas.forEach(res => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <div class="row"><strong>${res.origen} → ${res.destino}</strong><span class="badge">${res.estado}</span></div>
+      <div><strong>Servicio:</strong> ${res.servicio} • <strong>Fecha:</strong> ${res.horario}</div>
+      <div><strong>Precio total:</strong> $${res.precio}${res.esEmpresa ? ` (Transporte: $${res.precioTransporte || res.precio} + Empresa: $${res.tarifaEmpresa || 0})` : ''}</div>
+      <div><strong>Método de pago:</strong> ${res.metodoPago}${res.promo ? ` • <strong>Cupón:</strong> ${res.promo}` : ''}</div>
+      ${res.estado === 'recogido' ? `<button class="btn secondary" onclick="calificarViaje(${res.id})">Calificar</button>` : ''}
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function renderTrackingForEmpresa() {
+  const session = getSession();
+  const panel = document.getElementById("trackingPanelEmpresa");
+  if (!panel) return;
+  const myActive = storage.get("reservas", []).filter(r => 
+    r.clienteId === session?.id && 
+    (r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso))
+  );
+  
+  if (myActive.length === 0) { panel.hidden = true; return; }
+  const tracking = storage.get("tracking", []);
+  const info = document.getElementById("trackingInfoEmpresa");
+  info.innerHTML = "";
+  myActive.forEach(r => {
+    const t = tracking.find(t => t.reservaId === r.id);
+    const div = document.createElement("div");
+    div.className = "list-item";
+    if (t) {
+      div.textContent = `${r.origen} → ${r.destino} • Posición: ${t.lat.toFixed(5)}, ${t.lng.toFixed(5)}`;
+    } else {
+      div.textContent = `${r.origen} → ${r.destino} • Esperando actualización de posición`;
+    }
+    info.appendChild(div);
+  });
+  panel.hidden = false;
+}
+
+function populateOrigenOptionsEmpresa() {
+  const session = getSession();
+  if (!session) return;
+  
+  const select = document.getElementById('csOrigenSelectEmpresa');
+  if (!select) return;
+  
+  select.innerHTML = `
+    <option value="mi-direccion">Mi dirección</option>
+    <option value="favoritas">Favoritas</option>
+    <option value="nueva">Nueva dirección</option>
+  `;
+}
+
+function wireOrigenPickerEmpresa() {
+  const select = document.getElementById('csOrigenSelectEmpresa');
+  const mapBtn = document.getElementById('csOrigenMapBtnEmpresa');
+  
+  if (select) {
+    select.addEventListener('change', () => {
+      if (mapBtn) mapBtn.style.display = select.value === 'nueva' ? 'block' : 'none';
+    });
+  }
+  
+  if (mapBtn) {
+    mapBtn.addEventListener('click', () => {
+      window.__pickerTarget = 'origin';
+      openPicker();
+    });
+  }
+}
+
+// Mis Viajes (Empresa)
+function renderMisViajesEmpresa() {
+  const session = getSession();
+  
+  if (!session || session.role !== "empresa") {
+    document.getElementById("viajesPendientesListEmpresa").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    document.getElementById("viajesEnCursoListEmpresa").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    return;
+  }
+
+  const reservas = storage.get("reservas", [])
+    .filter(r => r.clienteId === session.id)
+    .sort((a, b) => b.id - a.id);
+
+  // Viajes pendientes (confirmados pero no iniciados)
+  const pendientes = reservas.filter(r => r.estado === "pendiente" && !r.recogido);
+  renderViajesEnContenedorEmpresa("viajesPendientesListEmpresa", pendientes, "pendiente");
+
+  // Viajes en curso (iniciados pero no completados)
+  const enCurso = reservas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso));
+  renderViajesEnContenedorEmpresa("viajesEnCursoListEmpresa", enCurso, "en-curso");
+}
+
+function renderViajesEnContenedorEmpresa(containerId, viajes, tipo) {
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  
+  if (viajes.length === 0) {
+    cont.innerHTML = `<div class="text-muted">No hay viajes ${tipo === 'pendiente' ? 'pendientes' : 'en curso'}</div>`;
+    return;
+  }
+  
+  cont.innerHTML = "";
+  viajes.forEach(v => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <div class="row"><strong>${v.origen} → ${v.destino}</strong><span class="badge">${v.estado}</span></div>
+      <div><strong>Servicio:</strong> ${v.servicio} • <strong>Horario:</strong> ${v.horario}</div>
+      <div><strong>Precio total:</strong> $${v.precio}${v.esEmpresa ? ` (Transporte: $${v.precioTransporte || v.precio} + Empresa: $${v.tarifaEmpresa || 0})` : ''}</div>
+      <div><strong>Dirección:</strong> ${v.direccion}</div>
+      ${tipo === 'pendiente' ? `<button class="btn secondary" onclick="cancelarViaje(${v.id})">Cancelar</button>` : ''}
+      ${tipo === 'en-curso' ? `<button class="btn primary" onclick="verTrackingViaje(${v.id})">Ver Tracking</button>` : ''}
+    `;
+    cont.appendChild(div);
+  });
+}
+
 // Mis Viajes (Cliente)
 function renderMisViajes() {
   const session = getSession();
   
-  if (!session || session.role !== "cliente") {
+  if (!session || (session.role !== "cliente" && session.role !== "empresa")) {
     document.getElementById("viajesPendientesList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
     document.getElementById("viajesEnCursoList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
     return;
@@ -700,13 +904,15 @@ function verDetallesAsignacion(reservaId) {
           <div class=\"label\">Punto de recogida</div>
           <div class=\"value\" id=\"driverDetailAddress\">${r.direccion}</div>
           <div class=\"label\">Cliente</div>
-          <div class=\"value\">${cliente}</div>
+          <div class=\"value\">${cliente}${r.esEmpresa ? ` (${r.nombreEmpresa})` : ''}</div>
           <div class=\"label\">Servicio</div>
           <div class=\"value\">${r.servicio} • ${r.tipo}</div>
           <div class=\"label\">Método de pago</div>
           <div class=\"value\">${r.metodoPago || 'No especificado'}</div>
           ${r.promo ? `<div class=\"label\">Cupón</div><div class=\"value\">${r.promo}</div>` : ''}
-          ${typeof r.precio !== 'undefined' ? `<div class=\"label\">Precio</div><div class=\"value\">$${r.precio}</div>` : ''}
+          ${r.esEmpresa ? `<div class=\"label\">Precio transporte</div><div class=\"value\">$${r.precioTransporte || r.precio}</div>` : ''}
+          ${r.esEmpresa ? `<div class=\"label\">Tarifa empresa</div><div class=\"value\">$${r.tarifaEmpresa || 0}</div>` : ''}
+          ${typeof r.precio !== 'undefined' ? `<div class=\"label\">Precio total</div><div class=\"value\">$${r.precio}</div>` : ''}
         </div>
         <div class=\"detail-section\">
           <div class=\"label\">Mapa de recogida</div>
@@ -1870,6 +2076,32 @@ function wireEvents() {
         renderHistorial();
       } else if (tab === 'mis-viajes') {
         renderMisViajes();
+      }
+    });
+  });
+
+  // empresa tabs
+  document.querySelectorAll('#view-empresa .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('#view-empresa .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#view-empresa .tab-panel').forEach(p => p.classList.remove('active'));
+      
+      // Mapear los nombres de pestañas a los IDs correctos
+      let panelId;
+      if (tab === 'servicios') panelId = 'tab-servicios';
+      else if (tab === 'mis-viajes') panelId = 'tab-mis-viajes-empresa';
+      else if (tab === 'historial') panelId = 'tab-historial-empresa';
+      
+      const panel = document.getElementById(panelId);
+      if (panel) panel.classList.add('active');
+      
+      // Actualizar contenido según la pestaña
+      if (tab === 'historial') {
+        renderHistorialEmpresa();
+      } else if (tab === 'mis-viajes') {
+        renderMisViajesEmpresa();
       }
     });
   });
@@ -3530,11 +3762,13 @@ function openAssignModal(reservaId) {
     const item = document.createElement('div');
     item.className = 'list-item';
     item.innerHTML = `
-      <div><strong>Cliente:</strong> ${cliente}</div>
+      <div><strong>Cliente:</strong> ${cliente}${r.esEmpresa ? ` (${r.nombreEmpresa})` : ''}</div>
       <div><strong>Tipo:</strong> ${r.tipo} • <strong>Servicio:</strong> ${r.servicio}</div>
       <div><strong>Dirección:</strong> ${r.direccion}</div>
       <div><strong>Método de pago:</strong> ${r.metodoPago}${r.promo?` • <strong>Cupón:</strong> ${r.promo}`:''}</div>
-      <div><strong>Precio:</strong> $${r.precio}</div>
+      ${r.esEmpresa ? `<div><strong>Precio transporte:</strong> $${r.precioTransporte || r.precio}</div>` : ''}
+      ${r.esEmpresa ? `<div><strong>Tarifa empresa:</strong> $${r.tarifaEmpresa || 0}</div>` : ''}
+      <div><strong>Precio total:</strong> $${r.precio}</div>
     `;
     details.appendChild(item);
   }
@@ -3729,6 +3963,9 @@ setInterval(() => {
 // navega a pago con un draft de reserva
 function goToPayment(draft) {
   window.__payDraft = draft;
+  const session = getSession();
+  const isEmpresa = session && session.role === 'empresa';
+  
   const summary = document.getElementById('paySummary');
   if (summary) {
     summary.innerHTML = '';
@@ -3740,10 +3977,41 @@ function goToPayment(draft) {
       ${draft.servicioDetalles?.personas ? `<div><strong>Personas:</strong> ${draft.servicioDetalles.personas}</div>` : ''}
       ${draft.servicioDetalles?.equipaje ? `<div><strong>Equipaje:</strong> ${draft.servicioDetalles.equipaje}</div>` : ''}
       ${draft.servicio==='privado' && draft.servicioDetalles?.tipoVehiculo ? `<div><strong>Vehículo:</strong> ${draft.servicioDetalles.tipoVehiculo}</div>` : ''}
-      <div><strong>Precio:</strong> $<span id=\"payPrice\">${draft.precio}</span></div>
+      <div><strong>Precio transporte:</strong> $<span id=\"payPrice\">${draft.precio}</span></div>
+      ${isEmpresa ? `<div><strong>Tarifa empresa:</strong> $<span id=\"empresaTarifaDisplay\">0.00</span></div>` : ''}
+      <div><strong>Total:</strong> $<span id=\"payTotalDisplay\">${draft.precio}</span></div>
     `;
     summary.appendChild(item);
   }
+  
+  // Mostrar/ocultar campo de tarifa de empresa
+  const empresaTarifaSection = document.getElementById('empresaTarifaSection');
+  if (empresaTarifaSection) {
+    empresaTarifaSection.style.display = isEmpresa ? 'block' : 'none';
+  }
+  
+  // Función para actualizar total cuando cambie la tarifa de empresa
+  const updateTotal = () => {
+    const precioTransporte = Number(draft.precio) || 0;
+    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const total = precioTransporte + tarifaEmpresa;
+    
+    const empresaTarifaDisplay = document.getElementById('empresaTarifaDisplay');
+    const payTotalDisplay = document.getElementById('payTotalDisplay');
+    
+    if (empresaTarifaDisplay) empresaTarifaDisplay.textContent = tarifaEmpresa.toFixed(2);
+    if (payTotalDisplay) payTotalDisplay.textContent = total.toFixed(2);
+    
+    // Actualizar también las instrucciones de pago
+    toggle();
+  };
+  
+  // Event listener para tarifa de empresa
+  const empresaTarifaInput = document.getElementById('empresaTarifa');
+  if (empresaTarifaInput) {
+    empresaTarifaInput.addEventListener('input', updateTotal);
+  }
+  
   const method = document.getElementById('payMethod');
   const cardFields = document.getElementById('payCardFields');
   const transferFields = document.getElementById('payTransferFields');
@@ -3753,11 +4021,16 @@ function goToPayment(draft) {
     const m = method.value;
     cardFields.style.display = m === 'tarjeta' ? '' : 'none';
     transferFields.style.display = m === 'transferencia' ? '' : 'none';
-    const base = Number(draft.precio)||0;
+    
+    // Calcular el precio total actual (transporte + tarifa empresa)
+    const precioTransporte = Number(draft.precio) || 0;
+    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const precioTotal = precioTransporte + tarifaEmpresa;
+    
     let text = '';
-    if (m === 'efectivo') text = `Paga $${base} en efectivo al conductor cuando te recoja. Conserva el efectivo exacto si es posible.`;
-    else if (m === 'tarjeta') text = `Introduce los datos de tu tarjeta para procesar el pago de $${base}.`;
-    else if (m === 'transferencia') text = `Realiza una transferencia por $${base}. Indica el número de referencia y banco.`;
+    if (m === 'efectivo') text = `Paga $${precioTotal.toFixed(2)} en efectivo al conductor cuando te recoja. Conserva el efectivo exacto si es posible.`;
+    else if (m === 'tarjeta') text = `Introduce los datos de tu tarjeta para procesar el pago de $${precioTotal.toFixed(2)}.`;
+    else if (m === 'transferencia') text = `Realiza una transferencia por $${precioTotal.toFixed(2)}. Indica el número de referencia y banco.`;
     else if (m === 'voucher') text = `Introduce tu código de voucher válido para cubrir total o parcial del pago.`;
     instructions.textContent = text;
   };
@@ -3773,7 +4046,7 @@ function goToPayment(draft) {
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     const session = getSession();
-    if (!session || session.role !== 'cliente') { toast('Inicia sesión como cliente'); return; }
+    if (!session || (session.role !== 'cliente' && session.role !== 'empresa')) { toast('Inicia sesión como cliente o empresa'); return; }
     const draft = window.__payDraft;
     if (!draft) { toast('Sin datos de pago'); return; }
     const metodoPago = document.getElementById('payMethod').value;
@@ -3796,7 +4069,9 @@ function goToPayment(draft) {
     const promos = storage.get('promos', []);
     const promoApplied = codigoPromo ? promos.find(p => p.code.toLowerCase() === codigoPromo.toLowerCase()) : null;
     const precioBase = Number(draft.precio) || 0;
-    const precioFinal = promoApplied && promoApplied.discountPct ? Math.max(0, Math.round(precioBase * (100 - promoApplied.discountPct)) / 100) : precioBase;
+    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const precioConTarifa = precioBase + tarifaEmpresa;
+    const precioFinal = promoApplied && promoApplied.discountPct ? Math.max(0, Math.round(precioConTarifa * (100 - promoApplied.discountPct)) / 100) : precioConTarifa;
 
     const reservas = storage.get('reservas', []);
     const nueva = {
@@ -3806,6 +4081,11 @@ function goToPayment(draft) {
       servicio: draft.servicio, metodoPago, promo: promoApplied?.code ?? null,
       conductorId: null, vehiculo: null,
       servicioDetalles: draft.servicioDetalles || null,
+      // Información específica para empresas
+      esEmpresa: session.role === 'empresa',
+      nombreEmpresa: session.role === 'empresa' ? session.empresa || session.nombre : null,
+      tarifaEmpresa: session.role === 'empresa' ? tarifaEmpresa : 0,
+      precioTransporte: precioBase,
     };
     reservas.push(nueva);
     storage.set('reservas', reservas);

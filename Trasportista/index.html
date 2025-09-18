@@ -30,17 +30,17 @@
     <!-- Auth View -->
     <section id="view-auth" class="view">
       <div id="auth-login" class="panel">
-        <h2>Iniciar sesión</h2>
-        <form id="loginForm" class="form">
+          <h2>Iniciar sesión</h2>
+          <form id="loginForm" class="form">
           <label>Correo
             <input id="loginEmail" type="email" required />
-          </label>
+            </label>
           <label>Contraseña
             <input id="loginPassword" type="password" required />
-          </label>
-          <button type="submit">Entrar</button>
-        </form>
-        <div id="loginMsg" class="msg"></div>
+            </label>
+            <button type="submit">Entrar</button>
+          </form>
+          <div id="loginMsg" class="msg"></div>
         <div class="msg" style="margin-top:10px">
           ¿No tienes cuenta? <a href="#" id="goToRegister">Regístrate</a>
         </div>
@@ -114,7 +114,7 @@
     <!-- Register View (separada) -->
     <section id="view-register" class="view" hidden>
       <div id="auth-register-standalone" class="panel">
-        <h2>Registro</h2>
+          <h2>Registro</h2>
         <form id="registerFormStandalone" class="reg-grid">
           <div class="reg-left">
             <div class="two-col">
@@ -123,12 +123,12 @@
               </label>
               <label>Apellidos
                 <input id="regApellidos" type="text" required />
-              </label>
+            </label>
             </div>
             <div class="two-col">
               <label>CI
-                <input id="regCedula" type="text" required />
-              </label>
+              <input id="regCedula" type="text" required />
+            </label>
               <label>Teléfono
                 <input id="regTelefono" type="tel" />
               </label>
@@ -139,15 +139,15 @@
               </label>
               <label>Contraseña
                 <input id="regPassword" type="password" required />
-              </label>
+            </label>
             </div>
             <div class="two-col">
-              <label>Rol
-                <select id="regRole" required>
-                  <option value="cliente">Cliente</option>
-                  <option value="conductor">Conductor</option>
-                </select>
-              </label>
+            <label>Rol
+              <select id="regRole" required>
+                <option value="cliente">Cliente</option>
+                <option value="conductor">Conductor</option>
+              </select>
+            </label>
             </div>
             <div class="two-col">
               <div class="map-box">
@@ -170,8 +170,8 @@
             </div>
             <div class="text-muted" style="text-align:center; margin-top:6px">Subir Foto</div>
           </div>
-        </form>
-        <div id="registerMsg" class="msg"></div>
+          </form>
+          <div id="registerMsg" class="msg"></div>
         <div class="msg" style="margin-top:10px">
           ¿Ya tienes cuenta? <a href="#" id="goToLoginFromRegister">Inicia sesión</a>
         </div>
@@ -188,38 +188,38 @@
         </aside>
         <div class="cliente-content">
           <div class="tab-panel active" id="cliente-tab-servicios">
-            <div class="panel cliente-left">
-              <h2>Servicios</h2>
-              <div class="row" style="gap:8px; flex-wrap: wrap;">
-                <label class="badge">Elegir servicio</label>
-                <select id="servicioTipo">
-                  <option value="compartido">Compartido (por asiento)</option>
-                  <option value="privado">Privado (unidad exclusiva)</option>
-                  <option value="encomienda">Encomienda express</option>
-                </select>
-              </div>
+      <div class="panel cliente-left">
+        <h2>Servicios</h2>
+        <div class="row" style="gap:8px; flex-wrap: wrap;">
+          <label class="badge">Elegir servicio</label>
+          <select id="servicioTipo">
+            <option value="compartido">Compartido (por asiento)</option>
+            <option value="privado">Privado (unidad exclusiva)</option>
+            <option value="encomienda">Encomienda express</option>
+          </select>
+        </div>
               <div id="servicioDescripcion" class="servicio-descripcion">
                 <p>Selecciona un tipo de servicio para ver su descripción</p>
               </div>
-            </div>
-            <div class="panel cliente-left" id="compartidoPanel">
-              <h2>Rutas disponibles (compartido)</h2>
-              <div id="rutasList" class="grid"></div>
-            </div>
-            <div class="panel cliente-left" id="customServicePanel" hidden>
-              <h3>Configurar servicio</h3>
-              <form id="customServiceForm" class="form">
-                <div class="two-col">
-                  <label>Origen
+      </div>
+      <div class="panel cliente-left" id="compartidoPanel">
+        <h2>Rutas disponibles (compartido)</h2>
+        <div id="rutasList" class="grid"></div>
+      </div>
+      <div class="panel cliente-left" id="customServicePanel" hidden>
+        <h3>Configurar servicio</h3>
+        <form id="customServiceForm" class="form">
+          <div class="two-col">
+            <label>Origen
                     <div class="row" style="gap:8px; align-items:center;">
                       <select id="csOrigenSelect" style="flex:1"></select>
                       <button type="button" id="csOrigenMapBtn" class="secondary">Nueva dirección</button>
                     </div>
                     <input id="csOrigen" placeholder="Ciudad/Barrio" required style="display:none" />
-                  </label>
+            </label>
                   <label id="csDestinoWrapper">Destino
-                    <input id="csDestino" placeholder="Ciudad/Barrio" required />
-                  </label>
+              <input id="csDestino" placeholder="Ciudad/Barrio" required />
+            </label>
                   <label id="csRutaWrapper" style="display:none">Destino (preestablecido)
                     <select id="csRutaSelect"></select>
                   </label>
@@ -242,18 +242,18 @@
                   <label>Comentarios especiales
                     <input id="csComentarios" placeholder="Equipaje especial, paradas intermedias, etc." />
                   </label>
-                </div>
+          </div>
 
                 <!-- Campos específicos para encomienda -->
                 <div id="servicioEncomiendaFields" style="display: none;">
-                  <div class="two-col">
+          <div class="two-col">
                     <label>Tamaño del paquete
                       <select id="csTamanoPaquete">
                         <option value="pequeno">Pequeño (hasta 5kg)</option>
                         <option value="mediano">Mediano (5-15kg)</option>
                         <option value="grande">Grande (15-30kg)</option>
                       </select>
-                    </label>
+            </label>
                     <label>Tipo de contenido
                       <select id="csTipoContenido">
                         <option value="documentos">Documentos</option>
@@ -262,50 +262,50 @@
                         <option value="fragil">Frágil</option>
                         <option value="otro">Otro</option>
                       </select>
-                    </label>
-                  </div>
+            </label>
+          </div>
                   <label>Descripción del contenido
                     <input id="csDescripcionPaquete" placeholder="Describe brevemente el contenido" />
-                  </label>
+          </label>
                 </div>
 
                 <button type="submit" class="accent">Solicitar cotización</button>
-              </form>
-            </div>
-            <div class="panel cliente-right" id="reservaPanel" hidden>
-              <h3>Reservar</h3>
-              <div id="reservaInfo"></div>
-              <form id="reservaForm" class="form">
-                <label>Tipo
-                  <select id="tipoReserva">
-                    <option value="asiento">Asiento</option>
-                    <option value="encomienda">Encomienda</option>
-                  </select>
-                </label>
-                <label>Dirección de recogida
-                  <input id="direccion" type="text" placeholder="Calle y número" required />
-                </label>
-                <div class="two-col">
-                  <label>Método de pago
-                    <select id="metodoPago">
-                      <option value="efectivo">Efectivo</option>
-                      <option value="tarjeta">Tarjeta</option>
-                      <option value="transferencia">Transferencia</option>
-                      <option value="voucher">Voucher empresarial</option>
-                    </select>
-                  </label>
-                  <label>Cupón/Voucher (opcional)
-                    <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
-                  </label>
-                </div>
-                <button type="submit" class="accent">Confirmar reserva</button>
-              </form>
-              <div id="reservaMsg" class="msg"></div>
-            </div>
-            <div class="panel cliente-right" id="trackingPanel" hidden>
-              <h3>Tracking en vivo</h3>
-              <div id="trackingInfo" class="list"></div>
-            </div>
+        </form>
+      </div>
+      <div class="panel cliente-right" id="reservaPanel" hidden>
+        <h3>Reservar</h3>
+        <div id="reservaInfo"></div>
+        <form id="reservaForm" class="form">
+          <label>Tipo
+            <select id="tipoReserva">
+              <option value="asiento">Asiento</option>
+              <option value="encomienda">Encomienda</option>
+            </select>
+          </label>
+          <label>Dirección de recogida
+            <input id="direccion" type="text" placeholder="Calle y número" required />
+          </label>
+          <div class="two-col">
+            <label>Método de pago
+              <select id="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="voucher">Voucher empresarial</option>
+              </select>
+            </label>
+            <label>Cupón/Voucher (opcional)
+              <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
+            </label>
+          </div>
+          <button type="submit" class="accent">Confirmar reserva</button>
+        </form>
+        <div id="reservaMsg" class="msg"></div>
+      </div>
+      <div class="panel cliente-right" id="trackingPanel" hidden>
+        <h3>Tracking en vivo</h3>
+        <div id="trackingInfo" class="list"></div>
+      </div>
           </div>
 
           <div class="tab-panel" id="cliente-tab-mis-viajes">
@@ -333,28 +333,133 @@
           <div class="tab-panel" id="cliente-tab-historial">
             <div class="panel">
               <h2>Historial de Reservas</h2>
-              <div id="historialList" class="list"></div>
+        <div id="historialList" class="list"></div>
             </div>
             <div class="panel">
               <h3>Calificar Servicio</h3>
               <form id="ratingForm" class="form">
-                <div class="two-col">
+          <div class="two-col">
                   <label>Reserva completada
-                    <select id="ratingReserva"></select>
-                  </label>
-                  <label>Puntaje (1-5)
-                    <input id="ratingValor" type="number" min="1" max="5" step="1" />
-                  </label>
-                </div>
-                <label>Comentario (opcional)
+              <select id="ratingReserva"></select>
+            </label>
+            <label>Puntaje (1-5)
+              <input id="ratingValor" type="number" min="1" max="5" step="1" />
+            </label>
+          </div>
+          <label>Comentario (opcional)
                   <input id="ratingComentario" placeholder="Cuéntanos sobre tu experiencia" />
-                </label>
+          </label>
                 <button type="submit" class="accent">Enviar calificación</button>
-                <div id="ratingMsg" class="msg"></div>
-              </form>
+          <div id="ratingMsg" class="msg"></div>
+        </form>
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Empresa View -->
+    <section id="view-empresa" class="view">
+      <div class="cliente-layout">
+        <aside class="cliente-tabs">
+          <button class="tab-btn active" data-tab="servicios">Servicios</button>
+          <button class="tab-btn" data-tab="mis-viajes">Mis Viajes</button>
+          <button class="tab-btn" data-tab="historial">Historial</button>
+        </aside>
+        <main class="cliente-content">
+          <!-- Servicios Tab -->
+          <div class="tab-panel active" id="tab-servicios">
+            <h2>Servicios de Transporte</h2>
+            
+            <!-- Servicios Compartidos -->
+            <div class="panel">
+              <h3>Servicios Compartidos</h3>
+              <div id="rutasListEmpresa" class="grid"></div>
+            </div>
+
+            <!-- Servicios Privados -->
+            <div class="panel">
+              <h3>Servicios Privados</h3>
+              <form id="customServiceFormEmpresa" class="form">
+                <div class="row" style="gap:8px; flex-wrap: wrap;">
+                  <label class="badge">Elegir servicio</label>
+                  <select id="servicioTipoEmpresa">
+                    <option value="compartido">Compartido (por asiento)</option>
+                    <option value="privado">Privado (unidad exclusiva)</option>
+                  </select>
+                </div>
+                <div id="servicioDescripcionEmpresa" class="servicio-descripcion">
+                  <p>Selecciona un tipo de servicio para ver su descripción</p>
+                </div>
+
+                <!-- Campos para servicio privado -->
+                <div id="servicioPrivadoFieldsEmpresa" style="display: none;">
+                  <div class="two-col">
+                    <label>Origen
+                      <select id="csOrigenSelectEmpresa">
+                        <option value="mi-direccion">Mi dirección</option>
+                        <option value="favoritas">Favoritas</option>
+                        <option value="nueva">Nueva dirección</option>
+                      </select>
+                    </label>
+                    <button type="button" id="csOrigenMapBtnEmpresa" style="display: none;">📍 Nueva dirección</button>
+                  </div>
+                  <div class="two-col">
+                    <label>Destino
+                      <select id="csRutaSelectEmpresa">
+                        <option value="">Selecciona destino</option>
+                      </select>
+                    </label>
+                    <label>Pasajeros
+                      <input id="csPasajerosEmpresa" type="number" min="1" max="8" value="1" />
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Tipo de vehículo
+                      <select id="csTipoVehiculoEmpresa">
+                        <option value="sedan">Sedán</option>
+                        <option value="suv">SUV</option>
+                        <option value="van">Van</option>
+                      </select>
+                    </label>
+                    <label>Comentarios
+                      <input id="csComentariosEmpresa" placeholder="Equipaje especial, paradas intermedias, etc." />
+                    </label>
+                  </div>
+                </div>
+
+                <button type="submit" class="primary">Solicitar cotización</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Mis Viajes Tab -->
+          <div class="tab-panel" id="tab-mis-viajes-empresa">
+            <h2>Mis Viajes</h2>
+            <div class="two-col">
+              <div class="panel">
+                <h3>Pendientes</h3>
+                <div id="viajesPendientesListEmpresa" class="list"></div>
+              </div>
+              <div class="panel">
+                <h3>En Curso</h3>
+                <div id="viajesEnCursoListEmpresa" class="list"></div>
+              </div>
+            </div>
+            
+            <!-- Tracking en tiempo real -->
+            <div id="trackingPanelEmpresa" class="panel" hidden>
+              <h3>Tracking en Tiempo Real</h3>
+              <div id="trackingInfoEmpresa" class="list"></div>
+            </div>
+          </div>
+
+          <!-- Historial Tab -->
+          <div class="tab-panel" id="tab-historial-empresa">
+            <h2>Historial de Viajes</h2>
+            <div id="historialListEmpresa" class="list"></div>
+          </div>
+        </main>
       </div>
     </section>
 
@@ -383,7 +488,7 @@
           </div>
 
           <div class="tab-panel" id="conductor-tab-asignaciones">
-            <div class="panel">
+      <div class="panel">
               <h2>Mis Asignaciones</h2>
               
               <div class="asignaciones-tabs">
@@ -394,8 +499,8 @@
 
               <div class="asig-content">
                 <div class="asig-panel active" id="asig-asignado">
-                  <div id="viajesAsignados" class="list"></div>
-                </div>
+        <div id="viajesAsignados" class="list"></div>
+      </div>
                 <div class="asig-panel" id="asig-en-curso">
                   <div id="viajesEnCurso" class="list"></div>
                 </div>
@@ -567,30 +672,30 @@
           </div>
 
           <div class="tab-panel" id="tab-flota">
-            <div class="panel">
+      <div class="panel">
               <h3>Flota</h3>
               <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <span class="text-muted">Gestión de vehículos de la flota</span>
                 <button class="btn primary" id="addFlotaBtn">+ Agregar Vehículo</button>
               </div>
               <div id="adminFlota" class="list"></div>
-            </div>
-          </div>
+        </div>
+      </div>
 
           <div class="tab-panel" id="tab-rutas">
             <div class="panel">
-              <h3>Gestión de rutas</h3>
-              <div id="adminRutas" class="list"></div>
-              <form id="rutaForm" class="form inline">
-                <input id="rutaOrigen" placeholder="Origen" required />
-                <input id="rutaDestino" placeholder="Destino" required />
-                <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
-                <input id="rutaPrecio" type="number" placeholder="Precio" required />
-                <input id="rutaAsientos" type="number" placeholder="Asientos" required />
-                <button type="submit">Añadir ruta</button>
-              </form>
-              <div id="rutaMsg" class="msg"></div>
-            </div>
+          <h3>Gestión de rutas</h3>
+          <div id="adminRutas" class="list"></div>
+          <form id="rutaForm" class="form inline">
+            <input id="rutaOrigen" placeholder="Origen" required />
+            <input id="rutaDestino" placeholder="Destino" required />
+            <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
+            <input id="rutaPrecio" type="number" placeholder="Precio" required />
+            <input id="rutaAsientos" type="number" placeholder="Asientos" required />
+            <button type="submit">Añadir ruta</button>
+          </form>
+          <div id="rutaMsg" class="msg"></div>
+        </div>
           </div>
 
           <div class="tab-panel" id="tab-reservas">
@@ -601,24 +706,24 @@
                 <button class="btn secondary res-filter-btn" data-filter="asignadas">Asignadas</button>
                 <button class="btn secondary res-filter-btn" data-filter="recogido">Completadas</button>
               </div>
-              <div id="adminReservas" class="list"></div>
+          <div id="adminReservas" class="list"></div>
             </div>
           </div>
 
           <div class="tab-panel" id="tab-promos">
             <div class="panel">
               <h3>Cupones y Vouchers</h3>
-              <div id="adminPromos" class="list"></div>
-              <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
-                <select id="promoTipo">
-                  <option value="cupon">Cupón</option>
-                  <option value="voucher">Voucher</option>
-                </select>
-                <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
-                <button type="submit">Agregar</button>
-              </form>
-              <div id="promoMsg" class="msg"></div>
-            </div>
+          <div id="adminPromos" class="list"></div>
+          <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
+            <select id="promoTipo">
+              <option value="cupon">Cupón</option>
+              <option value="voucher">Voucher</option>
+            </select>
+            <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
+            <button type="submit">Agregar</button>
+          </form>
+          <div id="promoMsg" class="msg"></div>
+        </div>
           </div>
 
           <div class="tab-panel" id="tab-gps">
@@ -1198,6 +1303,13 @@
           </label>
           <label>Cupón/Voucher (opcional)
             <input id="payCodigoPromo" placeholder="CUPON10 o VOC-123" />
+          </label>
+        </div>
+        
+        <div id="empresaTarifaSection" style="display: none;">
+          <label>Tarifa de tu empresa (opcional)
+            <input id="empresaTarifa" type="number" min="0" step="0.01" placeholder="0.00" />
+            <small style="color: var(--muted); font-size: 12px;">Esta tarifa se sumará al precio del transporte</small>
           </label>
         </div>
 
