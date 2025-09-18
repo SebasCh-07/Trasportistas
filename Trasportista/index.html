@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TeLlevo - Prototipo</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -111,115 +112,233 @@
     </section>
 
     <!-- Cliente View -->
-    <section id="view-cliente" class="view cliente-layout">
-      <div class="panel cliente-left">
-        <h2>Servicios</h2>
-        <div class="row" style="gap:8px; flex-wrap: wrap;">
-          <label class="badge">Elegir servicio</label>
-          <select id="servicioTipo">
-            <option value="compartido">Compartido (por asiento)</option>
-            <option value="privado">Privado (unidad exclusiva)</option>
-            <option value="encomienda">Encomienda express</option>
-            <option value="transfer">Transfer (punto a punto)</option>
-          </select>
+    <section id="view-cliente" class="view">
+      <div class="cliente-layout">
+        <aside class="cliente-tabs">
+          <button class="tab-btn active" data-tab="servicios">Servicios</button>
+          <button class="tab-btn" data-tab="mis-viajes">Mis Viajes</button>
+          <button class="tab-btn" data-tab="historial">Historial</button>
+        </aside>
+        <div class="cliente-content">
+          <div class="tab-panel active" id="cliente-tab-servicios">
+            <div class="panel cliente-left">
+              <h2>Servicios</h2>
+              <div class="row" style="gap:8px; flex-wrap: wrap;">
+                <label class="badge">Elegir servicio</label>
+                <select id="servicioTipo">
+                  <option value="compartido">Compartido (por asiento)</option>
+                  <option value="privado">Privado (unidad exclusiva)</option>
+                  <option value="encomienda">Encomienda express</option>
+                </select>
+              </div>
+              <div id="servicioDescripcion" class="servicio-descripcion">
+                <p>Selecciona un tipo de servicio para ver su descripción</p>
+              </div>
+            </div>
+            <div class="panel cliente-left" id="compartidoPanel">
+              <h2>Rutas disponibles (compartido)</h2>
+              <div id="rutasList" class="grid"></div>
+            </div>
+            <div class="panel cliente-left" id="customServicePanel" hidden>
+              <h3>Configurar servicio</h3>
+              <form id="customServiceForm" class="form">
+                <div class="two-col">
+                  <label>Origen
+                    <input id="csOrigen" placeholder="Ciudad/Barrio" required />
+                  </label>
+                  <label>Destino
+                    <input id="csDestino" placeholder="Ciudad/Barrio" required />
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Fecha del viaje
+                    <input id="csFecha" type="date" required />
+                  </label>
+                  <label>Horario
+                    <input id="csHorario" placeholder="HH:MM" required />
+                  </label>
+                </div>
+                
+                <!-- Campos específicos para servicio privado -->
+                <div id="servicioPrivadoFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Número de pasajeros
+                      <input id="csPersonas" type="number" min="1" max="8" placeholder="Ej. 4" />
+                    </label>
+                    <label>Tipo de vehículo preferido
+                      <select id="csTipoVehiculo">
+                        <option value="sedan">Sedán (1-4 personas)</option>
+                        <option value="suv">SUV (1-6 personas)</option>
+                        <option value="van">Van (1-8 personas)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>Comentarios especiales
+                    <input id="csComentarios" placeholder="Equipaje especial, paradas intermedias, etc." />
+                  </label>
+                </div>
+
+                <!-- Campos específicos para encomienda -->
+                <div id="servicioEncomiendaFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Tamaño del paquete
+                      <select id="csTamanoPaquete">
+                        <option value="pequeno">Pequeño (hasta 5kg)</option>
+                        <option value="mediano">Mediano (5-15kg)</option>
+                        <option value="grande">Grande (15-30kg)</option>
+                      </select>
+                    </label>
+                    <label>Tipo de contenido
+                      <select id="csTipoContenido">
+                        <option value="documentos">Documentos</option>
+                        <option value="ropa">Ropa/Textiles</option>
+                        <option value="electronico">Electrónicos</option>
+                        <option value="fragil">Frágil</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>Descripción del contenido
+                    <input id="csDescripcionPaquete" placeholder="Describe brevemente el contenido" />
+                  </label>
+                </div>
+
+                <button type="submit" class="accent">Solicitar cotización</button>
+              </form>
+            </div>
+            <div class="panel cliente-right" id="reservaPanel" hidden>
+              <h3>Reservar</h3>
+              <div id="reservaInfo"></div>
+              <form id="reservaForm" class="form">
+                <label>Tipo
+                  <select id="tipoReserva">
+                    <option value="asiento">Asiento</option>
+                    <option value="encomienda">Encomienda</option>
+                  </select>
+                </label>
+                <label>Dirección de recogida
+                  <input id="direccion" type="text" placeholder="Calle y número" required />
+                </label>
+                <div class="two-col">
+                  <label>Método de pago
+                    <select id="metodoPago">
+                      <option value="efectivo">Efectivo</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="voucher">Voucher empresarial</option>
+                    </select>
+                  </label>
+                  <label>Cupón/Voucher (opcional)
+                    <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
+                  </label>
+                </div>
+                <button type="submit" class="accent">Confirmar reserva</button>
+              </form>
+              <div id="reservaMsg" class="msg"></div>
+            </div>
+            <div class="panel cliente-right" id="trackingPanel" hidden>
+              <h3>Tracking en vivo</h3>
+              <div id="trackingInfo" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="cliente-tab-mis-viajes">
+            <div class="panel">
+              <h2>Mis Viajes Activos</h2>
+              <div class="viajes-tabs">
+                <button class="viajes-tab-btn active" data-status="pendientes">Pendientes</button>
+                <button class="viajes-tab-btn" data-status="en-curso">En Curso</button>
+              </div>
+              <div class="viajes-content">
+                <div class="viajes-panel active" id="viajes-pendientes">
+                  <div id="viajesPendientesList" class="list"></div>
+                </div>
+                <div class="viajes-panel" id="viajes-en-curso">
+                  <div id="viajesEnCursoList" class="list"></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel" id="trackingClientePanel">
+              <h3>Tracking en Tiempo Real</h3>
+              <div id="trackingClienteInfo" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="cliente-tab-historial">
+            <div class="panel">
+              <h2>Historial de Reservas</h2>
+              <div id="historialList" class="list"></div>
+            </div>
+            <div class="panel">
+              <h3>Calificar Servicio</h3>
+              <form id="ratingForm" class="form">
+                <div class="two-col">
+                  <label>Reserva completada
+                    <select id="ratingReserva"></select>
+                  </label>
+                  <label>Puntaje (1-5)
+                    <input id="ratingValor" type="number" min="1" max="5" step="1" />
+                  </label>
+                </div>
+                <label>Comentario (opcional)
+                  <input id="ratingComentario" placeholder="Cuéntanos sobre tu experiencia" />
+                </label>
+                <button type="submit" class="accent">Enviar calificación</button>
+                <div id="ratingMsg" class="msg"></div>
+              </form>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="panel cliente-left" id="compartidoPanel">
-        <h2>Rutas disponibles (compartido)</h2>
-        <div id="rutasList" class="grid"></div>
-      </div>
-      <div class="panel cliente-left" id="customServicePanel" hidden>
-        <h3>Configurar servicio</h3>
-        <form id="customServiceForm" class="form">
-          <div class="two-col">
-            <label>Origen
-              <input id="csOrigen" placeholder="Ciudad/Barrio" required />
-            </label>
-            <label>Destino
-              <input id="csDestino" placeholder="Ciudad/Barrio" required />
-            </label>
-          </div>
-          <div class="two-col">
-            <label>Horario
-              <input id="csHorario" placeholder="HH:MM" required />
-            </label>
-            <label>Precio estimado
-              <input id="csPrecio" type="number" placeholder="Ej. 20" required />
-            </label>
-          </div>
-          <label id="csExtraLabel" hidden>Detalle encomienda
-            <input id="csExtra" placeholder="Tamaño/Notas" />
-          </label>
-          <button type="submit" class="accent">Solicitar</button>
-        </form>
-      </div>
-      <div class="panel cliente-right" id="reservaPanel" hidden>
-        <h3>Reservar</h3>
-        <div id="reservaInfo"></div>
-        <form id="reservaForm" class="form">
-          <label>Tipo
-            <select id="tipoReserva">
-              <option value="asiento">Asiento</option>
-              <option value="encomienda">Encomienda</option>
-            </select>
-          </label>
-          <label>Dirección de recogida
-            <input id="direccion" type="text" placeholder="Calle y número" required />
-          </label>
-          <div class="two-col">
-            <label>Método de pago
-              <select id="metodoPago">
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="voucher">Voucher empresarial</option>
-              </select>
-            </label>
-            <label>Cupón/Voucher (opcional)
-              <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
-            </label>
-          </div>
-          <button type="submit" class="accent">Confirmar reserva</button>
-        </form>
-        <div id="reservaMsg" class="msg"></div>
-      </div>
-      <div class="panel cliente-right" id="trackingPanel" hidden>
-        <h3>Tracking en vivo</h3>
-        <div id="trackingInfo" class="list"></div>
-      </div>
-      <div class="panel cliente-right">
-        <h2>Historial de reservas</h2>
-        <div id="historialList" class="list"></div>
-        <form id="ratingForm" class="form" style="margin-top:10px">
-          <div class="two-col">
-            <label>Reserva
-              <select id="ratingReserva"></select>
-            </label>
-            <label>Puntaje (1-5)
-              <input id="ratingValor" type="number" min="1" max="5" step="1" />
-            </label>
-          </div>
-          <label>Comentario (opcional)
-            <input id="ratingComentario" placeholder="Tu experiencia" />
-          </label>
-          <button type="submit">Enviar calificación</button>
-          <div id="ratingMsg" class="msg"></div>
-        </form>
       </div>
     </section>
 
     <!-- Conductor View -->
     <section id="view-conductor" class="view">
-      <div class="panel">
-        <h2>Viajes asignados</h2>
-        <div id="viajesAsignados" class="list"></div>
-      </div>
-      <div class="panel">
-        <h3>GPS</h3>
-        <div class="row" style="gap:8px; flex-wrap: wrap;">
-          <button id="gpsStart">Compartir GPS</button>
-          <button id="gpsStop" class="secondary">Detener</button>
-          <span class="badge" id="gpsStatus">Off</span>
+      <div class="conductor-layout">
+        <aside class="conductor-tabs">
+          <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+          <button class="tab-btn" data-tab="asignaciones">Asignaciones</button>
+        </aside>
+        <div class="conductor-content">
+          <div class="tab-panel active" id="conductor-tab-dashboard">
+            <div class="panel">
+              <h2>Dashboard</h2>
+              <div class="kpis">
+                <div class="kpi"><div class="kpi-num" id="conductorTotalAsignaciones">0</div><div class="kpi-label">Total Asignaciones</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorPendientes">0</div><div class="kpi-label">Pendientes</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorEnCurso">0</div><div class="kpi-label">En Curso</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorCompletadas">0</div><div class="kpi-label">Completadas</div></div>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Próximos viajes</h3>
+              <div id="proximosViajes" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="conductor-tab-asignaciones">
+            <div class="panel">
+              <h2>Mis Asignaciones</h2>
+              
+              <div class="asignaciones-tabs">
+                <button class="asig-tab-btn active" data-status="asignado">Asignado</button>
+                <button class="asig-tab-btn" data-status="en-curso">En Curso</button>
+                <button class="asig-tab-btn" data-status="finalizado">Finalizado</button>
+              </div>
+
+              <div class="asig-content">
+                <div class="asig-panel active" id="asig-asignado">
+                  <div id="viajesAsignados" class="list"></div>
+                </div>
+                <div class="asig-panel" id="asig-en-curso">
+                  <div id="viajesEnCurso" class="list"></div>
+                </div>
+                <div class="asig-panel" id="asig-finalizado">
+                  <div id="viajesFinalizados" class="list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -238,28 +357,123 @@
         </aside>
         <div class="admin-content">
           <div class="tab-panel active" id="tab-dashboard">
-            <div class="panel">
-              <h2>Dashboard</h2>
-              <div class="kpis">
-                <div class="kpi"><div class="kpi-num" id="kpiReservas">0</div><div class="kpi-label">Reservas</div></div>
-                <div class="kpi"><div class="kpi-num" id="kpiRutas">0</div><div class="kpi-label">Rutas</div></div>
-                <div class="kpi"><div class="kpi-num" id="kpiFlota">0</div><div class="kpi-label">Vehículos</div></div>
-                <div class="kpi" style="max-width:200px"><div class="kpi-num" id="kpiRating">-</div><div class="kpi-label">Promedio ★</div></div>
-                <div class="kpi" style="max-width:220px"><div class="kpi-num" id="kpiRevenue">$0</div><div class="kpi-label">Ingresos estimados</div></div>
+            <!-- Métricas Principales -->
+            <div class="dashboard-section">
+              <div class="section-header">
+                <h2>📊 Resumen General</h2>
+                <p class="section-desc">Indicadores clave de rendimiento del negocio</p>
+              </div>
+              <div class="kpis-grid">
+                <div class="kpi-card kpi-primary">
+                  <div class="kpi-icon">💼</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="kpiReservas">0</div>
+                    <div class="kpi-label">Total Reservas</div>
+                    <div class="kpi-sublabel">Todas las solicitudes</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-success">
+                  <div class="kpi-icon">💰</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="kpiRevenue">$0</div>
+                    <div class="kpi-label">Ingresos Totales</div>
+                    <div class="kpi-sublabel">Facturación acumulada</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-info">
+                  <div class="kpi-icon">🚗</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="kpiFlota">0</div>
+                    <div class="kpi-label">Vehículos Activos</div>
+                    <div class="kpi-sublabel">Flota disponible</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-warning">
+                  <div class="kpi-icon">⭐</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="kpiRating">-</div>
+                    <div class="kpi-label">Calificación</div>
+                    <div class="kpi-sublabel">Promedio del servicio</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="panel two-col">
-              <div>
-                <h3>Reservas recientes</h3>
-                <div id="adminRecent" class="list"></div>
-                <h3 style="margin-top:16px">Top rutas</h3>
-                <div id="adminTopRutas" class="list"></div>
+
+            <!-- Estado Operacional -->
+            <div class="dashboard-section">
+              <div class="section-header">
+                <h3>🚦 Estado Operacional</h3>
+                <p class="section-desc">Monitoreo en tiempo real de las operaciones</p>
               </div>
-              <div>
-                <h3>Uso de flota</h3>
-                <div id="adminFleetStats" class="list"></div>
-                <h3 style="margin-top:16px">Uso de promociones</h3>
-                <div id="adminPromoStats" class="list"></div>
+              <div class="operational-grid">
+                <div class="operational-card">
+                  <div class="op-header">
+                    <span class="op-icon">⏳</span>
+                    <span class="op-title">Reservas Pendientes</span>
+                  </div>
+                  <div class="op-content">
+                    <div class="op-number" id="opPendientes">0</div>
+                    <div class="op-desc">Sin asignar conductor</div>
+                  </div>
+                </div>
+                <div class="operational-card">
+                  <div class="op-header">
+                    <span class="op-icon">🚗</span>
+                    <span class="op-title">Viajes en Curso</span>
+                  </div>
+                  <div class="op-content">
+                    <div class="op-number" id="opEnCurso">0</div>
+                    <div class="op-desc">Actualmente ejecutándose</div>
+                  </div>
+                </div>
+                <div class="operational-card">
+                  <div class="op-header">
+                    <span class="op-icon">✅</span>
+                    <span class="op-title">Completados Hoy</span>
+                  </div>
+                  <div class="op-content">
+                    <div class="op-number" id="opCompletadosHoy">0</div>
+                    <div class="op-desc">Finalizados exitosamente</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Análisis y Reportes -->
+            <div class="dashboard-section">
+              <div class="section-header">
+                <h3>📈 Análisis y Reportes</h3>
+                <p class="section-desc">Datos detallados para la toma de decisiones</p>
+              </div>
+              <div class="analysis-grid">
+                <div class="analysis-card">
+                  <div class="card-header">
+                    <h4>🕒 Actividad Reciente</h4>
+                    <span class="card-badge">Últimas 24h</span>
+                  </div>
+                  <div id="adminRecent" class="analysis-content"></div>
+                </div>
+                <div class="analysis-card">
+                  <div class="card-header">
+                    <h4>🗺️ Rutas Más Populares</h4>
+                    <span class="card-badge">Top 5</span>
+                  </div>
+                  <div id="adminTopRutas" class="analysis-content"></div>
+                </div>
+                <div class="analysis-card">
+                  <div class="card-header">
+                    <h4>🚛 Utilización de Flota</h4>
+                    <span class="card-badge">Estado actual</span>
+                  </div>
+                  <div id="adminFleetStats" class="analysis-content"></div>
+                </div>
+                <div class="analysis-card">
+                  <div class="card-header">
+                    <h4>🎟️ Promociones Activas</h4>
+                    <span class="card-badge">Uso actual</span>
+                  </div>
+                  <div id="adminPromoStats" class="analysis-content"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -314,16 +528,45 @@
 
           <div class="tab-panel" id="tab-reservas">
             <div class="panel">
-              <h3>Gestión de reservas</h3>
-              <div id="adminReservas" class="list"></div>
-              <h3 style="margin-top:16px">Asignación de viajes</h3>
-              <form id="assignForm" class="form inline" style="grid-template-columns: 2fr 2fr auto;">
-                <select id="assignReserva"></select>
-                <select id="assignConductor"></select>
-                <button type="submit">Asignar</button>
-              </form>
-              <div id="assignMsg" class="msg"></div>
-              <h3 style="margin-top:16px">Facturas</h3>
+              <h3>Gestión de Reservas</h3>
+              <div class="reservas-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                <div class="stat-item">
+                  <div class="stat-num" id="statTotalReservas">0</div>
+                  <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-num" id="statPendientes">0</div>
+                  <div class="stat-label">Pendientes</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-num" id="statAsignadas">0</div>
+                  <div class="stat-label">Asignadas</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-num" id="statCompletadas">0</div>
+                  <div class="stat-label">Completadas</div>
+                </div>
+              </div>
+              
+              <div class="reservas-tabs">
+                <button class="reservas-tab-btn active" data-status="pendientes">Pendientes</button>
+                <button class="reservas-tab-btn" data-status="asignadas">Asignadas</button>
+                <button class="reservas-tab-btn" data-status="completadas">Completadas</button>
+              </div>
+
+              <div class="reservas-content">
+                <div class="reservas-panel active" id="reservas-pendientes">
+                  <div id="reservasPendientesList" class="list"></div>
+                </div>
+                <div class="reservas-panel" id="reservas-asignadas">
+                  <div id="reservasAsignadasList" class="list"></div>
+                </div>
+                <div class="reservas-panel" id="reservas-completadas">
+                  <div id="reservasCompletadasList" class="list"></div>
+                </div>
+              </div>
+              
+              <h3 style="margin-top:24px">Facturas</h3>
               <div id="adminInvoices" class="list"></div>
             </div>
           </div>
@@ -344,6 +587,68 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Admin Create Vehicle View -->
+    <section id="view-admin-vehicle-new" class="view" hidden>
+      <div class="panel" style="max-width: 900px; margin: 0 auto;">
+        <h2>Nuevo Vehículo</h2>
+        <form id="adminCreateVehicleForm" class="form">
+          <div class="two-col">
+            <label>Placa del vehículo
+              <input id="avPlaca" type="text" placeholder="ABC-123" required />
+            </label>
+            <label>Tipo de vehículo
+              <select id="avTipo" required>
+                <option value="sedan">Sedán</option>
+                <option value="suv">SUV</option>
+                <option value="van">Van</option>
+                <option value="bus">Bus</option>
+                <option value="microbus">Microbús</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Marca
+              <input id="avMarca" type="text" placeholder="Toyota, Chevrolet, etc." required />
+            </label>
+            <label>Modelo
+              <input id="avModelo" type="text" placeholder="Corolla, Aveo, etc." required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Año
+              <input id="avAño" type="number" min="1990" max="2024" placeholder="2020" required />
+            </label>
+            <label>Capacidad (pasajeros)
+              <input id="avCapacidad" type="number" min="1" max="50" placeholder="5" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Color
+              <input id="avColor" type="text" placeholder="Blanco, Negro, etc." />
+            </label>
+            <label>Estado del vehículo
+              <select id="avEstado" required>
+                <option value="activo">Activo</option>
+                <option value="mantenimiento">En Mantenimiento</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </label>
+          </div>
+          <label>Número de SOAT
+            <input id="avSoat" type="text" placeholder="Opcional" />
+          </label>
+          <label>Observaciones
+            <input id="avObservaciones" type="text" placeholder="Notas adicionales sobre el vehículo" />
+          </label>
+          <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 16px;">
+            <button type="button" id="avCancelar" class="secondary">Cancelar</button>
+            <button type="submit" class="accent">Agregar Vehículo</button>
+          </div>
+          <div id="avMsg" class="msg"></div>
+        </form>
       </div>
     </section>
 
@@ -402,6 +707,334 @@
 
 
   <div id="toast" class="toast" hidden></div>
+
+  <!-- Modal Ver Reserva -->
+  <div id="verReservaModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalles de la Reserva</h3>
+        <button id="closeVerReservaModal" class="btn secondary">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verReservaContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="closeVerReservaModalBtn" class="btn secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Asignar Reserva -->
+  <div id="asignarReservaModal" class="modal" hidden>
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3>Asignar Reserva</h3>
+        <button id="closeAsignarReservaModal" class="btn secondary">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="asignarReservaInfo" style="margin-bottom: 20px; padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border-left: 4px solid var(--primary);"></div>
+        <form id="asignarReservaForm" class="form">
+          <div class="two-col">
+            <label>Conductor asignado
+              <select id="asignarConductor" required>
+                <option value="">Seleccionar conductor...</option>
+              </select>
+            </label>
+            <label>Vehículo asignado
+              <select id="asignarVehiculo" required>
+                <option value="">Seleccionar vehículo...</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Hora de recogida estimada
+              <input id="asignarHoraRecogida" type="time" required />
+            </label>
+            <label>Duración estimada (minutos)
+              <input id="asignarDuracion" type="number" min="5" max="480" placeholder="60" required />
+            </label>
+          </div>
+          <label>Observaciones para el conductor
+            <textarea id="asignarObservaciones" rows="3" placeholder="Instrucciones especiales, notas sobre la ruta, etc."></textarea>
+          </label>
+          <div class="two-col">
+            <label>Precio final
+              <input id="asignarPrecio" type="number" step="0.01" min="0" placeholder="0.00" required />
+            </label>
+            <label>Prioridad del viaje
+              <select id="asignarPrioridad">
+                <option value="normal">Normal</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelarAsignarReserva" class="btn secondary">Cancelar</button>
+        <button id="confirmarAsignarReserva" class="btn accent">Asignar Reserva</button>
+      </div>
+      <div id="asignarReservaMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Reserva -->
+  <div id="editarReservaModal" class="modal" hidden>
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Editar Reserva</h3>
+        <button id="closeEditarReservaModal" class="btn secondary">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarReservaForm" class="form">
+          <div class="two-col">
+            <label>Estado de la reserva
+              <select id="editarEstado" required>
+                <option value="pendiente">Pendiente</option>
+                <option value="confirmada">Confirmada</option>
+                <option value="en-curso">En Curso</option>
+                <option value="recogido">Completada</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </label>
+            <label>Método de pago
+              <select id="editarMetodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="voucher">Voucher empresarial</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Precio
+              <input id="editarPrecio" type="number" step="0.01" min="0" required />
+            </label>
+            <label>Promoción aplicada
+              <input id="editarPromo" type="text" placeholder="Código de promoción" />
+            </label>
+          </div>
+          <label>Dirección de recogida
+            <input id="editarDireccion" type="text" required />
+          </label>
+          <label>Notas adicionales
+            <textarea id="editarNotas" rows="3" placeholder="Observaciones o cambios especiales"></textarea>
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelarEditarReserva" class="btn secondary">Cancelar</button>
+        <button id="confirmarEditarReserva" class="btn accent">Guardar Cambios</button>
+      </div>
+      <div id="editarReservaMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- Detalles Modal -->
+  <div id="detallesModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalles de la Asignación</h3>
+        <button id="closeDetallesModal" class="btn secondary">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="detallesContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="closeDetallesModalBtn" class="btn secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ver Usuario Modal -->
+  <div id="verUsuarioModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Detalles del Usuario</h3>
+        <button class="close-btn" onclick="cerrarVerUsuarioModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verUsuarioContent" class="view-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarVerUsuarioModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar Usuario Modal -->
+  <div id="editarUsuarioModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Usuario</h3>
+        <button class="close-btn" onclick="cerrarEditarUsuarioModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarUsuarioForm">
+          <div class="form-group">
+            <label for="euNombre">Nombre Completo:</label>
+            <input type="text" id="euNombre" required>
+          </div>
+          <div class="form-group">
+            <label for="euCedula">Cédula:</label>
+            <input type="text" id="euCedula" required>
+          </div>
+          <div class="form-group">
+            <label for="euEmail">Email:</label>
+            <input type="email" id="euEmail">
+          </div>
+          <div class="form-group">
+            <label for="euTelefono">Teléfono:</label>
+            <input type="tel" id="euTelefono">
+          </div>
+          <div class="form-group">
+            <label for="euRole">Rol:</label>
+            <select id="euRole" required>
+              <option value="conductor">Conductor</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarEditarUsuarioModal()">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarUsuario">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ver Cliente Modal -->
+  <div id="verClienteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Detalles del Cliente</h3>
+        <button class="close-btn" onclick="cerrarVerClienteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verClienteContent" class="view-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarVerClienteModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar Cliente Modal -->
+  <div id="editarClienteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Cliente</h3>
+        <button class="close-btn" onclick="cerrarEditarClienteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarClienteForm">
+          <div class="form-group">
+            <label for="ecNombre">Nombre Completo:</label>
+            <input type="text" id="ecNombre" required>
+          </div>
+          <div class="form-group">
+            <label for="ecCedula">Cédula:</label>
+            <input type="text" id="ecCedula" required>
+          </div>
+          <div class="form-group">
+            <label for="ecEmail">Email:</label>
+            <input type="email" id="ecEmail">
+          </div>
+          <div class="form-group">
+            <label for="ecTelefono">Teléfono:</label>
+            <input type="tel" id="ecTelefono">
+          </div>
+          <div class="form-group">
+            <label for="ecDireccion">Dirección:</label>
+            <input type="text" id="ecDireccion">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarEditarClienteModal()">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarCliente">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ver Vehículo Modal -->
+  <div id="verVehiculoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🚗 Detalles del Vehículo</h3>
+        <button class="close-btn" onclick="cerrarVerVehiculoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verVehiculoContent" class="view-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarVerVehiculoModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar Vehículo Modal -->
+  <div id="editarVehiculoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Vehículo</h3>
+        <button class="close-btn" onclick="cerrarEditarVehiculoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarVehiculoForm">
+          <div class="form-group">
+            <label for="evPlaca">Placa:</label>
+            <input type="text" id="evPlaca" required readonly>
+          </div>
+          <div class="form-group">
+            <label for="evTipo">Tipo de Vehículo:</label>
+            <select id="evTipo" required>
+              <option value="sedan">Sedán</option>
+              <option value="suv">SUV</option>
+              <option value="van">Van</option>
+              <option value="camioneta">Camioneta</option>
+              <option value="bus">Bus</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="evMarca">Marca:</label>
+            <input type="text" id="evMarca" required>
+          </div>
+          <div class="form-group">
+            <label for="evModelo">Modelo:</label>
+            <input type="text" id="evModelo" required>
+          </div>
+          <div class="form-group">
+            <label for="evAño">Año:</label>
+            <input type="number" id="evAño" min="1990" max="2030" required>
+          </div>
+          <div class="form-group">
+            <label for="evCapacidad">Capacidad:</label>
+            <input type="number" id="evCapacidad" min="1" max="50" required>
+          </div>
+          <div class="form-group">
+            <label for="evColor">Color:</label>
+            <input type="text" id="evColor" required>
+          </div>
+          <div class="form-group">
+            <label for="evConductor">Conductor Asignado:</label>
+            <select id="evConductor">
+              <option value="">Sin asignar</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="evObservaciones">Observaciones:</label>
+            <textarea id="evObservaciones" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarEditarVehiculoModal()">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarVehiculo">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Map Picker Modal -->
   <div id="mapModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 900px; max-height: 80vh; z-index: 60; grid-template-rows: auto 1fr auto; gap: 10px;">

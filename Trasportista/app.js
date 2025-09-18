@@ -93,6 +93,7 @@ const views = {
   conductor: document.getElementById("view-conductor"),
   admin: document.getElementById("view-admin"),
   'admin-user-new': document.getElementById('view-admin-user-new'),
+  'admin-vehicle-new': document.getElementById('view-admin-vehicle-new'),
 };
 
 function showAuthScreen(which) {
@@ -272,55 +273,464 @@ function renderHistorial() {
   const session = getSession();
   const cont = document.getElementById("historialList");
   cont.innerHTML = "";
-  if (!session) { cont.innerHTML = "Inicie sesión"; return; }
-  const reservas = storage.get("reservas", []).filter(r => r.clienteId === session.id);
-  if (reservas.length === 0) { cont.innerHTML = "Sin reservas"; return; }
+  
+  if (!session) { 
+    cont.innerHTML = "<div class='text-muted'>Inicie sesión para ver su historial</div>"; 
+    return; 
+  }
+  
+  const reservas = storage.get("reservas", [])
+    .filter(r => r.clienteId === session.id)
+    .sort((a, b) => b.id - a.id); // Más recientes primero
+  
+  if (reservas.length === 0) { 
+    cont.innerHTML = "<div class='text-muted'>No tienes reservas aún</div>"; 
+    return; 
+  }
+  
   reservas.forEach(res => {
     const div = document.createElement("div");
     div.className = "list-item";
-    div.innerHTML = `${res.origen} → ${res.destino} • ${res.horario} • ${res.tipo} • ${res.direccion} • Pago: ${res.metodoPago}${res.promo?` • ${res.promo}`:""}`;
+    
+    const estadoTexto = res.estado === 'recogido' ? 'Completado' :
+                       res.estado === 'en-curso' ? 'En curso' :
+                       'Pendiente';
+    
+    const estadoBadge = res.estado === 'recogido' ? 'success' :
+                        res.estado === 'en-curso' ? 'warn' : '';
+    
+    const fechaCreacion = new Date(res.id).toLocaleDateString('es-ES');
+    const ratingText = res.rating ? ` • ★ ${res.rating}` : '';
+    
+    div.innerHTML = `
+      <div class="row">
+        <strong>${res.origen} → ${res.destino}</strong>
+        <span class="badge ${estadoBadge}">${estadoTexto}</span>
+      </div>
+      <div>Fecha: ${fechaCreacion} • Horario: ${res.horario} • Tipo: ${res.tipo}</div>
+      <div>Dirección: ${res.direccion}</div>
+      <div>Pago: ${res.metodoPago}${res.promo ? ` • Promoción: ${res.promo}` : ''}${ratingText}</div>
+      ${res.estado === 'recogido' && !res.rating ? '<div class="text-muted" style="margin-top: 8px;">💡 Puedes calificar este viaje en la sección de calificaciones</div>' : ''}
+    `;
     cont.appendChild(div);
   });
+  
   // populate rating select with delivered trips without rating
   const ratingSelect = document.getElementById('ratingReserva');
   if (ratingSelect) {
-    ratingSelect.innerHTML = '';
-    reservas.filter(r => r.estado === 'recogido' && typeof r.rating !== 'number').forEach(r => {
+    ratingSelect.innerHTML = '<option value="">Selecciona una reserva...</option>';
+    const completadasSinRating = reservas.filter(r => r.estado === 'recogido' && typeof r.rating !== 'number');
+    
+    if (completadasSinRating.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No hay viajes pendientes de calificar';
+      opt.disabled = true;
+      ratingSelect.appendChild(opt);
+    } else {
+      completadasSinRating.forEach(r => {
       const opt = document.createElement('option');
       opt.value = String(r.id);
-      opt.textContent = `${r.origen}→${r.destino} ${r.horario}`;
+        opt.textContent = `${r.origen} → ${r.destino} (${new Date(r.id).toLocaleDateString('es-ES')})`;
       ratingSelect.appendChild(opt);
     });
+    }
   }
+}
+
+// Mis Viajes (Cliente)
+function renderMisViajes() {
+  const session = getSession();
+  
+  if (!session || session.role !== "cliente") {
+    document.getElementById("viajesPendientesList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    document.getElementById("viajesEnCursoList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    return;
+  }
+
+  const reservas = storage.get("reservas", [])
+    .filter(r => r.clienteId === session.id)
+    .sort((a, b) => b.id - a.id);
+
+  // Viajes pendientes (confirmados pero no iniciados)
+  const pendientes = reservas.filter(r => r.estado === "pendiente" && !r.recogido);
+  renderViajesEnContenedor("viajesPendientesList", pendientes, "pendiente");
+
+  // Viajes en curso (iniciados pero no completados)
+  const enCurso = reservas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso));
+  renderViajesEnContenedor("viajesEnCursoList", enCurso, "en-curso");
+
+  // Tracking en tiempo real
+  renderTrackingCliente();
+}
+
+function renderViajesEnContenedor(containerId, reservas, tipo) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = "";
+  
+  if (reservas.length === 0) {
+    const mensaje = tipo === "pendiente" ? "No tienes viajes pendientes" : "No tienes viajes en curso";
+    cont.innerHTML = `<div class='text-muted'>${mensaje}</div>`;
+    return;
+  }
+  
+  reservas.forEach(res => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    
+    const fechaCreacion = new Date(res.id).toLocaleDateString('es-ES');
+    const estadoTexto = tipo === "en-curso" ? "En curso" : "Confirmado";
+    const estadoBadge = tipo === "en-curso" ? "warn" : "success";
+    
+    let actionButtons = "";
+    if (tipo === "pendiente") {
+      actionButtons = `
+        <div class="row" style="gap: 8px;">
+          <button class="btn secondary detailViajeBtn" data-id="${res.id}">Ver detalles</button>
+          <button class="btn danger cancelViajeBtn" data-id="${res.id}">Cancelar</button>
+        </div>
+      `;
+    } else if (tipo === "en-curso") {
+      actionButtons = `
+        <div class="row" style="gap: 8px;">
+          <button class="btn secondary detailViajeBtn" data-id="${res.id}">Ver detalles</button>
+          <button class="btn primary trackViajeBtn" data-id="${res.id}">Ver tracking</button>
+        </div>
+      `;
+    }
+    
+    div.innerHTML = `
+      <div class="row">
+        <strong>${res.origen} → ${res.destino}</strong>
+        <span class="badge ${estadoBadge}">${estadoTexto}</span>
+      </div>
+      <div>Fecha reserva: ${fechaCreacion} • Horario: ${res.horario}</div>
+      <div>Tipo: ${res.tipo} • Dirección: ${res.direccion}</div>
+      <div>Conductor: ${getUserName(res.conductorId) || 'Por asignar'} • Vehículo: ${res.vehiculo || 'Por asignar'}</div>
+      <div style="margin-top: 12px;">
+        ${actionButtons}
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+  
+  // Event listeners
+  cont.querySelectorAll(".detailViajeBtn").forEach(btn => 
+    btn.addEventListener("click", () => verDetallesViaje(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".cancelViajeBtn").forEach(btn => 
+    btn.addEventListener("click", () => cancelarViaje(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".trackViajeBtn").forEach(btn => 
+    btn.addEventListener("click", () => verTrackingViaje(Number(btn.dataset.id)))
+  );
+}
+
+function verDetallesViaje(reservaId) {
+  // Reutilizar la función de detalles de asignación
+  verDetallesAsignacion(reservaId);
+}
+
+function cancelarViaje(reservaId) {
+  if (!confirm("¿Estás seguro de que deseas cancelar este viaje?")) return;
+  
+  const reservas = storage.get("reservas", []);
+  const nuevas = reservas.filter(r => r.id !== reservaId);
+  storage.set("reservas", nuevas);
+  
+  renderMisViajes();
+  toast("Viaje cancelado exitosamente");
+}
+
+function verTrackingViaje(reservaId) {
+  // Scroll hacia la sección de tracking
+  const trackingPanel = document.getElementById("trackingClientePanel");
+  if (trackingPanel) {
+    trackingPanel.scrollIntoView({ behavior: 'smooth' });
+    toast("Revisa la sección de Tracking en Tiempo Real");
+  }
+}
+
+function renderTrackingCliente() {
+  const session = getSession();
+  const panel = document.getElementById("trackingClienteInfo");
+  if (!panel) return;
+  
+  if (!session || session.role !== "cliente") {
+    panel.innerHTML = "<div class='text-muted'>Inicie sesión para ver el tracking</div>";
+    return;
+  }
+
+  const myActive = storage.get("reservas", []).filter(r => 
+    r.clienteId === session.id && 
+    (r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso))
+  );
+  
+  if (myActive.length === 0) {
+    panel.innerHTML = "<div class='text-muted'>No hay viajes activos para rastrear</div>";
+    return;
+  }
+
+  const tracking = storage.get("tracking", []);
+  panel.innerHTML = "";
+  
+  myActive.forEach(r => {
+    const t = tracking.find(t => t.reservaId === r.id);
+    const div = document.createElement("div");
+    div.className = "list-item";
+    
+    if (t) {
+      div.innerHTML = `
+        <div class="row">
+          <strong>${r.origen} → ${r.destino}</strong>
+          <span class="badge success">🟢 En línea</span>
+        </div>
+        <div>Conductor: ${getUserName(r.conductorId)} • Vehículo: ${r.vehiculo}</div>
+        <div>📍 Posición actual: ${t.lat.toFixed(5)}, ${t.lng.toFixed(5)}</div>
+        <div class="text-muted">Última actualización: hace unos segundos</div>
+      `;
+    } else {
+      div.innerHTML = `
+        <div class="row">
+          <strong>${r.origen} → ${r.destino}</strong>
+          <span class="badge">⏳ Esperando</span>
+        </div>
+        <div>Conductor: ${getUserName(r.conductorId)} • Vehículo: ${r.vehiculo}</div>
+        <div class="text-muted">🚗 El conductor aún no ha iniciado el seguimiento GPS</div>
+      `;
+    }
+    panel.appendChild(div);
+  });
 }
 
 // Conductor
 function renderConductor() {
   const session = getSession();
-  const cont = document.getElementById("viajesAsignados");
-  cont.innerHTML = "";
   if (!session || session.role !== "conductor") {
-    cont.textContent = "Inicie sesión como conductor";
+    document.getElementById("viajesAsignados").textContent = "Inicie sesión como conductor";
     return;
   }
 
   const reservas = storage.get("reservas", []);
   const asignadas = reservas.filter(r => r.conductorId === session.id);
 
-  if (asignadas.length === 0) { cont.textContent = "No hay reservas"; return; }
-  asignadas.forEach(res => {
+  // Actualizar KPIs del dashboard
+  updateConductorKPIs(asignadas);
+  
+  // Renderizar próximos viajes en dashboard
+  renderProximosViajes(asignadas);
+  
+  // Renderizar asignaciones por estado
+  renderAsignacionesPorEstado(asignadas);
+}
+
+function updateConductorKPIs(asignadas) {
+  const total = asignadas.length;
+  const pendientes = asignadas.filter(r => r.estado === "pendiente").length;
+  const enCurso = asignadas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && !r.recogido)).length;
+  const completadas = asignadas.filter(r => r.estado === "recogido" || r.recogido).length;
+
+  document.getElementById("conductorTotalAsignaciones").textContent = total;
+  document.getElementById("conductorPendientes").textContent = pendientes;
+  document.getElementById("conductorEnCurso").textContent = enCurso;
+  document.getElementById("conductorCompletadas").textContent = completadas;
+}
+
+function renderProximosViajes(asignadas) {
+  const cont = document.getElementById("proximosViajes");
+  cont.innerHTML = "";
+  
+  const proximos = asignadas.filter(r => !r.recogido).slice(0, 3);
+  
+  if (proximos.length === 0) { 
+    cont.innerHTML = "<div class='text-muted'>No hay viajes próximos</div>"; 
+    return; 
+  }
+  
+  proximos.forEach(res => {
     const div = document.createElement("div");
     div.className = "list-item";
     div.innerHTML = `
       <div class="row"><strong>${res.origen} → ${res.destino}</strong><span class="badge">${res.horario}</span></div>
-      <div>Cliente: ${getUserName(res.clienteId)} • Tipo: ${res.tipo}</div>
-      <div>Dirección: ${res.direccion}</div>
-      <div class="row"><span>Estado: ${res.recogido ? "Recogido" : "Pendiente"}</span>
-      <button class="pickupBtn" data-id="${res.id}" ${res.recogido?"disabled":""}>Confirmar recogida</button></div>
+      <div>Cliente: ${getUserName(res.clienteId)} • ${res.direccion}</div>
     `;
     cont.appendChild(div);
   });
-  cont.querySelectorAll(".pickupBtn").forEach(btn => btn.addEventListener("click", () => confirmarRecogida(Number(btn.dataset.id))));
+}
+
+function renderAsignacionesPorEstado(asignadas) {
+  // Asignado (pendientes)
+  const asignados = asignadas.filter(r => r.estado === "pendiente" && !r.recogido);
+  renderAsignacionesEnContenedor("viajesAsignados", asignados, "asignado");
+  
+  // En curso (iniciados pero no completados)
+  const enCurso = asignadas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso));
+  renderAsignacionesEnContenedor("viajesEnCurso", enCurso, "en-curso");
+  
+  // Finalizados
+  const finalizados = asignadas.filter(r => r.estado === "recogido" || r.recogido);
+  renderAsignacionesEnContenedor("viajesFinalizados", finalizados, "finalizado");
+}
+
+function renderAsignacionesEnContenedor(containerId, reservas, tipo) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = "";
+  
+  if (reservas.length === 0) { 
+    cont.innerHTML = `<div class='text-muted'>No hay viajes ${tipo}s</div>`; 
+    return; 
+  }
+  
+  reservas.forEach(res => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    
+    let actionButtons = "";
+    if (tipo === "asignado") {
+      actionButtons = `
+        <button class="btn secondary detailBtn" data-id="${res.id}">Ver detalles</button>
+        <button class="btn primary startBtn" data-id="${res.id}">Cambiar a En Curso</button>
+      `;
+    } else if (tipo === "en-curso") {
+      actionButtons = `
+        <button class="btn secondary detailBtn" data-id="${res.id}">Ver detalles</button>
+        <button class="btn accent pickupBtn" data-id="${res.id}">Cambiar a Finalizado</button>
+      `;
+    } else if (tipo === "finalizado") {
+      actionButtons = `
+        <button class="btn secondary detailBtn" data-id="${res.id}">Ver detalles</button>
+      `;
+    }
+    
+    const estado = tipo === "finalizado" ? "Completado" : 
+                  tipo === "en-curso" ? "En curso" : "Asignado";
+    
+    div.innerHTML = `
+      <div class="row"><strong>${res.origen} → ${res.destino}</strong><span class="badge">${res.horario}</span></div>
+      <div>Cliente: ${getUserName(res.clienteId)} • Tipo: ${res.tipo}</div>
+      <div>Dirección: ${res.direccion}</div>
+      <div class="row" style="justify-content: space-between;">
+        <span>Estado: ${estado}</span>
+        <div class="row" style="gap: 8px;">
+          ${actionButtons}
+        </div>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+  
+  // Event listeners para botones
+  cont.querySelectorAll(".detailBtn").forEach(btn => 
+    btn.addEventListener("click", () => verDetallesAsignacion(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".startBtn").forEach(btn => 
+    btn.addEventListener("click", () => iniciarViaje(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".pickupBtn").forEach(btn => 
+    btn.addEventListener("click", () => confirmarRecogida(Number(btn.dataset.id)))
+  );
+}
+
+function verDetallesAsignacion(reservaId) {
+  const reservas = storage.get("reservas", []);
+  const reserva = reservas.find(r => r.id === reservaId);
+  
+  if (!reserva) {
+    toast("No se encontró la reserva");
+    return;
+  }
+
+  const cliente = getUserName(reserva.clienteId);
+  const users = storage.get("users", []);
+  const clienteCompleto = users.find(u => u.id === reserva.clienteId);
+  
+  const estadoTexto = reserva.estado === 'recogido' ? 'Finalizado' :
+                     reserva.estado === 'en-curso' ? 'En Curso' :
+                     'Asignado';
+  
+  const detallesHTML = `
+    <div class="detalle-section">
+      <h4>📍 Información del Viaje</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Ruta:</span>
+        <span class="detalle-value">${reserva.origen} → ${reserva.destino}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Horario:</span>
+        <span class="detalle-value">${reserva.horario}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Precio:</span>
+        <span class="detalle-value">$${reserva.precio}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Estado:</span>
+        <span class="detalle-value"><span class="badge">${estadoTexto}</span></span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>👤 Información del Cliente</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Nombre:</span>
+        <span class="detalle-value">${cliente}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Teléfono:</span>
+        <span class="detalle-value">${clienteCompleto?.telefono || 'No disponible'}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Email:</span>
+        <span class="detalle-value">${clienteCompleto?.email || 'No disponible'}</span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>🚗 Detalles del Servicio</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Tipo:</span>
+        <span class="detalle-value">${reserva.tipo}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Dirección de recogida:</span>
+        <span class="detalle-value">${reserva.direccion}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Método de pago:</span>
+        <span class="detalle-value">${reserva.metodoPago}</span>
+      </div>
+      ${reserva.promo ? `
+      <div class="detalle-item">
+        <span class="detalle-label">Promoción:</span>
+        <span class="detalle-value">${reserva.promo}</span>
+      </div>
+      ` : ''}
+    </div>
+
+    <div class="detalle-section">
+      <h4>🚙 Vehículo Asignado</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Placa:</span>
+        <span class="detalle-value">${reserva.vehiculo || 'No asignado'}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">ID de reserva:</span>
+        <span class="detalle-value">#${reserva.id}</span>
+      </div>
+    </div>
+  `;
+  
+  // Mostrar modal
+  document.getElementById('detallesContent').innerHTML = detallesHTML;
+  document.getElementById('detallesModal').hidden = false;
+}
+
+function iniciarViaje(reservaId) {
+  const reservas = storage.get("reservas", []);
+  const nuevas = reservas.map(r => r.id === reservaId ? { ...r, estado: "en-curso", enCurso: true } : r);
+  storage.set("reservas", nuevas);
+  renderConductor();
+  toast("Viaje cambiado a En Curso");
 }
 
 function getUserName(id) {
@@ -342,6 +752,7 @@ function confirmarRecogida(reservaId) {
   renderConductor();
   // refresh rating choices for client if open
   if (views.cliente.classList.contains('active')) renderHistorial();
+  toast("Viaje cambiado a Finalizado");
 }
 
 // Admin
@@ -350,6 +761,7 @@ function renderAdmin() {
   const rutas = storage.get("rutas", []);
   const flota = storage.get("flota", []);
   const users = storage.get("users", []);
+  
   // Datos visuales adicionales (no persistidos)
   const mockDrivers = [
     { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1', cedula: '000000001', email: 'conductor1@demo.com' },
@@ -362,12 +774,28 @@ function renderAdmin() {
     { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4 },
     { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5 },
   ];
+
+  // Actualizar KPIs principales
   document.getElementById("kpiReservas").textContent = reservas.length;
-  document.getElementById("kpiRutas").textContent = rutas.length;
   document.getElementById("kpiFlota").textContent = flota.length;
   const revenue = reservas.reduce((sum, r) => sum + (Number(r.precio)||0), 0);
   const kpiRevenue = document.getElementById('kpiRevenue');
-  if (kpiRevenue) kpiRevenue.textContent = `$${revenue}`;
+  if (kpiRevenue) kpiRevenue.textContent = `$${revenue.toLocaleString()}`;
+
+  // Actualizar datos operacionales
+  const pendientes = reservas.filter(r => !r.conductorId).length;
+  const enCurso = reservas.filter(r => r.estado === 'en-curso').length;
+  
+  // Completados hoy (simulado)
+  const hoy = new Date().toDateString();
+  const completadosHoy = reservas.filter(r => 
+    r.estado === 'recogido' && 
+    new Date(r.id).toDateString() === hoy
+  ).length;
+
+  document.getElementById("opPendientes").textContent = pendientes;
+  document.getElementById("opEnCurso").textContent = enCurso;
+  document.getElementById("opCompletadosHoy").textContent = completadosHoy;
 
   const rutasCont = document.getElementById("adminRutas");
   rutasCont.innerHTML = "";
@@ -378,100 +806,443 @@ function renderAdmin() {
     rutasCont.appendChild(div);
   });
 
+  // Flota - Rediseñado
   const flotaCont = document.getElementById("adminFlota");
   flotaCont.innerHTML = "";
   const displayFlota = [...flota, ...mockFlota];
+  
+  if (displayFlota.length === 0) {
+    flotaCont.innerHTML = '<div class="empty-state">🚗 No hay vehículos registrados</div>';
+  } else {
   displayFlota.forEach(v => {
+      const viajesAsignados = reservas.filter(r => r.vehiculo === v.placa && r.estado !== 'recogido').length;
+      const viajesCompletados = reservas.filter(r => r.vehiculo === v.placa && r.estado === 'recogido').length;
+      const ingresosTotales = reservas.filter(r => r.vehiculo === v.placa).reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+      
     const div = document.createElement("div");
-    div.className = "list-item";
-    div.innerHTML = `<div class="row"><strong>${v.placa}</strong><span class="badge">${v.tipo || 'Vehículo'}</span></div>
-      <div>Conductor: ${v.conductor} • Capacidad: ${v.capacidad} personas</div>
-      <div>Modelo: ${v.modelo || 'N/A'} • Año: ${v.año || 'N/A'}</div>
-      <div class="row" style="margin-top:8px; gap:8px;">
-        <button class="btn secondary" onclick="viewFlota('${v.placa}')">Ver</button>
-        <button class="btn secondary" onclick="editFlota('${v.placa}')">Editar</button>
-        <button class="btn danger" onclick="deleteFlota('${v.placa}')">Eliminar</button>
-      </div>`;
+      div.className = "admin-list-item";
+      
+      // Determinar el estado del vehículo
+      let estadoVehiculo = '';
+      let estadoClass = '';
+      if (viajesAsignados > 0) {
+        estadoVehiculo = '🚛 En Servicio';
+        estadoClass = 'status-busy';
+      } else {
+        estadoVehiculo = '🅿️ Disponible';
+        estadoClass = 'status-available';
+      }
+      
+      // Icono del tipo de vehículo
+      const tipoIconos = {
+        'sedan': '🚗',
+        'suv': '🚙',
+        'van': '🚐',
+        'camioneta': '🛻',
+        'bus': '🚌'
+      };
+      const tipoIcon = tipoIconos[v.tipo?.toLowerCase()] || '🚗';
+      
+      div.innerHTML = `
+        <div class="admin-item-header">
+          <div class="admin-item-main">
+            <div class="admin-item-avatar">
+              <span class="avatar-icon">${tipoIcon}</span>
+            </div>
+            <div class="admin-item-details">
+              <div class="admin-item-name">${v.placa}</div>
+              <div class="admin-item-meta">${v.marca || ''} ${v.modelo || ''} ${v.año || ''}</div>
+              <div class="admin-item-contact">Conductor: ${v.conductor || 'Sin asignar'}</div>
+            </div>
+          </div>
+          <div class="admin-item-badge">
+            <span class="vehicle-status-badge ${estadoClass}">${estadoVehiculo}</span>
+          </div>
+        </div>
+        
+        <div class="admin-item-stats">
+          <div class="stat-item">
+            <span class="stat-icon">👥</span>
+            <span class="stat-label">Capacidad:</span>
+            <span class="stat-value">${v.capacidad || 'N/A'} personas</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">🚗</span>
+            <span class="stat-label">Tipo:</span>
+            <span class="stat-value">${v.tipo || 'No especificado'}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">🎨</span>
+            <span class="stat-label">Color:</span>
+            <span class="stat-value">${v.color || 'N/A'}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">📋</span>
+            <span class="stat-label">Viajes Activos:</span>
+            <span class="stat-value">${viajesAsignados}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">✅</span>
+            <span class="stat-label">Completados:</span>
+            <span class="stat-value">${viajesCompletados}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">💰</span>
+            <span class="stat-label">Ingresos:</span>
+            <span class="stat-value">$${ingresosTotales}</span>
+          </div>
+        </div>
+        
+        <div class="admin-item-actions">
+          <button class="btn secondary" onclick="verVehiculo('${v.placa}')">
+            <span>👁️</span> Ver
+          </button>
+          <button class="btn secondary" onclick="editarVehiculo('${v.placa}')">
+            <span>✏️</span> Editar
+          </button>
+          <button class="btn danger" onclick="deleteFlota('${v.placa}')">
+            <span>🗑️</span> Eliminar
+          </button>
+        </div>
+      `;
     flotaCont.appendChild(div);
   });
+  }
 
-  // usuarios (conductor y admin)
+  // usuarios (conductor y admin) - Rediseñado
   const usuariosCont = document.getElementById('adminUsuarios');
   if (usuariosCont) {
     usuariosCont.innerHTML = '';
     const realStaff = users.filter(u => u.role !== 'cliente');
     const displayStaff = [...realStaff, ...mockDrivers];
+    
+    if (displayStaff.length === 0) {
+      usuariosCont.innerHTML = '<div class="empty-state">👥 No hay usuarios registrados</div>';
+    } else {
     displayStaff.forEach(u => {
-      const vehiculo = displayFlota.find(f => f.conductor === u.nombre)?.placa ?? '-';
+        const vehiculo = displayFlota.find(f => f.conductor === u.nombre)?.placa ?? null;
       const resAsignadas = reservas.filter(r => r.conductorId === u.id).length;
+        const resCompletadas = reservas.filter(r => r.conductorId === u.id && r.estado === 'recogido').length;
+        
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">${u.role}</span></div>
-        <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Vehículo: ${vehiculo}</div>
-        <div>Reservas asignadas: ${resAsignadas}</div>
-        <div class="row" style="margin-top:8px; gap:8px;">
-          <button class="btn secondary" onclick="viewUsuario(${u.id})">Ver</button>
-          <button class="btn secondary" onclick="editUsuario(${u.id})">Editar</button>
-          <button class="btn danger" onclick="deleteUsuario(${u.id})">Eliminar</button>
-        </div>`;
+        div.className = 'admin-list-item';
+        
+        const roleInfo = {
+          'conductor': { icon: '🚗', class: 'role-conductor', text: 'Conductor' },
+          'admin': { icon: '👨‍💼', class: 'role-admin', text: 'Administrador' }
+        };
+        
+        const roleData = roleInfo[u.role] || { icon: '👤', class: 'role-user', text: u.role };
+        
+        div.innerHTML = `
+          <div class="admin-item-header">
+            <div class="admin-item-main">
+              <div class="admin-item-avatar">
+                <span class="avatar-icon">${roleData.icon}</span>
+              </div>
+              <div class="admin-item-details">
+                <div class="admin-item-name">${u.nombre}</div>
+                <div class="admin-item-meta">CI: ${u.cedula} • ${u.email || 'Sin email'}</div>
+              </div>
+            </div>
+            <div class="admin-item-badge">
+              <span class="role-badge ${roleData.class}">${roleData.text}</span>
+            </div>
+          </div>
+          
+          <div class="admin-item-stats">
+            <div class="stat-item">
+              <span class="stat-icon">🚛</span>
+              <span class="stat-label">Vehículo:</span>
+              <span class="stat-value">${vehiculo || 'Sin asignar'}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">📋</span>
+              <span class="stat-label">Asignadas:</span>
+              <span class="stat-value">${resAsignadas}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">✅</span>
+              <span class="stat-label">Completadas:</span>
+              <span class="stat-value">${resCompletadas}</span>
+            </div>
+          </div>
+          
+          <div class="admin-item-actions">
+            <button class="btn secondary" onclick="verUsuario(${u.id})">
+              <span>👁️</span> Ver
+            </button>
+            <button class="btn secondary" onclick="editarUsuario(${u.id})">
+              <span>✏️</span> Editar
+            </button>
+            <button class="btn danger" onclick="deleteUsuario(${u.id})">
+              <span>🗑️</span> Eliminar
+            </button>
+          </div>
+        `;
       usuariosCont.appendChild(div);
     });
+    }
   }
 
-  // clientes
-  // recientes
+  // Actividad reciente mejorada
   const recentCont = document.getElementById('adminRecent');
   if (recentCont) {
     recentCont.innerHTML = '';
-    [...reservas].sort((a,b)=>b.id-a.id).slice(0,5).forEach(r => {
+    const recientes = [...reservas].sort((a,b)=>b.id-a.id).slice(0,5);
+    
+    if (recientes.length === 0) {
+      recentCont.innerHTML = '<div class="empty-state">📋 No hay actividad reciente</div>';
+    } else {
+      recientes.forEach(r => {
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.textContent = `#${r.id} • ${r.origen}→${r.destino} • ${r.horario} • ${getUserName(r.clienteId)} • ${r.tipo} • ${r.estado}`;
+        div.className = 'analysis-list-item';
+        
+        const fecha = new Date(r.id).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        const estadoInfo = {
+          'recogido': { icon: '✅', text: 'Completado', class: 'status-success' },
+          'en-curso': { icon: '🚗', text: 'En Curso', class: 'status-warning' },
+          'asignado': { icon: '📋', text: 'Asignado', class: 'status-info' },
+          'pendiente': { icon: '⏳', text: 'Pendiente', class: 'status-pending' }
+        };
+        
+        const estado = r.estado === 'recogido' ? 'recogido' : 
+                      r.estado === 'en-curso' ? 'en-curso' : 
+                      r.conductorId ? 'asignado' : 'pendiente';
+        
+        const statusInfo = estadoInfo[estado];
+        
+        div.innerHTML = `
+          <div class="item-header">
+            <div class="item-main">
+              <span class="item-icon">🚗</span>
+              <div class="item-details">
+                <div class="item-title">${r.origen} → ${r.destino}</div>
+                <div class="item-meta">Cliente: ${getUserName(r.clienteId)} • ${r.tipo}</div>
+              </div>
+            </div>
+            <div class="item-status">
+              <span class="status-badge ${statusInfo.class}">
+                ${statusInfo.icon} ${statusInfo.text}
+              </span>
+            </div>
+          </div>
+          <div class="item-footer">
+            <span class="item-time">🕒 ${fecha}</span>
+            <span class="item-price">💰 $${r.precio}</span>
+            <span class="item-horario">⏰ ${r.horario}</span>
+          </div>
+        `;
       recentCont.appendChild(div);
     });
+    }
   }
 
-  // top rutas por reservas
+  // Top rutas más populares mejoradas
   const topRutas = document.getElementById('adminTopRutas');
   if (topRutas) {
     topRutas.innerHTML = '';
-    const countByRuta = reservas.reduce((acc, r) => { const k = `${r.origen}→${r.destino}`; acc[k] = (acc[k]||0)+1; return acc; }, {});
-    Object.entries(countByRuta).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([k, c]) => {
+    const countByRuta = reservas.reduce((acc, r) => { 
+      const k = `${r.origen}→${r.destino}`; 
+      acc[k] = (acc[k]||0)+1; 
+      return acc; 
+    }, {});
+    
+    const rutasOrdenadas = Object.entries(countByRuta).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    
+    if (rutasOrdenadas.length === 0) {
+      topRutas.innerHTML = '<div class="empty-state">🗺️ No hay datos de rutas</div>';
+    } else {
+      rutasOrdenadas.forEach(([ruta, count], index) => {
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.textContent = `${k} • ${c} reservas`;
+        div.className = 'analysis-list-item';
+        
+        const rankIcons = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+        const rankIcon = rankIcons[index] || '📍';
+        
+        // Calcular porcentaje del total
+        const totalViajes = reservas.length;
+        const porcentaje = totalViajes > 0 ? Math.round((count / totalViajes) * 100) : 0;
+        
+        div.innerHTML = `
+          <div class="item-header">
+            <div class="item-main">
+              <span class="item-icon">${rankIcon}</span>
+              <div class="item-details">
+                <div class="item-title">${ruta}</div>
+                <div class="item-meta">Ruta más solicitada</div>
+              </div>
+            </div>
+            <div class="item-status">
+              <span class="count-badge">${count}</span>
+            </div>
+          </div>
+          <div class="item-footer">
+            <span class="item-percentage">📊 ${porcentaje}% del total</span>
+            <span class="item-frequency">🔄 ${count} viajes</span>
+          </div>
+        `;
       topRutas.appendChild(div);
     });
-    if (topRutas.children.length === 0) topRutas.innerHTML = 'Sin datos';
+    }
   }
 
-  // uso de flota (conteo por vehículo)
+  // Utilización de flota mejorada
   const fleetStats = document.getElementById('adminFleetStats');
   if (fleetStats) {
     fleetStats.innerHTML = '';
-    const countByVeh = reservas.reduce((acc, r) => { const k = r.vehiculo || '-'; acc[k] = (acc[k]||0)+1; return acc; }, {});
-    Object.entries(countByVeh).sort((a,b)=>b[1]-a[1]).forEach(([k,c]) => {
+    
+    const totalFlota = flota.length + mockFlota.length;
+    const vehiculosConReservas = reservas.filter(r => r.vehiculo && r.estado !== 'recogido').length;
+    const vehiculosActivos = reservas.filter(r => r.vehiculo).length;
+    const utilizacion = totalFlota > 0 ? Math.round((vehiculosActivos / totalFlota) * 100) : 0;
+    
+    // Estadísticas generales de flota
+    const statsGenerales = [
+      {
+        icon: '🚗',
+        title: 'Vehículos Totales',
+        value: totalFlota,
+        meta: 'Flota completa',
+        type: 'info'
+      },
+      {
+        icon: '🚛',
+        title: 'En Servicio Activo',
+        value: vehiculosConReservas,
+        meta: 'Asignados actualmente',
+        type: 'warning'
+      },
+      {
+        icon: '🅿️',
+        title: 'Disponibles',
+        value: totalFlota - vehiculosConReservas,
+        meta: 'Listos para asignar',
+        type: 'success'
+      },
+      {
+        icon: '📊',
+        title: 'Tasa de Utilización',
+        value: utilizacion + '%',
+        meta: 'Eficiencia operativa',
+        type: 'primary'
+      }
+    ];
+    
+    if (totalFlota === 0) {
+      fleetStats.innerHTML = '<div class="empty-state">🚗 No hay vehículos registrados</div>';
+    } else {
+      statsGenerales.forEach(stat => {
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.textContent = `${k} • ${c} viajes`;
+        div.className = 'analysis-list-item compact';
+        
+        const typeClasses = {
+          'info': 'status-info',
+          'warning': 'status-warning', 
+          'success': 'status-success',
+          'primary': 'status-primary'
+        };
+        
+        div.innerHTML = `
+          <div class="item-header">
+            <div class="item-main">
+              <span class="item-icon">${stat.icon}</span>
+              <div class="item-details">
+                <div class="item-title">${stat.title}</div>
+                <div class="item-meta">${stat.meta}</div>
+              </div>
+            </div>
+            <div class="item-status">
+              <span class="metric-badge ${typeClasses[stat.type]}">${stat.value}</span>
+            </div>
+          </div>
+        `;
       fleetStats.appendChild(div);
     });
-    if (fleetStats.children.length === 0) fleetStats.innerHTML = 'Sin datos';
+    }
   }
 
-  // uso de promos
+  // Estadísticas de promociones mejoradas
   const promoStats = document.getElementById('adminPromoStats');
   if (promoStats) {
     promoStats.innerHTML = '';
-    const countByPromo = reservas.filter(r=>r.promo).reduce((acc, r) => { const k = r.promo; acc[k] = (acc[k]||0)+1; return acc; }, {});
-    Object.entries(countByPromo).sort((a,b)=>b[1]-a[1]).forEach(([k,c]) => {
+    
+    const promociones = storage.get("promos", []);
+    const reservasConPromo = reservas.filter(r => r.promo);
+    const totalDescuentos = reservasConPromo.length * 5; // Estimado $5 por promo
+    const tasaUso = reservas.length > 0 ? Math.round((reservasConPromo.length / reservas.length) * 100) : 0;
+    
+    // Estadísticas generales de promociones
+    const promoStatsData = [
+      {
+        icon: '🎟️',
+        title: 'Promociones Activas',
+        value: promociones.length,
+        meta: 'Cupones disponibles',
+        type: 'info'
+      },
+      {
+        icon: '🎯',
+        title: 'Uso Total',
+        value: reservasConPromo.length,
+        meta: 'Reservas con descuento',
+        type: 'warning'
+      },
+      {
+        icon: '💸',
+        title: 'Descuento Otorgado',
+        value: '$' + totalDescuentos,
+        meta: 'Ahorro para clientes',
+        type: 'success'
+      },
+      {
+        icon: '📈',
+        title: 'Tasa de Adopción',
+        value: tasaUso + '%',
+        meta: 'Efectividad promocional',
+        type: 'primary'
+      }
+    ];
+    
+    if (promociones.length === 0 && reservasConPromo.length === 0) {
+      promoStats.innerHTML = '<div class="empty-state">🎟️ No hay promociones activas</div>';
+    } else {
+      promoStatsData.forEach(stat => {
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.textContent = `${k} • ${c} usos`;
+        div.className = 'analysis-list-item compact';
+        
+        const typeClasses = {
+          'info': 'status-info',
+          'warning': 'status-warning', 
+          'success': 'status-success',
+          'primary': 'status-primary'
+        };
+        
+        div.innerHTML = `
+          <div class="item-header">
+            <div class="item-main">
+              <span class="item-icon">${stat.icon}</span>
+              <div class="item-details">
+                <div class="item-title">${stat.title}</div>
+                <div class="item-meta">${stat.meta}</div>
+              </div>
+            </div>
+            <div class="item-status">
+              <span class="metric-badge ${typeClasses[stat.type]}">${stat.value}</span>
+            </div>
+          </div>
+        `;
       promoStats.appendChild(div);
     });
-    if (promoStats.children.length === 0) promoStats.innerHTML = 'Sin datos';
   }
+  }
+  // Clientes - Rediseñado
   const clientesCont = document.getElementById('adminClientes');
   if (clientesCont) {
     clientesCont.innerHTML = '';
@@ -480,35 +1251,104 @@ function renderAdmin() {
       ...users.filter(u => u.role === 'cliente'),
       ...mockClients.map(m => ({ ...m, role: 'cliente' })),
     ];
+    
+    if (clientesAll.length === 0) {
+      clientesCont.innerHTML = '<div class="empty-state">👥 No hay clientes registrados</div>';
+    } else {
     clientesAll.forEach(u => {
       const mias = reservas.filter(r => r.clienteId === u.id);
       const entregadas = mias.filter(r => r.estado === 'recogido');
+        const pendientes = mias.filter(r => !r.conductorId).length;
       const rated = mias.filter(r => typeof r.rating === 'number');
-      const avg = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(2) : '-';
+        const avg = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(1) : null;
+        const gastoTotal = mias.reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+        
       const div = document.createElement('div');
-      div.className = 'list-item';
-      div.innerHTML = `<div class="row"><strong>${u.nombre}</strong><span class="badge">Cliente</span></div>
-        <div>CI: ${u.cedula} • Email: ${u.email ?? '-'} • Tel: ${u.telefono ?? '-'}</div>
-        <div>Reservas: ${mias.length} • Completadas: ${entregadas.length} • ★ Promedio: ${avg}</div>
-        <div class="row" style="margin-top:8px; gap:8px;">
-          <button class="btn secondary" onclick="viewCliente(${u.id})">Ver</button>
-          <button class="btn secondary" onclick="editCliente(${u.id})">Editar</button>
-          <button class="btn danger" onclick="deleteCliente(${u.id})">Eliminar</button>
-        </div>`;
+        div.className = 'admin-list-item';
+        
+        // Determinar el nivel del cliente basado en reservas
+        let clientLevel = '';
+        let levelClass = '';
+        if (mias.length === 0) {
+          clientLevel = '🆕 Nuevo';
+          levelClass = 'level-new';
+        } else if (mias.length >= 10) {
+          clientLevel = '⭐ VIP';
+          levelClass = 'level-vip';
+        } else if (mias.length >= 5) {
+          clientLevel = '💎 Premium';
+          levelClass = 'level-premium';
+        } else {
+          clientLevel = '👤 Regular';
+          levelClass = 'level-regular';
+        }
+        
+        div.innerHTML = `
+          <div class="admin-item-header">
+            <div class="admin-item-main">
+              <div class="admin-item-avatar">
+                <span class="avatar-icon">👤</span>
+              </div>
+              <div class="admin-item-details">
+                <div class="admin-item-name">${u.nombre}</div>
+                <div class="admin-item-meta">CI: ${u.cedula} • ${u.email || 'Sin email'}</div>
+                <div class="admin-item-contact">📞 ${u.telefono || 'Sin teléfono'}</div>
+              </div>
+            </div>
+            <div class="admin-item-badge">
+              <span class="client-level-badge ${levelClass}">${clientLevel}</span>
+            </div>
+          </div>
+          
+          <div class="admin-item-stats">
+            <div class="stat-item">
+              <span class="stat-icon">📋</span>
+              <span class="stat-label">Total Reservas:</span>
+              <span class="stat-value">${mias.length}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">✅</span>
+              <span class="stat-label">Completadas:</span>
+              <span class="stat-value">${entregadas.length}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">⏳</span>
+              <span class="stat-label">Pendientes:</span>
+              <span class="stat-value">${pendientes}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">💰</span>
+              <span class="stat-label">Gasto Total:</span>
+              <span class="stat-value">$${gastoTotal}</span>
+            </div>
+            ${avg ? `
+            <div class="stat-item">
+              <span class="stat-icon">⭐</span>
+              <span class="stat-label">Calificación:</span>
+              <span class="stat-value">${avg}/5</span>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div class="admin-item-actions">
+            <button class="btn secondary" onclick="verCliente(${u.id})">
+              <span>👁️</span> Ver
+            </button>
+            <button class="btn secondary" onclick="editarCliente(${u.id})">
+              <span>✏️</span> Editar
+            </button>
+            <button class="btn danger" onclick="deleteCliente(${u.id})">
+              <span>🗑️</span> Eliminar
+            </button>
+          </div>
+        `;
       clientesCont.appendChild(div);
     });
+    }
   }
 
-  const resCont = document.getElementById("adminReservas");
-  resCont.innerHTML = "";
-  reservas.forEach(res => {
-    const div = document.createElement("div");
-    div.className = "list-item";
-    const assigned = res.conductorId ? ` • Conductor: ${getUserName(res.conductorId)}` : "";
-    const ratingText = res.rating ? ` • ★ ${res.rating}` : "";
-    div.textContent = `${res.origen} → ${res.destino} • ${res.horario} • ${getUserName(res.clienteId)} • ${res.tipo} • ${res.estado}${assigned}${ratingText}`;
-    resCont.appendChild(div);
-  });
+  // Renderizar todas las reservas con estadísticas
+  renderTodasReservas();
 
   // invoices mock
   const invCont = document.getElementById("adminInvoices");
@@ -544,26 +1384,294 @@ function renderAdmin() {
     ratingEl.textContent = String(avg);
   }
 
-  // assignment selects
-  const assignReserva = document.getElementById("assignReserva");
-  const assignConductor = document.getElementById("assignConductor");
-  if (assignReserva && assignConductor) {
-    assignReserva.innerHTML = "";
-    reservas.forEach(r => {
-      const opt = document.createElement("option");
-      opt.value = String(r.id);
-      opt.textContent = `${r.id} • ${r.origen}→${r.destino} ${r.horario} ${r.conductorId?"(asignado)":""}`;
-      assignReserva.appendChild(opt);
-    });
-    assignConductor.innerHTML = "";
-    const users = storage.get("users", []);
-    users.filter(u => u.role === "conductor").forEach(c => {
-      const opt = document.createElement("option");
-      opt.value = String(c.id);
-      opt.textContent = `${c.nombre}`;
-      assignConductor.appendChild(opt);
-    });
+}
+
+function renderTodasReservas() {
+  const reservas = storage.get("reservas", []).sort((a, b) => b.id - a.id);
+  
+  // Actualizar estadísticas
+  const total = reservas.length;
+  const pendientes = reservas.filter(r => !r.conductorId).length;
+  const asignadas = reservas.filter(r => r.conductorId && r.estado !== "recogido").length;
+  const completadas = reservas.filter(r => r.estado === "recogido").length;
+  
+  document.getElementById("statTotalReservas").textContent = total;
+  document.getElementById("statPendientes").textContent = pendientes;
+  document.getElementById("statAsignadas").textContent = asignadas;
+  document.getElementById("statCompletadas").textContent = completadas;
+  
+  // Renderizar reservas por pestañas
+  renderReservasPorEstado();
+}
+
+function renderReservasPorEstado() {
+  const reservas = storage.get("reservas", []).sort((a, b) => b.id - a.id);
+  
+  // Filtrar por estado
+  const pendientes = reservas.filter(r => !r.conductorId);
+  const asignadas = reservas.filter(r => r.conductorId && r.estado !== "recogido");
+  const completadas = reservas.filter(r => r.estado === "recogido");
+  
+  // Renderizar cada pestaña
+  renderReservasEnContenedor("reservasPendientesList", pendientes, "pendientes");
+  renderReservasEnContenedor("reservasAsignadasList", asignadas, "asignadas");
+  renderReservasEnContenedor("reservasCompletadasList", completadas, "completadas");
+}
+
+function renderReservasEnContenedor(containerId, reservas, tipo) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = "";
+  
+  if (reservas.length === 0) {
+    const mensaje = tipo === "pendientes" ? "No hay reservas pendientes de asignar" :
+                    tipo === "asignadas" ? "No hay reservas asignadas" :
+                    "No hay reservas completadas";
+    cont.innerHTML = `<div class='text-muted'>${mensaje}</div>`;
+    return;
   }
+  
+  reservas.forEach(res => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    
+    const fechaCreacion = new Date(res.id).toLocaleDateString('es-ES');
+    const cliente = getUserName(res.clienteId);
+    const conductor = res.conductorId ? getUserName(res.conductorId) : 'Sin asignar';
+    
+    const estadoTexto = res.estado === 'recogido' ? 'Completada' :
+                       res.estado === 'en-curso' ? 'En curso' :
+                       res.conductorId ? 'Asignada' : 'Pendiente';
+    
+    const estadoBadge = res.estado === 'recogido' ? 'success' :
+                        res.estado === 'en-curso' ? 'warn' :
+                        res.conductorId ? 'badge' : '';
+    
+    const ratingText = res.rating ? ` • ★ ${res.rating}` : '';
+    
+    let actionButtons = `
+      <button class="btn secondary verReservaBtn" data-id="${res.id}">Ver</button>
+    `;
+    
+    if (tipo === "pendientes") {
+      actionButtons += `<button class="btn primary asignarReservaBtn" data-id="${res.id}">Asignar</button>`;
+    }
+    
+    if (tipo !== "completadas") {
+      actionButtons += `<button class="btn secondary editarReservaBtn" data-id="${res.id}">Editar</button>`;
+    }
+    
+    div.innerHTML = `
+      <div class="row">
+        <strong>${res.origen} → ${res.destino}</strong>
+        <span class="badge ${estadoBadge}">${estadoTexto}</span>
+      </div>
+      <div>Cliente: ${cliente} • Fecha: ${fechaCreacion} • Horario: ${res.horario}</div>
+      <div>Tipo: ${res.tipo} • Dirección: ${res.direccion}</div>
+      <div>Conductor: ${conductor} • Vehículo: ${res.vehiculo || 'Sin asignar'}</div>
+      <div>Pago: ${res.metodoPago} • Precio: $${res.precio}${res.promo ? ` • ${res.promo}` : ''}${ratingText}</div>
+      <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 12px;">
+        ${actionButtons}
+      </div>
+    `;
+    
+    cont.appendChild(div);
+  });
+  
+  // Event listeners
+  cont.querySelectorAll(".verReservaBtn").forEach(btn => 
+    btn.addEventListener("click", () => verReservaCompleta(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".asignarReservaBtn").forEach(btn => 
+    btn.addEventListener("click", () => abrirModalAsignar(Number(btn.dataset.id)))
+  );
+  cont.querySelectorAll(".editarReservaBtn").forEach(btn => 
+    btn.addEventListener("click", () => abrirModalEditar(Number(btn.dataset.id)))
+  );
+}
+
+function verReservaCompleta(reservaId) {
+  const reservas = storage.get("reservas", []);
+  const reserva = reservas.find(r => r.id === reservaId);
+  
+  if (!reserva) {
+    toast("No se encontró la reserva");
+    return;
+  }
+
+  const cliente = getUserName(reserva.clienteId);
+    const users = storage.get("users", []);
+  const clienteCompleto = users.find(u => u.id === reserva.clienteId);
+  const conductor = reserva.conductorId ? getUserName(reserva.conductorId) : 'Sin asignar';
+  
+  const estadoTexto = reserva.estado === 'recogido' ? 'Completada' :
+                     reserva.estado === 'en-curso' ? 'En curso' :
+                     reserva.conductorId ? 'Asignada' : 'Pendiente';
+  
+  const fechaCreacion = new Date(reserva.id).toLocaleDateString('es-ES');
+  
+  const detallesHTML = `
+    <div class="detalle-section">
+      <h4>📋 Información General</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">ID de Reserva:</span>
+        <span class="detalle-value">#${reserva.id}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Fecha de creación:</span>
+        <span class="detalle-value">${fechaCreacion}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Estado:</span>
+        <span class="detalle-value"><span class="badge">${estadoTexto}</span></span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>🚗 Detalles del Viaje</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Ruta:</span>
+        <span class="detalle-value">${reserva.origen} → ${reserva.destino}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Horario:</span>
+        <span class="detalle-value">${reserva.horario}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Tipo de servicio:</span>
+        <span class="detalle-value">${reserva.tipo}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Dirección de recogida:</span>
+        <span class="detalle-value">${reserva.direccion}</span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>👤 Cliente</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Nombre:</span>
+        <span class="detalle-value">${cliente}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Teléfono:</span>
+        <span class="detalle-value">${clienteCompleto?.telefono || 'No disponible'}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Email:</span>
+        <span class="detalle-value">${clienteCompleto?.email || 'No disponible'}</span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>🚙 Asignación</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Conductor:</span>
+        <span class="detalle-value">${conductor}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Vehículo:</span>
+        <span class="detalle-value">${reserva.vehiculo || 'Sin asignar'}</span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <h4>💰 Pago</h4>
+      <div class="detalle-item">
+        <span class="detalle-label">Precio:</span>
+        <span class="detalle-value">$${reserva.precio}</span>
+      </div>
+      <div class="detalle-item">
+        <span class="detalle-label">Método de pago:</span>
+        <span class="detalle-value">${reserva.metodoPago}</span>
+      </div>
+      ${reserva.promo ? `
+      <div class="detalle-item">
+        <span class="detalle-label">Promoción:</span>
+        <span class="detalle-value">${reserva.promo}</span>
+      </div>
+      ` : ''}
+      ${reserva.rating ? `
+      <div class="detalle-item">
+        <span class="detalle-label">Calificación:</span>
+        <span class="detalle-value">★ ${reserva.rating}/5</span>
+      </div>
+      ` : ''}
+    </div>
+  `;
+  
+  document.getElementById('verReservaContent').innerHTML = detallesHTML;
+  document.getElementById('verReservaModal').hidden = false;
+}
+
+function abrirModalAsignar(reservaId) {
+  const reservas = storage.get("reservas", []);
+  const reserva = reservas.find(r => r.id === reservaId);
+  
+  if (!reserva) {
+    toast("No se encontró la reserva");
+    return;
+  }
+  
+  // Mostrar información de la reserva
+  const infoHTML = `
+    <strong>Reserva #${reserva.id}</strong> - ${reserva.origen} → ${reserva.destino}<br>
+    Cliente: ${getUserName(reserva.clienteId)} • Horario: ${reserva.horario} • Tipo: ${reserva.tipo}
+  `;
+  document.getElementById('asignarReservaInfo').innerHTML = infoHTML;
+  
+  // Llenar conductores disponibles
+  const conductorSelect = document.getElementById('asignarConductor');
+  conductorSelect.innerHTML = '<option value="">Seleccionar conductor...</option>';
+  const users = storage.get('users', []);
+  users.filter(u => u.role === 'conductor').forEach(conductor => {
+    const option = document.createElement('option');
+    option.value = String(conductor.id);
+    option.textContent = conductor.nombre;
+    conductorSelect.appendChild(option);
+  });
+  
+  // Llenar vehículos disponibles
+  const vehiculoSelect = document.getElementById('asignarVehiculo');
+  vehiculoSelect.innerHTML = '<option value="">Seleccionar vehículo...</option>';
+  const flota = storage.get('flota', []);
+  flota.filter(v => v.estado === 'activo').forEach(vehiculo => {
+    const option = document.createElement('option');
+    option.value = vehiculo.placa;
+    option.textContent = `${vehiculo.placa} - ${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.capacidad} asientos)`;
+    vehiculoSelect.appendChild(option);
+  });
+  
+  // Prellenar datos
+  document.getElementById('asignarPrecio').value = reserva.precio || '';
+  document.getElementById('asignarHoraRecogida').value = reserva.horario || '';
+  
+  // Guardar ID de reserva para el submit
+  document.getElementById('asignarReservaForm').dataset.reservaId = reservaId;
+  
+  document.getElementById('asignarReservaModal').hidden = false;
+}
+
+function abrirModalEditar(reservaId) {
+  const reservas = storage.get("reservas", []);
+  const reserva = reservas.find(r => r.id === reservaId);
+  
+  if (!reserva) {
+    toast("No se encontró la reserva");
+    return;
+  }
+  
+  // Prellenar formulario
+  document.getElementById('editarEstado').value = reserva.estado || 'pendiente';
+  document.getElementById('editarMetodoPago').value = reserva.metodoPago || 'efectivo';
+  document.getElementById('editarPrecio').value = reserva.precio || '';
+  document.getElementById('editarPromo').value = reserva.promo || '';
+  document.getElementById('editarDireccion').value = reserva.direccion || '';
+  document.getElementById('editarNotas').value = reserva.notas || '';
+  
+  // Guardar ID de reserva para el submit
+  document.getElementById('editarReservaForm').dataset.reservaId = reservaId;
+  
+  document.getElementById('editarReservaModal').hidden = false;
 }
 
 // Forms & Nav wiring
@@ -594,6 +1702,49 @@ function wireEvents() {
       document.querySelectorAll('#view-admin .tab-panel').forEach(p => p.classList.remove('active'));
       const panel = document.getElementById(`tab-${tab}`);
       if (panel) panel.classList.add('active');
+    });
+  });
+
+  // conductor tabs
+  document.querySelectorAll('#view-conductor .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('#view-conductor .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#view-conductor .tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`conductor-tab-${tab}`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // asignaciones sub-tabs
+  document.querySelectorAll('.asig-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.getAttribute('data-status');
+      document.querySelectorAll('.asig-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.asig-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`asig-${status}`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // cliente tabs
+  document.querySelectorAll('#view-cliente .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('#view-cliente .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#view-cliente .tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`cliente-tab-${tab}`);
+      if (panel) panel.classList.add('active');
+      
+      // Actualizar contenido según la pestaña
+      if (tab === 'historial') {
+        renderHistorial();
+      } else if (tab === 'mis-viajes') {
+        renderMisViajes();
+      }
     });
   });
 
@@ -689,6 +1840,8 @@ function wireEvents() {
   // servicio selector
   const servicioTipo = document.getElementById("servicioTipo");
   if (servicioTipo) servicioTipo.addEventListener("change", onServicioChange);
+  // Inicializar descripción por defecto
+  updateServicioDescripcion("compartido");
   onServicioChange();
 
   // custom service form
@@ -718,7 +1871,7 @@ function wireEvents() {
     showView('admin-user-new');
   });
   document.getElementById('addFlotaBtn')?.addEventListener('click', () => {
-    toast('Función de agregar vehículo en desarrollo');
+    showView('admin-vehicle-new');
   });
 
   // admin create user form
@@ -765,6 +1918,929 @@ function wireEvents() {
       renderAdmin();
     });
   }
+
+  // admin create vehicle form
+  const avForm = document.getElementById('adminCreateVehicleForm');
+  if (avForm) {
+    document.getElementById('avCancelar')?.addEventListener('click', () => {
+      showView('admin');
+      renderAdmin();
+    });
+    
+    avForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const placa = document.getElementById('avPlaca').value.trim().toUpperCase();
+      const tipo = document.getElementById('avTipo').value;
+      const marca = document.getElementById('avMarca').value.trim();
+      const modelo = document.getElementById('avModelo').value.trim();
+      const año = Number(document.getElementById('avAño').value);
+      const capacidad = Number(document.getElementById('avCapacidad').value);
+      const color = document.getElementById('avColor').value.trim();
+      const estado = document.getElementById('avEstado').value;
+      const soat = document.getElementById('avSoat').value.trim();
+      const observaciones = document.getElementById('avObservaciones').value.trim();
+      
+      // Validaciones
+      if (!placa || !tipo || !marca || !modelo || !año || !capacidad) {
+        document.getElementById('avMsg').textContent = 'Complete todos los campos obligatorios';
+        return;
+      }
+      
+      const flota = storage.get('flota', []);
+      if (flota.some(v => v.placa.toUpperCase() === placa)) {
+        document.getElementById('avMsg').textContent = 'Ya existe un vehículo con esa placa';
+        return;
+      }
+      
+      const nuevoVehiculo = {
+        id: Date.now(),
+        placa,
+        tipo,
+        marca,
+        modelo,
+        año,
+        capacidad,
+        color,
+        conductor: '', // Sin conductor asignado al crear
+        conductorId: null,
+        estado,
+        soat,
+        observaciones,
+        fechaRegistro: new Date().toISOString()
+      };
+      
+      flota.push(nuevoVehiculo);
+      storage.set('flota', flota);
+      
+      toast('Vehículo agregado exitosamente');
+      showView('admin');
+      renderAdmin();
+    });
+  }
+
+  // Modal de detalles
+  const closeDetallesModal = document.getElementById('closeDetallesModal');
+  const closeDetallesModalBtn = document.getElementById('closeDetallesModalBtn');
+  const detallesModal = document.getElementById('detallesModal');
+  
+  const cerrarDetallesModal = () => {
+    detallesModal.hidden = true;
+  };
+  
+  closeDetallesModal?.addEventListener('click', cerrarDetallesModal);
+  closeDetallesModalBtn?.addEventListener('click', cerrarDetallesModal);
+  
+  // Cerrar modal al hacer click en el backdrop
+  detallesModal?.addEventListener('click', (e) => {
+    if (e.target === detallesModal) {
+      cerrarDetallesModal();
+    }
+  });
+
+  // viajes sub-tabs
+  document.querySelectorAll('.viajes-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.getAttribute('data-status');
+      document.querySelectorAll('.viajes-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.viajes-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`viajes-${status}`);
+      if (panel) panel.classList.add('active');
+      
+      // Actualizar contenido
+      renderMisViajes();
+    });
+  });
+
+  // Modales de reservas - Ver
+  const closeVerReservaModal = document.getElementById('closeVerReservaModal');
+  const closeVerReservaModalBtn = document.getElementById('closeVerReservaModalBtn');
+  const verReservaModal = document.getElementById('verReservaModal');
+  
+  const cerrarVerReservaModal = () => {
+    verReservaModal.hidden = true;
+  };
+  
+  closeVerReservaModal?.addEventListener('click', cerrarVerReservaModal);
+  closeVerReservaModalBtn?.addEventListener('click', cerrarVerReservaModal);
+  verReservaModal?.addEventListener('click', (e) => {
+    if (e.target === verReservaModal) cerrarVerReservaModal();
+  });
+
+  // Modales de reservas - Asignar
+  const closeAsignarReservaModal = document.getElementById('closeAsignarReservaModal');
+  const cancelarAsignarReserva = document.getElementById('cancelarAsignarReserva');
+  const confirmarAsignarReserva = document.getElementById('confirmarAsignarReserva');
+  const asignarReservaModal = document.getElementById('asignarReservaModal');
+  
+  const cerrarAsignarReservaModal = () => {
+    asignarReservaModal.hidden = true;
+  };
+  
+  closeAsignarReservaModal?.addEventListener('click', cerrarAsignarReservaModal);
+  cancelarAsignarReserva?.addEventListener('click', cerrarAsignarReservaModal);
+  asignarReservaModal?.addEventListener('click', (e) => {
+    if (e.target === asignarReservaModal) cerrarAsignarReservaModal();
+  });
+
+  confirmarAsignarReserva?.addEventListener('click', () => {
+    const form = document.getElementById('asignarReservaForm');
+    const reservaId = Number(form.dataset.reservaId);
+    const conductorId = Number(document.getElementById('asignarConductor').value);
+    const vehiculo = document.getElementById('asignarVehiculo').value;
+    const horaRecogida = document.getElementById('asignarHoraRecogida').value;
+    const duracion = Number(document.getElementById('asignarDuracion').value);
+    const observaciones = document.getElementById('asignarObservaciones').value.trim();
+    const precio = Number(document.getElementById('asignarPrecio').value);
+    const prioridad = document.getElementById('asignarPrioridad').value;
+    
+    if (!conductorId || !vehiculo || !horaRecogida || !duracion || !precio) {
+      document.getElementById('asignarReservaMsg').textContent = 'Complete todos los campos obligatorios';
+      return;
+    }
+    
+    const reservas = storage.get('reservas', []);
+    const users = storage.get('users', []);
+    const conductor = users.find(u => u.id === conductorId);
+    
+    const nuevasReservas = reservas.map(r => {
+      if (r.id === reservaId) {
+        return {
+          ...r,
+          conductorId,
+          vehiculo,
+          horaRecogida,
+          duracion,
+          observaciones,
+          precio,
+          prioridad,
+          estado: 'confirmada',
+          fechaAsignacion: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+    
+    storage.set('reservas', nuevasReservas);
+    cerrarAsignarReservaModal();
+    renderAdmin();
+    toast('Reserva asignada exitosamente');
+  });
+
+  // Modales de reservas - Editar
+  const closeEditarReservaModal = document.getElementById('closeEditarReservaModal');
+  const cancelarEditarReserva = document.getElementById('cancelarEditarReserva');
+  const confirmarEditarReserva = document.getElementById('confirmarEditarReserva');
+  const editarReservaModal = document.getElementById('editarReservaModal');
+  
+  const cerrarEditarReservaModal = () => {
+    editarReservaModal.hidden = true;
+  };
+  
+  closeEditarReservaModal?.addEventListener('click', cerrarEditarReservaModal);
+  cancelarEditarReserva?.addEventListener('click', cerrarEditarReservaModal);
+  editarReservaModal?.addEventListener('click', (e) => {
+    if (e.target === editarReservaModal) cerrarEditarReservaModal();
+  });
+
+  confirmarEditarReserva?.addEventListener('click', () => {
+    const form = document.getElementById('editarReservaForm');
+    const reservaId = Number(form.dataset.reservaId);
+    const estado = document.getElementById('editarEstado').value;
+    const metodoPago = document.getElementById('editarMetodoPago').value;
+    const precio = Number(document.getElementById('editarPrecio').value);
+    const promo = document.getElementById('editarPromo').value.trim();
+    const direccion = document.getElementById('editarDireccion').value.trim();
+    const notas = document.getElementById('editarNotas').value.trim();
+    
+    if (!estado || !metodoPago || !precio || !direccion) {
+      document.getElementById('editarReservaMsg').textContent = 'Complete todos los campos obligatorios';
+      return;
+    }
+    
+    const reservas = storage.get('reservas', []);
+    const nuevasReservas = reservas.map(r => {
+      if (r.id === reservaId) {
+        return {
+          ...r,
+          estado,
+          metodoPago,
+          precio,
+          promo: promo || null,
+          direccion,
+          notas,
+          fechaEdicion: new Date().toISOString()
+        };
+      }
+      return r;
+    });
+    
+    storage.set('reservas', nuevasReservas);
+    cerrarEditarReservaModal();
+    renderAdmin();
+    toast('Reserva actualizada exitosamente');
+  });
+
+  // reservas sub-tabs
+  document.querySelectorAll('.reservas-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.getAttribute('data-status');
+      document.querySelectorAll('.reservas-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.reservas-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`reservas-${status}`);
+      if (panel) panel.classList.add('active');
+      
+      // Actualizar contenido
+      renderReservasPorEstado();
+    });
+  });
+
+  // Event listeners para modales de usuarios
+  const confirmarEditarUsuarioBtn = document.getElementById('confirmarEditarUsuario');
+  if (confirmarEditarUsuarioBtn) {
+    confirmarEditarUsuarioBtn.addEventListener('click', () => {
+      confirmarEditarUsuario();
+    });
+  }
+
+  // Event listeners para modales de clientes
+  const confirmarEditarClienteBtn = document.getElementById('confirmarEditarCliente');
+  if (confirmarEditarClienteBtn) {
+    confirmarEditarClienteBtn.addEventListener('click', () => {
+      confirmarEditarCliente();
+    });
+  }
+
+  // Event listeners para modales de vehículos
+  const confirmarEditarVehiculoBtn = document.getElementById('confirmarEditarVehiculo');
+  if (confirmarEditarVehiculoBtn) {
+    confirmarEditarVehiculoBtn.addEventListener('click', () => {
+      confirmarEditarVehiculo();
+    });
+  }
+
+  // Event listeners para cerrar modales al hacer clic fuera
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+
+  // Asegurar que todos los modales estén cerrados al inicializar
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.style.display = 'none';
+  });
+}
+
+// Funciones para modales de usuarios
+function verUsuario(userId) {
+  const users = storage.get("users", []);
+  const mockDrivers = [
+    { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1', cedula: '000000001', email: 'conductor1@demo.com' },
+    { id: 9002, role: 'conductor', nombre: 'Conductor Demo 2', cedula: '000000002', email: 'conductor2@demo.com' },
+    { id: 9003, role: 'conductor', nombre: 'Conductor Demo 3', cedula: '000000003', email: 'conductor3@demo.com' },
+  ];
+  const allUsers = [...users, ...mockDrivers];
+  const usuario = allUsers.find(u => u.id === userId);
+  
+  if (!usuario) {
+    toast('Usuario no encontrado');
+    return;
+  }
+
+  const reservas = storage.get("reservas", []);
+  const resAsignadas = reservas.filter(r => r.conductorId === userId);
+  const resCompletadas = resAsignadas.filter(r => r.estado === 'recogido');
+  const flota = storage.get("flota", []);
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5 },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7 },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4 },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5 },
+  ];
+  const allFlota = [...flota, ...mockFlota];
+  const vehiculo = allFlota.find(v => v.conductor === usuario.nombre);
+
+  const content = document.getElementById('verUsuarioContent');
+  content.innerHTML = `
+    <div class="view-section">
+      <div class="view-section-title">👤 Información Personal</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Nombre Completo</div>
+          <div class="view-detail-value">${usuario.nombre}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Cédula</div>
+          <div class="view-detail-value">${usuario.cedula}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Email</div>
+          <div class="view-detail-value ${!usuario.email ? 'empty' : ''}">${usuario.email || 'No registrado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Teléfono</div>
+          <div class="view-detail-value ${!usuario.telefono ? 'empty' : ''}">${usuario.telefono || 'No registrado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Rol</div>
+          <div class="view-detail-value">${usuario.role === 'conductor' ? 'Conductor' : 'Administrador'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">🚗 Información de Trabajo</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Vehículo Asignado</div>
+          <div class="view-detail-value ${!vehiculo ? 'empty' : ''}">${vehiculo ? vehiculo.placa : 'Sin asignar'}</div>
+        </div>
+        ${vehiculo ? `
+        <div class="view-detail-item">
+          <div class="view-detail-label">Tipo de Vehículo</div>
+          <div class="view-detail-value">${vehiculo.tipo || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Capacidad</div>
+          <div class="view-detail-value">${vehiculo.capacidad} personas</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">📊 Estadísticas de Rendimiento</div>
+      <div class="view-stats-grid">
+        <div class="view-stat-card">
+          <div class="view-stat-number">${resAsignadas.length}</div>
+          <div class="view-stat-label">Total Asignadas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${resCompletadas.length}</div>
+          <div class="view-stat-label">Completadas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${resAsignadas.length - resCompletadas.length}</div>
+          <div class="view-stat-label">En Proceso</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${resCompletadas.length > 0 ? Math.round((resCompletadas.length/resAsignadas.length)*100) : 0}%</div>
+          <div class="view-stat-label">Tasa Éxito</div>
+        </div>
+      </div>
+    </div>
+
+    ${resAsignadas.length > 0 ? `
+    <div class="view-section">
+      <div class="view-section-title">📋 Reservas Recientes</div>
+      <div class="view-reservas-list">
+        ${resAsignadas.slice(0, 5).map(r => {
+          const estado = r.estado === 'recogido' ? 'completado' : 
+                        r.estado === 'en-curso' ? 'en-curso' : 
+                        'asignado';
+          return `
+            <div class="view-reserva-item">
+              <div class="view-reserva-header">
+                <div class="view-reserva-route">${r.origen} → ${r.destino}</div>
+                <div class="view-reserva-status ${estado}">${estado}</div>
+              </div>
+              <div class="view-reserva-details">
+                ${new Date(r.id).toLocaleDateString('es-ES')} • ${r.horario} • $${r.precio}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+
+  document.getElementById('verUsuarioModal').style.display = 'block';
+}
+
+function editarUsuario(userId) {
+  const users = storage.get("users", []);
+  const mockDrivers = [
+    { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1', cedula: '000000001', email: 'conductor1@demo.com' },
+    { id: 9002, role: 'conductor', nombre: 'Conductor Demo 2', cedula: '000000002', email: 'conductor2@demo.com' },
+    { id: 9003, role: 'conductor', nombre: 'Conductor Demo 3', cedula: '000000003', email: 'conductor3@demo.com' },
+  ];
+  const allUsers = [...users, ...mockDrivers];
+  const usuario = allUsers.find(u => u.id === userId);
+  
+  if (!usuario) {
+    toast('Usuario no encontrado');
+    return;
+  }
+
+  // Pre-llenar el formulario
+  document.getElementById('euNombre').value = usuario.nombre || '';
+  document.getElementById('euCedula').value = usuario.cedula || '';
+  document.getElementById('euEmail').value = usuario.email || '';
+  document.getElementById('euTelefono').value = usuario.telefono || '';
+  document.getElementById('euRole').value = usuario.role || 'conductor';
+
+  // Guardar el ID para usar en confirmar
+  document.getElementById('editarUsuarioForm').dataset.userId = userId;
+
+  document.getElementById('editarUsuarioModal').style.display = 'block';
+}
+
+function confirmarEditarUsuario() {
+  const form = document.getElementById('editarUsuarioForm');
+  const userId = Number(form.dataset.userId);
+  
+  const datosActualizados = {
+    nombre: document.getElementById('euNombre').value,
+    cedula: document.getElementById('euCedula').value,
+    email: document.getElementById('euEmail').value,
+    telefono: document.getElementById('euTelefono').value,
+    role: document.getElementById('euRole').value
+  };
+
+  const users = storage.get("users", []);
+  const userIndex = users.findIndex(u => u.id === userId);
+  
+  if (userIndex !== -1) {
+    users[userIndex] = { ...users[userIndex], ...datosActualizados };
+    storage.set("users", users);
+    cerrarEditarUsuarioModal();
+    renderAdmin();
+    toast('Usuario actualizado exitosamente');
+  } else {
+    toast('Error: Usuario no encontrado en la base de datos real');
+  }
+}
+
+function cerrarVerUsuarioModal() {
+  document.getElementById('verUsuarioModal').style.display = 'none';
+}
+
+function cerrarEditarUsuarioModal() {
+  document.getElementById('editarUsuarioModal').style.display = 'none';
+  document.getElementById('editarUsuarioForm').reset();
+}
+
+// Funciones para modales de clientes
+function verCliente(clienteId) {
+  const users = storage.get("users", []);
+  const mockClients = storage.get('mockClients', []);
+  const allClientes = [
+    ...users.filter(u => u.role === 'cliente'),
+    ...mockClients.map(m => ({ ...m, role: 'cliente' }))
+  ];
+  const cliente = allClientes.find(c => c.id === clienteId);
+  
+  if (!cliente) {
+    toast('Cliente no encontrado');
+    return;
+  }
+
+  const reservas = storage.get("reservas", []);
+  const misReservas = reservas.filter(r => r.clienteId === clienteId);
+  const completadas = misReservas.filter(r => r.estado === 'recogido');
+  const pendientes = misReservas.filter(r => !r.conductorId);
+  const gastoTotal = misReservas.reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+  const rated = misReservas.filter(r => typeof r.rating === 'number');
+  const avgRating = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(1) : null;
+
+  // Determinar nivel del cliente
+  let clientLevel = '';
+  let levelClass = '';
+  if (misReservas.length === 0) {
+    clientLevel = '🆕 Nuevo';
+    levelClass = 'level-new';
+  } else if (misReservas.length >= 10) {
+    clientLevel = '⭐ VIP';
+    levelClass = 'level-vip';
+  } else if (misReservas.length >= 5) {
+    clientLevel = '💎 Premium';
+    levelClass = 'level-premium';
+  } else {
+    clientLevel = '👤 Regular';
+    levelClass = 'level-regular';
+  }
+
+  const content = document.getElementById('verClienteContent');
+  content.innerHTML = `
+    <div class="view-section">
+      <div class="view-section-title">👤 Información Personal</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Nombre Completo</div>
+          <div class="view-detail-value">${cliente.nombre}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Cédula</div>
+          <div class="view-detail-value">${cliente.cedula}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Email</div>
+          <div class="view-detail-value ${!cliente.email ? 'empty' : ''}">${cliente.email || 'No registrado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Teléfono</div>
+          <div class="view-detail-value ${!cliente.telefono ? 'empty' : ''}">${cliente.telefono || 'No registrado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Nivel de Cliente</div>
+          <div class="view-detail-value">
+            <span class="client-level-badge ${levelClass}">${clientLevel}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">📊 Estadísticas de Uso</div>
+      <div class="view-stats-grid">
+        <div class="view-stat-card">
+          <div class="view-stat-number">${misReservas.length}</div>
+          <div class="view-stat-label">Total Reservas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${completadas.length}</div>
+          <div class="view-stat-label">Completadas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${pendientes}</div>
+          <div class="view-stat-label">Pendientes</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">$${gastoTotal}</div>
+          <div class="view-stat-label">Gasto Total</div>
+        </div>
+        ${avgRating ? `
+        <div class="view-stat-card">
+          <div class="view-stat-number">${avgRating}/5</div>
+          <div class="view-stat-label">Calificación</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+
+    ${misReservas.length > 0 ? `
+    <div class="view-section">
+      <div class="view-section-title">📋 Historial de Reservas</div>
+      <div class="view-reservas-list">
+        ${misReservas.slice(0, 5).map(r => {
+          const estado = r.estado === 'recogido' ? 'completado' : 
+                        r.estado === 'en-curso' ? 'en-curso' : 
+                        r.conductorId ? 'asignado' : 'pendiente';
+          return `
+            <div class="view-reserva-item">
+              <div class="view-reserva-header">
+                <div class="view-reserva-route">${r.origen} → ${r.destino}</div>
+                <div class="view-reserva-status ${estado}">${estado}</div>
+              </div>
+              <div class="view-reserva-details">
+                ${new Date(r.id).toLocaleDateString('es-ES')} • ${r.horario} • $${r.precio}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+
+  document.getElementById('verClienteModal').style.display = 'block';
+}
+
+function editarCliente(clienteId) {
+  const users = storage.get("users", []);
+  const mockClients = storage.get('mockClients', []);
+  const allClientes = [
+    ...users.filter(u => u.role === 'cliente'),
+    ...mockClients.map(m => ({ ...m, role: 'cliente' }))
+  ];
+  const cliente = allClientes.find(c => c.id === clienteId);
+  
+  if (!cliente) {
+    toast('Cliente no encontrado');
+    return;
+  }
+
+  // Pre-llenar el formulario
+  document.getElementById('ecNombre').value = cliente.nombre || '';
+  document.getElementById('ecCedula').value = cliente.cedula || '';
+  document.getElementById('ecEmail').value = cliente.email || '';
+  document.getElementById('ecTelefono').value = cliente.telefono || '';
+  document.getElementById('ecDireccion').value = cliente.direccion || '';
+
+  // Guardar el ID para usar en confirmar
+  document.getElementById('editarClienteForm').dataset.clienteId = clienteId;
+
+  document.getElementById('editarClienteModal').style.display = 'block';
+}
+
+function confirmarEditarCliente() {
+  const form = document.getElementById('editarClienteForm');
+  const clienteId = Number(form.dataset.clienteId);
+  
+  const datosActualizados = {
+    nombre: document.getElementById('ecNombre').value,
+    cedula: document.getElementById('ecCedula').value,
+    email: document.getElementById('ecEmail').value,
+    telefono: document.getElementById('ecTelefono').value,
+    direccion: document.getElementById('ecDireccion').value
+  };
+
+  const users = storage.get("users", []);
+  const mockClients = storage.get('mockClients', []);
+  
+  // Intentar actualizar en users
+  const userIndex = users.findIndex(u => u.id === clienteId);
+  if (userIndex !== -1) {
+    users[userIndex] = { ...users[userIndex], ...datosActualizados };
+    storage.set("users", users);
+  } else {
+    // Intentar actualizar en mockClients
+    const clientIndex = mockClients.findIndex(c => c.id === clienteId);
+    if (clientIndex !== -1) {
+      mockClients[clientIndex] = { ...mockClients[clientIndex], ...datosActualizados };
+      storage.set("mockClients", mockClients);
+    }
+  }
+  
+  cerrarEditarClienteModal();
+  renderAdmin();
+  toast('Cliente actualizado exitosamente');
+}
+
+function cerrarVerClienteModal() {
+  document.getElementById('verClienteModal').style.display = 'none';
+}
+
+function cerrarEditarClienteModal() {
+  document.getElementById('editarClienteModal').style.display = 'none';
+  document.getElementById('editarClienteForm').reset();
+}
+
+// Funciones para modales de vehículos
+function verVehiculo(placa) {
+  const flota = storage.get("flota", []);
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5, tipo: 'sedan', marca: 'Toyota', modelo: 'Corolla', año: 2020, color: 'Blanco' },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7, tipo: 'suv', marca: 'Honda', modelo: 'CR-V', año: 2021, color: 'Negro' },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4, tipo: 'sedan', marca: 'Nissan', modelo: 'Sentra', año: 2019, color: 'Gris' },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5, tipo: 'sedan', marca: 'Chevrolet', modelo: 'Cruze', año: 2022, color: 'Azul' },
+  ];
+  const allFlota = [...flota, ...mockFlota];
+  const vehiculo = allFlota.find(v => v.placa === placa);
+  
+  if (!vehiculo) {
+    toast('Vehículo no encontrado');
+    return;
+  }
+
+  const reservas = storage.get("reservas", []);
+  const viajesVehiculo = reservas.filter(r => r.vehiculo === placa);
+  const viajesCompletados = viajesVehiculo.filter(r => r.estado === 'recogido');
+  const viajesActivos = viajesVehiculo.filter(r => r.estado !== 'recogido');
+  const ingresosTotales = viajesVehiculo.reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+
+  // Iconos por tipo
+  const tipoIconos = {
+    'sedan': '🚗',
+    'suv': '🚙',
+    'van': '🚐',
+    'camioneta': '🛻',
+    'bus': '🚌'
+  };
+  const tipoIcon = tipoIconos[vehiculo.tipo?.toLowerCase()] || '🚗';
+
+  // Estado del vehículo
+  const estado = viajesActivos.length > 0 ? 'En Servicio' : 'Disponible';
+  const estadoClass = viajesActivos.length > 0 ? 'status-busy' : 'status-available';
+
+  const content = document.getElementById('verVehiculoContent');
+  content.innerHTML = `
+    <div class="view-section">
+      <div class="view-section-title">${tipoIcon} Información del Vehículo</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Placa</div>
+          <div class="view-detail-value">${vehiculo.placa}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Tipo</div>
+          <div class="view-detail-value">${vehiculo.tipo || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Marca</div>
+          <div class="view-detail-value">${vehiculo.marca || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Modelo</div>
+          <div class="view-detail-value">${vehiculo.modelo || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Año</div>
+          <div class="view-detail-value">${vehiculo.año || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Color</div>
+          <div class="view-detail-value">${vehiculo.color || 'No especificado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Capacidad</div>
+          <div class="view-detail-value">${vehiculo.capacidad || 'N/A'} personas</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Estado</div>
+          <div class="view-detail-value">
+            <span class="vehicle-status-badge ${estadoClass}">${estado}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">👤 Asignación</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Conductor Asignado</div>
+          <div class="view-detail-value ${!vehiculo.conductor ? 'empty' : ''}">${vehiculo.conductor || 'Sin asignar'}</div>
+        </div>
+        ${vehiculo.observaciones ? `
+        <div class="view-detail-item">
+          <div class="view-detail-label">Observaciones</div>
+          <div class="view-detail-value">${vehiculo.observaciones}</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">📊 Estadísticas Operacionales</div>
+      <div class="view-stats-grid">
+        <div class="view-stat-card">
+          <div class="view-stat-number">${viajesVehiculo.length}</div>
+          <div class="view-stat-label">Total Viajes</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${viajesCompletados.length}</div>
+          <div class="view-stat-label">Completados</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${viajesActivos.length}</div>
+          <div class="view-stat-label">Activos</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">$${ingresosTotales}</div>
+          <div class="view-stat-label">Ingresos</div>
+        </div>
+      </div>
+    </div>
+
+    ${viajesVehiculo.length > 0 ? `
+    <div class="view-section">
+      <div class="view-section-title">📋 Historial de Servicios</div>
+      <div class="view-reservas-list">
+        ${viajesVehiculo.slice(0, 5).map(r => {
+          const estado = r.estado === 'recogido' ? 'completado' : 
+                        r.estado === 'en-curso' ? 'en-curso' : 
+                        'asignado';
+          return `
+            <div class="view-reserva-item">
+              <div class="view-reserva-header">
+                <div class="view-reserva-route">${r.origen} → ${r.destino}</div>
+                <div class="view-reserva-status ${estado}">${estado}</div>
+              </div>
+              <div class="view-reserva-details">
+                ${new Date(r.id).toLocaleDateString('es-ES')} • ${r.horario} • $${r.precio}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+
+  document.getElementById('verVehiculoModal').style.display = 'block';
+}
+
+function editarVehiculo(placa) {
+  const flota = storage.get("flota", []);
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5, tipo: 'sedan', marca: 'Toyota', modelo: 'Corolla', año: 2020, color: 'Blanco' },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7, tipo: 'suv', marca: 'Honda', modelo: 'CR-V', año: 2021, color: 'Negro' },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4, tipo: 'sedan', marca: 'Nissan', modelo: 'Sentra', año: 2019, color: 'Gris' },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5, tipo: 'sedan', marca: 'Chevrolet', modelo: 'Cruze', año: 2022, color: 'Azul' },
+  ];
+  const allFlota = [...flota, ...mockFlota];
+  const vehiculo = allFlota.find(v => v.placa === placa);
+  
+  if (!vehiculo) {
+    toast('Vehículo no encontrado');
+    return;
+  }
+
+  // Pre-llenar el formulario
+  document.getElementById('evPlaca').value = vehiculo.placa || '';
+  document.getElementById('evTipo').value = vehiculo.tipo || 'sedan';
+  document.getElementById('evMarca').value = vehiculo.marca || '';
+  document.getElementById('evModelo').value = vehiculo.modelo || '';
+  document.getElementById('evAño').value = vehiculo.año || '';
+  document.getElementById('evCapacidad').value = vehiculo.capacidad || '';
+  document.getElementById('evColor').value = vehiculo.color || '';
+  document.getElementById('evObservaciones').value = vehiculo.observaciones || '';
+
+  // Poblar select de conductores
+  populateEditConductorSelect();
+  document.getElementById('evConductor').value = vehiculo.conductor || '';
+
+  // Guardar la placa para usar en confirmar
+  document.getElementById('editarVehiculoForm').dataset.placa = placa;
+
+  document.getElementById('editarVehiculoModal').style.display = 'block';
+}
+
+function populateEditConductorSelect() {
+  const select = document.getElementById('evConductor');
+  if (!select) return;
+  
+  const users = storage.get("users", []);
+  const mockDrivers = [
+    { id: 9001, role: 'conductor', nombre: 'Conductor Demo 1' },
+    { id: 9002, role: 'conductor', nombre: 'Conductor Demo 2' },
+    { id: 9003, role: 'conductor', nombre: 'Conductor Demo 3' },
+  ];
+  
+  const conductores = [...users.filter(u => u.role === 'conductor'), ...mockDrivers];
+  
+  // Limpiar opciones existentes excepto la primera
+  select.innerHTML = '<option value="">Sin asignar</option>';
+  
+  conductores.forEach(conductor => {
+    const option = document.createElement('option');
+    option.value = conductor.nombre;
+    option.textContent = conductor.nombre;
+    select.appendChild(option);
+  });
+}
+
+function confirmarEditarVehiculo() {
+  const form = document.getElementById('editarVehiculoForm');
+  const placa = form.dataset.placa;
+  
+  const datosActualizados = {
+    placa: document.getElementById('evPlaca').value,
+    tipo: document.getElementById('evTipo').value,
+    marca: document.getElementById('evMarca').value,
+    modelo: document.getElementById('evModelo').value,
+    año: document.getElementById('evAño').value,
+    capacidad: document.getElementById('evCapacidad').value,
+    color: document.getElementById('evColor').value,
+    conductor: document.getElementById('evConductor').value,
+    observaciones: document.getElementById('evObservaciones').value
+  };
+
+  const flota = storage.get("flota", []);
+  const vehiculoIndex = flota.findIndex(v => v.placa === placa);
+  
+  if (vehiculoIndex !== -1) {
+    flota[vehiculoIndex] = { ...flota[vehiculoIndex], ...datosActualizados };
+    storage.set("flota", flota);
+    cerrarEditarVehiculoModal();
+    renderAdmin();
+    toast('Vehículo actualizado exitosamente');
+  } else {
+    toast('Error: Vehículo no encontrado en la base de datos real');
+  }
+}
+
+function cerrarVerVehiculoModal() {
+  document.getElementById('verVehiculoModal').style.display = 'none';
+}
+
+function cerrarEditarVehiculoModal() {
+  document.getElementById('editarVehiculoModal').style.display = 'none';
+  document.getElementById('editarVehiculoForm').reset();
+}
+
+function populateConductorSelect() {
+  const select = document.getElementById('avConductor');
+  if (!select) return;
+  
+  // Limpiar opciones existentes excepto la primera
+  select.innerHTML = '<option value="">Sin asignar</option>';
+  
+  const users = storage.get('users', []);
+  const conductores = users.filter(u => u.role === 'conductor');
+  
+  conductores.forEach(conductor => {
+    const option = document.createElement('option');
+    option.value = String(conductor.id);
+    option.textContent = conductor.nombre;
+    select.appendChild(option);
+  });
 }
 
 // Admin CRUD functions
@@ -926,7 +3002,13 @@ function onServicioChange() {
   const tipo = getServicioTipo();
   const compartido = document.getElementById("compartidoPanel");
   const customPanel = document.getElementById("customServicePanel");
-  const extraLabel = document.getElementById("csExtraLabel");
+  const servicioPrivadoFields = document.getElementById("servicioPrivadoFields");
+  const servicioEncomiendaFields = document.getElementById("servicioEncomiendaFields");
+  const descripcionDiv = document.getElementById("servicioDescripcion");
+  
+  // Actualizar descripción del servicio
+  updateServicioDescripcion(tipo);
+  
   if (!compartido || !customPanel) return;
   if (tipo === "compartido") {
     compartido.hidden = false;
@@ -934,8 +3016,44 @@ function onServicioChange() {
   } else {
     compartido.hidden = true;
     customPanel.hidden = false;
+    
+    // Mostrar campos específicos según el tipo de servicio
+    if (servicioPrivadoFields) {
+      servicioPrivadoFields.style.display = tipo === "privado" ? "block" : "none";
+    }
+    if (servicioEncomiendaFields) {
+      servicioEncomiendaFields.style.display = tipo === "encomienda" ? "block" : "none";
+    }
   }
-  if (extraLabel) extraLabel.hidden = tipo !== "encomienda";
+}
+
+function updateServicioDescripcion(tipo) {
+  const descripcionDiv = document.getElementById("servicioDescripcion");
+  if (!descripcionDiv) return;
+  
+  // Remover clases anteriores
+  descripcionDiv.className = "servicio-descripcion";
+  
+  let descripcion = "";
+  
+  switch(tipo) {
+    case "compartido":
+      descripcion = "🚐 <strong>Servicio Compartido:</strong> Viaja con otros pasajeros en rutas fijas establecidas. Reserva tu asiento y disfruta de tarifas económicas en horarios programados.";
+      descripcionDiv.classList.add("compartido");
+      break;
+    case "privado":
+      descripcion = "🚗 <strong>Servicio Privado:</strong> Vehículo exclusivo para ti y tu grupo. Define tu origen, destino y horario. Ideal para mayor comodidad y privacidad.";
+      descripcionDiv.classList.add("privado");
+      break;
+    case "encomienda":
+      descripcion = "📦 <strong>Encomienda Express:</strong> Envío rápido y seguro de paquetes y documentos. Servicio puerta a puerta con seguimiento en tiempo real.";
+      descripcionDiv.classList.add("encomienda");
+      break;
+    default:
+      descripcion = "Selecciona un tipo de servicio para ver su descripción";
+  }
+  
+  descripcionDiv.innerHTML = `<p>${descripcion}</p>`;
 }
 
 function handleCustomServiceSubmit(e) {
@@ -943,16 +3061,69 @@ function handleCustomServiceSubmit(e) {
   const tipo = getServicioTipo();
   const origen = document.getElementById("csOrigen").value.trim();
   const destino = document.getElementById("csDestino").value.trim();
+  const fecha = document.getElementById("csFecha").value;
   const horario = document.getElementById("csHorario").value.trim();
-  const precio = Number(document.getElementById("csPrecio").value);
-  if (!origen || !destino || !horario || !precio) return;
+  
+  if (!origen || !destino || !fecha || !horario) {
+    toast("Por favor completa todos los campos obligatorios");
+    return;
+  }
+  
+  let servicioDetalles = { tipo, origen, destino, fecha, horario };
+  
+  if (tipo === "privado") {
+    const personas = document.getElementById("csPersonas").value;
+    const tipoVehiculo = document.getElementById("csTipoVehiculo").value;
+    const comentarios = document.getElementById("csComentarios").value.trim();
+    
+    if (!personas) {
+      toast("Por favor indica el número de pasajeros");
+      return;
+    }
+    
+    servicioDetalles = {
+      ...servicioDetalles,
+      personas: Number(personas),
+      tipoVehiculo,
+      comentarios
+    };
+  } else if (tipo === "encomienda") {
+    const tamanoPaquete = document.getElementById("csTamanoPaquete").value;
+    const tipoContenido = document.getElementById("csTipoContenido").value;
+    const descripcionPaquete = document.getElementById("csDescripcionPaquete").value.trim();
+    
+    servicioDetalles = {
+      ...servicioDetalles,
+      tamanoPaquete,
+      tipoContenido,
+      descripcionPaquete
+    };
+  }
+  
   selectedRutaId = null;
-  selectedCustomService = { id: Date.now(), origen, destino, horario, precio, asientos: tipo === "privado" ? 1 : 0 };
+  selectedCustomService = { 
+    id: Date.now(), 
+    ...servicioDetalles,
+    precio: 0, // Se calculará después
+    asientos: tipo === "privado" ? Number(servicioDetalles.personas || 1) : 0 
+  };
+  
   // open reserve panel with sensible defaults
   document.getElementById("tipoReserva").value = (tipo === "encomienda") ? "encomienda" : "asiento";
   const info = document.getElementById("reservaInfo");
-  info.textContent = `${origen} → ${destino} • ${horario} • $${precio} • ${tipo}`;
+  
+  let infoText = `${origen} → ${destino} • ${fecha} ${horario} • ${tipo}`;
+  if (tipo === "privado") {
+    infoText += ` • ${servicioDetalles.personas} persona(s) • ${servicioDetalles.tipoVehiculo}`;
+  } else if (tipo === "encomienda") {
+    infoText += ` • Paquete ${servicioDetalles.tamanoPaquete}`;
+  }
+  infoText += " • Precio: Por cotizar";
+  
+  info.textContent = infoText;
   document.getElementById("reservaPanel").hidden = false;
+  
+  toast("Solicitud de cotización enviada. Te contactaremos pronto con el precio.");
 }
 
 // Tracking (mock)
@@ -1023,6 +3194,12 @@ setInterval(() => {
 // Init
 seedIfEmpty();
 wireEvents();
+
+// Cerrar todos los modales al inicializar la aplicación
+document.querySelectorAll('.modal').forEach(modal => {
+  modal.style.display = 'none';
+});
+
 updateSessionUi();
 showView("auth");
 
