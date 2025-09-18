@@ -635,6 +635,22 @@ function renderAsignacionesEnContenedor(containerId, reservas, tipo) {
   );
 }
 
+// Geocodificación directa por dirección (Nominatim)
+async function geocodeAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+    const data = await res.json();
+    if (Array.isArray(data) && data.length) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+    }
+    return null;
+  } catch { return null; }
+}
+
+let driverDetailLeaflet = null;
+let driverDetailMarker = null;
+
 function verDetallesAsignacion(reservaId) {
   const reservas = storage.get('reservas', []);
   const users = storage.get('users', []);
@@ -647,17 +663,60 @@ function verDetallesAsignacion(reservaId) {
     const div = document.createElement('div');
     div.className = 'list-item';
     div.innerHTML = `
-      <div class=\"row\"><strong>${r.origen} → ${r.destino}</strong><span class=\"badge\">${r.horario}</span></div>
-      <div><strong>Cliente:</strong> ${cliente}</div>
-      <div><strong>Tipo:</strong> ${r.tipo} • <strong>Servicio:</strong> ${r.servicio}</div>
-      <div><strong>Dirección:</strong> ${r.direccion}</div>
-      <div><strong>Método de pago:</strong> ${r.metodoPago}${r.promo?` • <strong>Cupón:</strong> ${r.promo}`:''}</div>
-      <div><strong>Precio:</strong> $${r.precio}</div>
+      <div class=\"row\" style=\"gap:10px; align-items:center; margin-bottom:8px\"><strong>Ruta</strong><span class=\"badge\">${r.origen} → ${r.destino}</span><span class=\"badge\">${r.horario}</span></div>
+      <div class=\"detail-grid\">
+        <div class=\"detail-section\">
+          <div class=\"label\">Origen</div>
+          <div class=\"value\">${r.origen}</div>
+          <div class=\"label\">Destino</div>
+          <div class=\"value\">${r.destino}</div>
+          <div class=\"label\">Punto de recogida</div>
+          <div class=\"value\" id=\"driverDetailAddress\">${r.direccion}</div>
+          <div class=\"label\">Cliente</div>
+          <div class=\"value\">${cliente}</div>
+          <div class=\"label\">Servicio</div>
+          <div class=\"value\">${r.servicio} • ${r.tipo}</div>
+          ${r.promo ? `<div class=\"label\">Cupón</div><div class=\"value\">${r.promo}</div>` : ''}
+          ${typeof r.precio !== 'undefined' ? `<div class=\"label\">Precio</div><div class=\"value\">$${r.precio}</div>` : ''}
+        </div>
+        <div class=\"detail-section\">
+          <div class=\"label\">Mapa de recogida</div>
+          <div id=\"driverDetailMap\" style=\"height: 260px; border:1px solid var(--border); border-radius: 10px; margin-top:6px; overflow:hidden\"></div>
+          <div class=\"row\" style=\"gap:8px; margin-top:8px;\">
+            <a id=\"driverMapGoogle\" class=\"btn secondary\" href=\"#\" target=\"_blank\" rel=\"noopener\">Abrir en Google Maps</a>
+            <a id=\"driverMapWaze\" class=\"btn secondary\" href=\"#\" target=\"_blank\" rel=\"noopener\">Abrir en Waze</a>
+          </div>
+        </div>
+      </div>
     `;
     body.appendChild(div);
   }
   const modal = document.getElementById('driverDetailModal');
   if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
+
+  // Inicializar mapa y ubicar dirección
+  setTimeout(async () => {
+    const address = r.direccion;
+    // Si ya existe un mapa previo ligado a otro contenedor, eliminarlo y recrear
+    if (driverDetailLeaflet) {
+      try { driverDetailLeaflet.remove(); } catch {}
+      driverDetailLeaflet = null;
+      driverDetailMarker = null;
+    }
+    // Crear nuevo mapa sobre el contenedor actual
+    driverDetailLeaflet = L.map('driverDetailMap').setView([-0.1807, -78.4678], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(driverDetailLeaflet);
+    driverDetailLeaflet.invalidateSize();
+    const geo = address ? await geocodeAddress(address) : null;
+    if (geo) {
+      driverDetailMarker = L.marker([geo.lat, geo.lng]).addTo(driverDetailLeaflet);
+      driverDetailLeaflet.setView([geo.lat, geo.lng], 14);
+      const g = document.getElementById('driverMapGoogle');
+      const w = document.getElementById('driverMapWaze');
+      if (g) g.href = `https://www.google.com/maps/search/?api=1&query=${geo.lat},${geo.lng}`;
+      if (w) w.href = `https://waze.com/ul?ll=${geo.lat},${geo.lng}&navigate=yes`;
+    }
+  }, 60);
 }
 
 // Wire botones del modal conductor
