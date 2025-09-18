@@ -94,6 +94,8 @@ const views = {
   admin: document.getElementById("view-admin"),
   'admin-user-new': document.getElementById('view-admin-user-new'),
   'admin-vehicle-new': document.getElementById('view-admin-vehicle-new'),
+  payment: document.getElementById('view-payment'),
+  register: document.getElementById('view-register'),
 };
 
 function showAuthScreen(which) {
@@ -116,7 +118,7 @@ function showView(name) {
   }
   if (name === 'auth') showAuthScreen('login');
   highlightActiveNav(name);
-  try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0,0); }
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function updateSessionUi() {
@@ -225,11 +227,36 @@ function openReserva(rutaId) {
   selectedCustomService = null;
   const rutas = storage.get("rutas", []);
   const ruta = rutas.find(r => r.id === rutaId);
-  const panel = document.getElementById("reservaPanel");
-  const info = document.getElementById("reservaInfo");
-  info.textContent = `${ruta.origen} → ${ruta.destino} • ${ruta.horario} • $${ruta.precio}`;
-  panel.hidden = false;
+  // abrir modal compartido en lugar de panel
+  const modal = document.getElementById('clientSharedModal');
+  const sum = document.getElementById('clientSharedSummary');
+  if (sum && ruta) {
+    sum.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div class=\"row\"><strong>${ruta.origen} → ${ruta.destino}</strong><span class=\"badge\">${ruta.horario}</span></div>
+      <div><strong>Precio por asiento:</strong> $${ruta.precio}</div>
+    `;
+    sum.appendChild(item);
+  }
+  if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
 }
+
+(function wireClientSharedModal(){
+  const close = () => { const m = document.getElementById('clientSharedModal'); if (m) { m.hidden = true; m.style.display = 'none'; } };
+  document.getElementById('clientSharedClose')?.addEventListener('click', close);
+  // usar mapa para dirección
+  const mapBtn = document.getElementById('sharedMapBtn');
+  mapBtn?.addEventListener('click', () => {
+    window.__pickerTarget = 'shared';
+    openPicker();
+  });
+  // Nota: el submit se maneja en overrideClientSharedToPayment() para navegar a pago y evitar duplicados
+})();
+
+// Integrar picker con modal compartido
+// (el manejo se realiza en el listener principal de saveMapPicker dentro del módulo del mapa)
 
 function handleReserva(e) {
   e.preventDefault();
@@ -746,7 +773,7 @@ function renderAsignacionesEnContenedor(containerId, reservas, tipo) {
     } else if (tipo === "en-curso") {
       actionButtons = `
         <button class=\"btn secondary detailBtn\" data-id=\"${res.id}\">Ver detalles</button>
-        <button class=\"btn accent pickupBtn\" data-id=\"${res.id}\">Cambiar a Finalizado</button>
+        <button class="btn accent pickupBtn" data-id=\"${res.id}\">Cambiar a Finalizado</button>
       `;
     } else if (tipo === "finalizado") {
       actionButtons = `
@@ -777,9 +804,41 @@ function iniciarViaje(reservaId) {
   const reservas = storage.get("reservas", []);
   const nuevas = reservas.map(r => r.id === reservaId ? { ...r, estado: "en-curso", enCurso: true } : r);
   storage.set("reservas", nuevas);
+  // activar tracking para el conductor actual
+  const session = getSession();
+  if (session && session.role === 'conductor') {
+    const tracking = storage.get('tracking', []);
+    // geocodificar dirección inicial de la reserva para primera posición
+    const res = nuevas.find(r => r.id === reservaId);
+    if (res?.direccion) {
+      geocodeAddress(res.direccion).then(geo => {
+        const base = geo ? { lat: geo.lat, lng: geo.lng } : { lat: -0.1807, lng: -78.4678 };
+        const entry = { conductorId: session.id, reservaId, lat: base.lat, lng: base.lng, updatedAt: Date.now() };
+        const others = tracking.filter(t => !(t.conductorId === session.id && t.reservaId === reservaId));
+        storage.set('tracking', [...others, entry]);
+      });
+    }
+  }
   renderConductor();
   toast("Viaje cambiado a En Curso");
 }
+
+// Simulación de actualización de GPS (ligera deriva) cada 7s cuando hay viajes en curso
+setInterval(() => {
+  const session = getSession();
+  if (!session || session.role !== 'conductor') return;
+  const reservas = storage.get('reservas', []);
+  const activa = reservas.find(r => r.conductorId === session.id && (r.estado === 'en-curso'));
+  if (!activa) return;
+  const tracking = storage.get('tracking', []);
+  const idx = tracking.findIndex(t => t.conductorId === session.id && t.reservaId === activa.id);
+  if (idx >= 0) {
+    const jitter = () => (Math.random() - 0.5) * 0.0008;
+    const curr = tracking[idx];
+    tracking[idx] = { ...curr, lat: (curr.lat||-0.1807) + jitter(), lng: (curr.lng||-78.4678) + jitter(), updatedAt: Date.now() };
+    storage.set('tracking', tracking);
+  }
+}, 7000);
 
 function getUserName(id) {
   const users = storage.get("users", []);
@@ -797,9 +856,18 @@ function confirmarRecogida(reservaId) {
     invoices.push({ id: Date.now(), reservaId, cliente: getUserName(res.clienteId), monto: res.precio, metodo: res.metodoPago });
     storage.set("invoices", invoices);
   }
+  // limpiar tracking de esta reserva
+  const tracking = storage.get('tracking', []);
+  const cleaned = tracking.filter(t => t.reservaId !== reservaId);
+  storage.set('tracking', cleaned);
   renderConductor();
   // refresh rating choices for client if open
   if (views.cliente.classList.contains('active')) renderHistorial();
+  // si admin GPS está visible, refrescar
+  if (views.admin.classList.contains('active')) {
+    const activeTab = document.querySelector('#view-admin .tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'gps') renderAdminGps(document.getElementById('gpsFilter')?.value?.trim()||'');
+  }
   toast("Viaje cambiado a Finalizado");
 }
 
@@ -1804,11 +1872,13 @@ function wireEvents() {
     });
   });
 
-  // auth toggles
+  // auth toggles (login -> register separado)
   const goToRegister = document.getElementById('goToRegister');
   const goToLogin = document.getElementById('goToLogin');
-  goToRegister?.addEventListener('click', (e) => { e.preventDefault(); showAuthScreen('register'); });
-  goToLogin?.addEventListener('click', (e) => { e.preventDefault(); showAuthScreen('login'); });
+  goToRegister?.addEventListener('click', (e) => { e.preventDefault(); showView('register'); });
+  goToLogin?.addEventListener('click', (e) => { e.preventDefault(); showView('auth'); });
+
+  document.getElementById('goToLoginFromRegister')?.addEventListener('click', (e) => { e.preventDefault(); showView('auth'); });
 
   // pretty uploader
   const regFotoBtn = document.getElementById('regFotoBtn');
@@ -1830,15 +1900,15 @@ function wireEvents() {
   });
 
   // map picker
-  const openMapPicker = document.getElementById('openMapPicker');
+  const openMapPickerBtns = Array.from(document.querySelectorAll('#openMapPicker'));
   const mapModal = document.getElementById('mapModal');
   const closeMapPicker = document.getElementById('closeMapPicker');
   const saveMapPicker = document.getElementById('saveMapPicker');
   const mapCoords = document.getElementById('mapCoords');
   const mapAddress = document.getElementById('mapAddress');
-  const regLat = document.getElementById('regLat');
-  const regLng = document.getElementById('regLng');
-  const pickedAddress = document.getElementById('pickedAddress');
+  const regLatInputs = Array.from(document.querySelectorAll('[id="regLat"]'));
+  const regLngInputs = Array.from(document.querySelectorAll('[id="regLng"]'));
+  const pickedAddressEls = Array.from(document.querySelectorAll('[id="pickedAddress"]'));
 
   let leafletMap = null;
   let leafletMarker = null;
@@ -1883,22 +1953,22 @@ function wireEvents() {
     } catch { return ''; }
   }
 
-  openMapPicker?.addEventListener('click', openPicker);
+  openMapPickerBtns.forEach(btn => btn.addEventListener('click', openPicker));
   closeMapPicker?.addEventListener('click', closePicker);
   saveMapPicker?.addEventListener('click', async () => {
     if (!leafletMarker) { toast('Seleccione una ubicación en el mapa'); return; }
     const { lat, lng } = leafletMarker.getLatLng();
-    regLat.value = String(lat);
-    regLng.value = String(lng);
+    regLatInputs.forEach(i => { if (i) i.value = String(lat); });
+    regLngInputs.forEach(i => { if (i) i.value = String(lng); });
     const addr = mapAddress.textContent || await reverseGeocode(lat, lng);
-    pickedAddress.textContent = addr ? `Dirección: ${addr}` : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    pickedAddressEls.forEach(el => { if (el) el.textContent = addr ? `Dirección: ${addr}` : `${lat.toFixed(5)}, ${lng.toFixed(5)}`; });
     // Si el picker fue invocado para origen en servicio
     if (window.__pickerTarget === 'origin') {
       const origenInput = document.getElementById('csOrigen');
       const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       if (origenInput) origenInput.value = address;
       // Guardar como favorita
-    const session = getSession();
+      const session = getSession();
       const users = storage.get('users', []);
       const idx = users.findIndex(u => u.id === session?.id);
       if (idx >= 0) {
@@ -1911,6 +1981,11 @@ function wireEvents() {
       populateOrigenOptions();
       const sel = document.getElementById('csOrigenSelect');
       if (sel) sel.value = `fav:${address}`;
+      window.__pickerTarget = null;
+    } else if (window.__pickerTarget === 'shared') {
+      const input = document.getElementById('sharedDireccion');
+      const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (input) input.value = address;
       window.__pickerTarget = null;
     }
     closePicker();
@@ -3249,38 +3324,7 @@ function handleCustomServiceSubmit(e) {
 }
 
 // Confirmación desde el modal (crea la reserva)
-(function wireClientConfirmModal(){
-  const form = document.getElementById('clientConfirmForm');
-  const closeBtn = document.getElementById('clientConfirmClose');
-  const closeModal = () => { const m = document.getElementById('clientConfirmModal'); if (m) { m.hidden = true; m.style.display = 'none'; } };
-  closeBtn?.addEventListener('click', closeModal);
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const session = getSession();
-    if (!session || session.role !== 'cliente') { toast('Inicia sesión como cliente'); return; }
-    const metodoPago = document.getElementById('confirmMetodoPago').value;
-    const codigoPromo = document.getElementById('confirmCodigoPromo').value.trim();
-    const promos = storage.get('promos', []);
-    const promoApplied = codigoPromo ? promos.find(p => p.code.toLowerCase() === codigoPromo.toLowerCase()) : null;
-    // Construir reserva desde selectedCustomService
-    const reservas = storage.get('reservas', []);
-    const ruta = selectedCustomService || { id: Date.now(), origen: '', destino: '', horario: 'A coordinar', precio: 0 };
-    const nuevaReserva = {
-      id: Date.now(), rutaId: ruta.id, clienteId: session.id,
-      tipo: getServicioTipo(), direccion: document.getElementById('csOrigen').value.trim(), horario: ruta.horario, origen: ruta.origen, destino: ruta.destino, precio: ruta.precio,
-      estado: 'pendiente', recogido: false,
-      servicio: getServicioTipo(), metodoPago, promo: promoApplied?.code ?? null,
-      conductorId: null, vehiculo: null,
-      servicioDetalles: selectedCustomService?.details || null,
-    };
-    reservas.push(nuevaReserva);
-    storage.set('reservas', reservas);
-    closeModal();
-    toast('Reserva creada');
-    renderHistorial();
-    if (views.admin.classList.contains('active')) renderAdmin();
-  });
-})();
+// Eliminado: ahora la creación sucede en la pantalla de pago
 
 // Tracking (mock)
 let gpsTimer = null;
@@ -3521,7 +3565,18 @@ function handleAdminReservaAction(action, id, currentFilter) {
   const idx = reservas.findIndex(r => r.id === id);
   if (idx < 0) return;
   if (action === 'start') reservas[idx] = { ...reservas[idx], estado: 'en-curso', enCurso: true };
-  if (action === 'finish') reservas[idx] = { ...reservas[idx], estado: 'recogido', enCurso: false, recogido: true };
+  if (action === 'finish') {
+    reservas[idx] = { ...reservas[idx], estado: 'recogido', enCurso: false, recogido: true };
+    // limpiar tracking
+    const tracking = storage.get('tracking', []);
+    storage.set('tracking', tracking.filter(t => t.reservaId !== id));
+  }
+  if (action === 'cancel') {
+    reservas[idx] = { ...reservas[idx], estado: 'cancelada', enCurso: false };
+    // limpiar tracking
+    const tracking = storage.get('tracking', []);
+    storage.set('tracking', tracking.filter(t => t.reservaId !== id));
+  }
   storage.set('reservas', reservas);
   renderAdminReservas(currentFilter);
   renderAdmin();
@@ -3595,5 +3650,219 @@ function wireOrigenPicker() {
   if (sel) sel.value = 'saved';
   applyState();
 }
+
+// --- ADMIN GPS ---
+let adminGpsMap = null;
+let adminGpsMarkers = [];
+function renderAdminGps(filterText = '') {
+  const cont = document.getElementById('adminGpsMap');
+  const list = document.getElementById('adminGpsList');
+  const countEl = document.getElementById('gpsCount');
+  if (!cont || !list) return;
+  if (!adminGpsMap) {
+    adminGpsMap = L.map('adminGpsMap').setView([-0.1807, -78.4678], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(adminGpsMap);
+  }
+  // limpiar marcadores previos
+  adminGpsMarkers.forEach(m => adminGpsMap.removeLayer(m));
+  adminGpsMarkers = [];
+  list.innerHTML = '';
+
+  const users = storage.get('users', []);
+  const tracking = storage.get('tracking', []); // [{conductorId, lat, lng, updatedAt, reservaId}]
+  const reservas = storage.get('reservas', []);
+  const activos = tracking.filter(t => reservas.some(r => r.id === t.reservaId && (r.estado === 'en-curso')));
+  const visibles = filterText ? activos.filter(t => {
+    const name = users.find(u => u.id === t.conductorId)?.nombre || '';
+    return name.toLowerCase().includes(filterText.toLowerCase());
+  }) : activos;
+
+  visibles.forEach(t => {
+    const name = users.find(u => u.id === t.conductorId)?.nombre || `ID ${t.conductorId}`;
+    const res = reservas.find(r => r.id === t.reservaId);
+    if (t.lat && t.lng) {
+      const marker = L.marker([t.lat, t.lng]).addTo(adminGpsMap).bindPopup(`${name}<br/>${res?.origen || ''} → ${res?.destino || ''}`);
+      adminGpsMarkers.push(marker);
+    }
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div class=\"row\"><strong>${name}</strong><span class=\"badge\">${new Date(t.updatedAt||Date.now()).toLocaleTimeString()}</span></div>
+      <div>Reserva: #${t.reservaId} • ${res?.origen||''} → ${res?.destino||''}</div>
+      <div>Posición: ${t.lat?.toFixed(5)||'-'}, ${t.lng?.toFixed(5)||'-'}</div>
+    `;
+    list.appendChild(item);
+  });
+  if (countEl) countEl.textContent = `${visibles.length} activos`;
+  if (visibles.length) {
+    const group = L.featureGroup(adminGpsMarkers);
+    try { adminGpsMap.fitBounds(group.getBounds().pad(0.2)); } catch {}
+  }
+}
+
+// Wire filtro GPS
+(function wireAdminGps(){
+  const input = document.getElementById('gpsFilter');
+  input?.addEventListener('input', () => renderAdminGps(input.value.trim()));
+})();
+
+// Refrescar GPS al cambiar a la pestaña GPS
+(function observeAdminTabs(){
+  document.querySelectorAll('#view-admin .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'gps') setTimeout(() => renderAdminGps(document.getElementById('gpsFilter')?.value?.trim()||''), 60);
+    });
+  });
+})();
+
+// Timer para refrescar posiciones activas (cada 5s)
+setInterval(() => {
+  if (views.admin?.classList.contains('active')) {
+    const activeTab = document.querySelector('#view-admin .tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'gps') renderAdminGps(document.getElementById('gpsFilter')?.value?.trim()||'');
+  }
+}, 5000);
+
+// navega a pago con un draft de reserva
+function goToPayment(draft) {
+  window.__payDraft = draft;
+  const summary = document.getElementById('paySummary');
+  if (summary) {
+    summary.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div class=\"row\"><strong>${draft.origen} → ${draft.destino}</strong><span class=\"badge\">${draft.horario}</span></div>
+      <div><strong>Servicio:</strong> ${draft.servicio}</div>
+      ${draft.servicioDetalles?.personas ? `<div><strong>Personas:</strong> ${draft.servicioDetalles.personas}</div>` : ''}
+      ${draft.servicioDetalles?.equipaje ? `<div><strong>Equipaje:</strong> ${draft.servicioDetalles.equipaje}</div>` : ''}
+      ${draft.servicio==='privado' && draft.servicioDetalles?.tipoVehiculo ? `<div><strong>Vehículo:</strong> ${draft.servicioDetalles.tipoVehiculo}</div>` : ''}
+      <div><strong>Precio:</strong> $<span id=\"payPrice\">${draft.precio}</span></div>
+    `;
+    summary.appendChild(item);
+  }
+  const method = document.getElementById('payMethod');
+  const cardFields = document.getElementById('payCardFields');
+  const transferFields = document.getElementById('payTransferFields');
+  const instructions = document.getElementById('payInstructionsText');
+  const totalEl = document.getElementById('payTotal');
+  const toggle = () => {
+    const m = method.value;
+    cardFields.style.display = m === 'tarjeta' ? '' : 'none';
+    transferFields.style.display = m === 'transferencia' ? '' : 'none';
+    const base = Number(draft.precio)||0;
+    let text = '';
+    if (m === 'efectivo') text = `Paga $${base} en efectivo al conductor cuando te recoja. Conserva el efectivo exacto si es posible.`;
+    else if (m === 'tarjeta') text = `Introduce los datos de tu tarjeta para procesar el pago de $${base}.`;
+    else if (m === 'transferencia') text = `Realiza una transferencia por $${base}. Indica el número de referencia y banco.`;
+    else if (m === 'voucher') text = `Introduce tu código de voucher válido para cubrir total o parcial del pago.`;
+    instructions.textContent = text;
+  };
+  if (method) { method.onchange = toggle; toggle(); }
+  if (totalEl) totalEl.textContent = `$${draft.precio}`;
+  showView('payment');
+}
+
+(function wirePayment(){
+  const form = document.getElementById('payForm');
+  const cancel = document.getElementById('payCancel');
+  cancel?.addEventListener('click', () => { showView('cliente'); });
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const session = getSession();
+    if (!session || session.role !== 'cliente') { toast('Inicia sesión como cliente'); return; }
+    const draft = window.__payDraft;
+    if (!draft) { toast('Sin datos de pago'); return; }
+    const metodoPago = document.getElementById('payMethod').value;
+    // Validaciones según método
+    if (metodoPago === 'tarjeta') {
+      const num = document.getElementById('payCardNumber').value.replace(/\s+/g,'');
+      const exp = document.getElementById('payCardExp').value.trim();
+      const name = document.getElementById('payCardName').value.trim();
+      const cvv = document.getElementById('payCardCvv').value.trim();
+      if (!(num.length >= 13 && num.length <= 19) || !/^[0-9]+$/.test(num)) { toast('Número de tarjeta inválido'); return; }
+      if (!/^[0-9]{2}\/[0-9]{2}$/.test(exp)) { toast('Expiración inválida (MM/AA)'); return; }
+      if (!name) { toast('Nombre en tarjeta requerido'); return; }
+      if (!(cvv.length >= 3 && cvv.length <= 4)) { toast('CVV inválido'); return; }
+    } else if (metodoPago === 'transferencia') {
+      const bank = document.getElementById('payBank').value.trim();
+      const ref = document.getElementById('payRef').value.trim();
+      if (!bank || !ref) { toast('Banco y referencia requeridos'); return; }
+    }
+    const codigoPromo = document.getElementById('payCodigoPromo').value.trim();
+    const promos = storage.get('promos', []);
+    const promoApplied = codigoPromo ? promos.find(p => p.code.toLowerCase() === codigoPromo.toLowerCase()) : null;
+    const precioBase = Number(draft.precio) || 0;
+    const precioFinal = promoApplied && promoApplied.discountPct ? Math.max(0, Math.round(precioBase * (100 - promoApplied.discountPct)) / 100) : precioBase;
+
+    const reservas = storage.get('reservas', []);
+    const nueva = {
+      id: Date.now(), rutaId: draft.rutaId, clienteId: session.id,
+      tipo: draft.tipo, direccion: draft.direccion, horario: draft.horario, origen: draft.origen, destino: draft.destino, precio: precioFinal,
+      estado: 'pendiente', recogido: false,
+      servicio: draft.servicio, metodoPago, promo: promoApplied?.code ?? null,
+      conductorId: null, vehiculo: null,
+      servicioDetalles: draft.servicioDetalles || null,
+    };
+    reservas.push(nueva);
+    storage.set('reservas', reservas);
+    window.__payDraft = null;
+    toast('Pago exitoso. Reserva creada');
+    renderHistorial();
+    showView('cliente');
+    if (views.admin.classList.contains('active')) renderAdmin();
+  });
+})();
+
+// reemplazar submit de confirmación (privado) por navegación a pago
+(function overrideClientConfirmToPayment(){
+  const form = document.getElementById('clientConfirmForm');
+  if (!form) return;
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    if (!selectedCustomService) { toast('Configura el servicio primero'); return; }
+    const draft = {
+      origen: selectedCustomService.origen,
+      destino: selectedCustomService.destino,
+      horario: selectedCustomService.horario,
+      precio: selectedCustomService.precio,
+      servicio: getServicioTipo(),
+      servicioDetalles: selectedCustomService.details,
+      tipo: getServicioTipo() === 'privado' ? 'privado' : 'otro',
+      direccion: document.getElementById('csOrigen').value.trim(),
+      rutaId: selectedCustomService.id,
+    };
+    const modal = document.getElementById('clientConfirmModal');
+    if (modal) { modal.hidden = true; modal.style.display = 'none'; }
+    goToPayment(draft);
+  };
+})();
+
+// reemplazar submit de compartido por navegación a pago
+(function overrideClientSharedToPayment(){
+  const form = document.getElementById('clientSharedForm');
+  if (!form) return;
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const rutas = storage.get('rutas', []);
+    const ruta = rutas.find(r => r.id === selectedRutaId);
+    if (!ruta) { toast('Ruta no disponible'); return; }
+    const draft = {
+      origen: ruta.origen,
+      destino: ruta.destino,
+      horario: ruta.horario,
+      precio: ruta.precio,
+      servicio: 'compartido',
+      servicioDetalles: { personas: Number(document.getElementById('sharedPersonas').value), equipaje: document.getElementById('sharedEquipaje').value.trim() },
+      tipo: 'asiento',
+      direccion: document.getElementById('sharedDireccion').value.trim(),
+      rutaId: ruta.id,
+    };
+    const modal = document.getElementById('clientSharedModal');
+    if (modal) { modal.hidden = true; modal.style.display = 'none'; }
+    goToPayment(draft);
+  };
+})();
 
 

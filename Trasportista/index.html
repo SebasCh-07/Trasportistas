@@ -111,6 +111,73 @@
       </div>
     </section>
 
+    <!-- Register View (separada) -->
+    <section id="view-register" class="view" hidden>
+      <div id="auth-register-standalone" class="panel">
+        <h2>Registro</h2>
+        <form id="registerFormStandalone" class="reg-grid">
+          <div class="reg-left">
+            <div class="two-col">
+              <label>Nombres
+                <input id="regNombres" type="text" required />
+              </label>
+              <label>Apellidos
+                <input id="regApellidos" type="text" required />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>CI
+                <input id="regCedula" type="text" required />
+              </label>
+              <label>Teléfono
+                <input id="regTelefono" type="tel" />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>Correo
+                <input id="regEmail" type="email" required />
+              </label>
+              <label>Contraseña
+                <input id="regPassword" type="password" required />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>Rol
+                <select id="regRole" required>
+                  <option value="cliente">Cliente</option>
+                  <option value="conductor">Conductor</option>
+                </select>
+              </label>
+            </div>
+            <div class="two-col">
+              <div class="map-box">
+                <button id="openMapPicker" type="button" class="btn ghost" style="width:100%">Ubicar Dirección en mapa</button>
+                <div class="text-muted" id="pickedAddress" style="margin-top:6px"></div>
+                <input id="regLat" type="hidden" />
+                <input id="regLng" type="hidden" />
+              </div>
+              <label class="span-1">Referencia
+                <input id="regReferencia" type="text" />
+              </label>
+            </div>
+            <button type="submit" class="accent" style="margin-top:10px">Registrar</button>
+          </div>
+          <div class="reg-right">
+            <div class="photo-box">
+              <img id="regFotoPreview" alt="Vista previa" hidden />
+              <button id="regFotoBtn" class="secondary" type="button">Subir foto</button>
+              <input id="regFoto" type="file" accept="image/*" hidden />
+            </div>
+            <div class="text-muted" style="text-align:center; margin-top:6px">Subir Foto</div>
+          </div>
+        </form>
+        <div id="registerMsg" class="msg"></div>
+        <div class="msg" style="margin-top:10px">
+          ¿Ya tienes cuenta? <a href="#" id="goToLoginFromRegister">Inicia sesión</a>
+        </div>
+      </div>
+    </section>
+
     <!-- Cliente View -->
     <section id="view-cliente" class="view">
       <div class="cliente-layout">
@@ -353,6 +420,7 @@
           <button class="tab-btn" data-tab="rutas">Rutas</button>
           <button class="tab-btn" data-tab="reservas">Reservas</button>
           <button class="tab-btn" data-tab="promos">Cupones/Vouchers</button>
+          <button class="tab-btn" data-tab="gps">GPS</button>
         </aside>
         <div class="admin-content">
           <div class="tab-panel active" id="tab-dashboard">
@@ -550,6 +618,20 @@
                 <button type="submit">Agregar</button>
               </form>
               <div id="promoMsg" class="msg"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-gps">
+            <div class="panel">
+              <h3>Monitoreo GPS</h3>
+              <div class="row" style="gap:8px; flex-wrap: wrap; margin-bottom:8px;">
+                <label style="flex:1">Filtrar conductor
+                  <input id="gpsFilter" placeholder="Nombre del conductor" />
+                </label>
+                <span class="badge" id="gpsCount">0 activos</span>
+              </div>
+              <div id="adminGpsMap" style="height: 55vh; border:1px solid var(--border); border-radius: 12px;"></div>
+              <div id="adminGpsList" class="list" style="margin-top:10px"></div>
             </div>
           </div>
         </div>
@@ -1003,7 +1085,7 @@
   </div>
 
   <!-- Map Picker Modal -->
-  <div id="mapModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 900px; max-height: 80vh; z-index: 60; grid-template-rows: auto 1fr auto; gap: 10px;">
+  <div id="mapModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 900px; max-height: 80vh; z-index: 100; grid-template-rows: auto 1fr auto; gap: 10px;">
     <div class="row" style="justify-content: space-between; align-items: center;">
       <strong>Seleccionar ubicación</strong>
       <button id="closeMapPicker" class="secondary">Cerrar</button>
@@ -1060,9 +1142,54 @@
     <div style="min-height:0; overflow:auto;">
       <div id="clientConfirmDetails" class="list"></div>
       <form id="clientConfirmForm" class="form" style="margin-top:10px">
+        <div class="row" style="justify-content: flex-end; gap: 8px;">
+          <button type="submit" class="accent">Continuar a pago</button>
+        </div>
+      </form>
+    </div>
+    <div class="row" style="justify-content: flex-end; gap: 8px;"></div>
+  </div>
+
+  <!-- Modal Reserva Compartido (Cliente) -->
+  <div id="clientSharedModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 760px; max-height: 82vh; z-index: 70; display: grid; grid-template-rows: auto 1fr auto; gap: 10px;">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <strong>Reservar ruta compartida</strong>
+      <button id="clientSharedClose" class="secondary">Cerrar</button>
+    </div>
+    <div style="min-height:0; overflow:auto;">
+      <div id="clientSharedSummary" class="list" style="margin-bottom:8px"></div>
+      <form id="clientSharedForm" class="form">
+        <div class="two-col">
+          <label>Dirección de recogida
+            <div class="row" style="gap:8px; align-items:center;">
+              <input id="sharedDireccion" placeholder="Selecciona en el mapa" required readonly style="flex:1" />
+              <button type="button" id="sharedMapBtn" class="secondary">Ubicar en mapa</button>
+            </div>
+          </label>
+          <label>Número de personas
+            <input id="sharedPersonas" type="number" min="1" max="10" required />
+          </label>
+        </div>
+        <label>Equipaje / Comentarios
+          <input id="sharedEquipaje" placeholder="Maletas, objetos frágiles, etc." />
+        </label>
+        <div class="row" style="justify-content: flex-end; gap: 8px;">
+          <button type="submit" class="accent">Continuar a pago</button>
+        </div>
+      </form>
+    </div>
+    <div class="row" style="justify-content: flex-end; gap: 8px;"></div>
+  </div>
+
+  <!-- Payment View -->
+  <section id="view-payment" class="view" hidden>
+    <div class="panel" style="max-width: 900px; margin: 0 auto;">
+      <h2>Pago de reserva</h2>
+      <div id="paySummary" class="list" style="margin-bottom:10px"></div>
+      <form id="payForm" class="form">
         <div class="two-col">
           <label>Método de pago
-            <select id="confirmMetodoPago">
+            <select id="payMethod" required>
               <option value="efectivo">Efectivo</option>
               <option value="tarjeta">Tarjeta</option>
               <option value="transferencia">Transferencia</option>
@@ -1070,16 +1197,56 @@
             </select>
           </label>
           <label>Cupón/Voucher (opcional)
-            <input id="confirmCodigoPromo" placeholder="CUPON10 o VOC-123" />
+            <input id="payCodigoPromo" placeholder="CUPON10 o VOC-123" />
           </label>
         </div>
-        <div class="row" style="justify-content: flex-end; gap: 8px;">
-          <button type="submit" class="accent">Confirmar</button>
+
+        <div id="payInstructions" class="detail-section" style="margin-top:6px;">
+          <div class="label">Indicaciones</div>
+          <div class="value" id="payInstructionsText">Selecciona un método de pago para ver los pasos a seguir.</div>
         </div>
+
+        <div id="payCardFields" style="display:none; margin-top:6px;">
+          <div class="two-col">
+            <label>Número de tarjeta
+              <input id="payCardNumber" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" />
+            </label>
+            <label>Expiración (MM/AA)
+              <input id="payCardExp" placeholder="MM/AA" />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Nombre en tarjeta
+              <input id="payCardName" />
+            </label>
+            <label>CVV
+              <input id="payCardCvv" inputmode="numeric" maxlength="4" />
+            </label>
+          </div>
+        </div>
+
+        <div id="payTransferFields" style="display:none; margin-top:6px;">
+          <div class="two-col">
+            <label>Banco
+              <input id="payBank" placeholder="Banco Ejemplo" />
+            </label>
+            <label>Número de referencia
+              <input id="payRef" placeholder="ABC123456" />
+            </label>
+          </div>
+        </div>
+
+        <div class="row" style="justify-content: space-between; align-items: center; margin-top: 8px;">
+          <button type="button" id="payCancel" class="secondary">Cancelar</button>
+          <div class="row" style="gap:8px; align-items:center;">
+            <span class="badge" id="payTotal">$0</span>
+            <button type="submit" class="accent">Pagar / Confirmar</button>
+          </div>
+        </div>
+        <div id="payMsg" class="msg"></div>
       </form>
     </div>
-    <div class="row" style="justify-content: flex-end; gap: 8px;"></div>
-  </div>
+  </section>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>

@@ -1921,6 +1921,7 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.35)
 #mapModal[hidden] { display: none !important; }
 #driverDetailModal[hidden] { display: none !important; }
 #clientConfirmModal[hidden] { display: none !important; }
+#clientSharedModal[hidden] { display: none !important; }
 
 /* Utility helpers */
 .hide { display: none !important; }
