@@ -703,6 +703,8 @@ function verDetallesAsignacion(reservaId) {
           <div class=\"value\">${cliente}</div>
           <div class=\"label\">Servicio</div>
           <div class=\"value\">${r.servicio} • ${r.tipo}</div>
+          <div class=\"label\">Método de pago</div>
+          <div class=\"value\">${r.metodoPago || 'No especificado'}</div>
           ${r.promo ? `<div class=\"label\">Cupón</div><div class=\"value\">${r.promo}</div>` : ''}
           ${typeof r.precio !== 'undefined' ? `<div class=\"label\">Precio</div><div class=\"value\">$${r.precio}</div>` : ''}
         </div>
@@ -1968,7 +1970,7 @@ function wireEvents() {
       const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       if (origenInput) origenInput.value = address;
       // Guardar como favorita
-      const session = getSession();
+    const session = getSession();
       const users = storage.get('users', []);
       const idx = users.findIndex(u => u.id === session?.id);
       if (idx >= 0) {

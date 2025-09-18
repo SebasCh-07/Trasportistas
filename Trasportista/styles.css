@@ -2022,10 +2022,156 @@ html {
 #mapModal .row:last-child { flex-wrap: nowrap; align-items: center; }
 #mapAddress { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.detail-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
-.detail-section { background: rgba(11, 18, 32, 0.6); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 10px; padding: 10px; }
-.detail-section .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 6px; }
-.detail-section .value { font-size: 14px; color: var(--text); font-weight: 600; }
+.detail-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
+.detail-section { 
+  background: rgba(11, 18, 32, 0.8); 
+  border: 1px solid rgba(6, 182, 212, 0.2); 
+  border-radius: 12px; 
+  padding: 20px; 
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+.detail-section .label { 
+  font-size: 11px; 
+  color: var(--muted); 
+  text-transform: uppercase; 
+  letter-spacing: 0.8px; 
+  margin-top: 12px; 
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.detail-section .value { 
+  font-size: 15px; 
+  color: var(--text); 
+  font-weight: 500; 
+  margin-bottom: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.1);
+}
+.detail-section .value:last-child { border-bottom: none; }
+
+/* Estilos específicos para el modal de detalles del conductor */
+#driverDetailModal .list-item {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+#driverDetailModal .list-item .row {
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#driverDetailModal .list-item .row strong {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+#driverDetailModal .list-item .row .badge {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--accent);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Estilos para el mapa en el modal del conductor */
+#driverDetailMap {
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow) !important;
+  background: rgba(11, 18, 32, 0.5) !important;
+}
+
+/* Botones de navegación en el modal del conductor */
+#driverDetailModal .row a.btn {
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--accent);
+  transition: var(--transition);
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+#driverDetailModal .row a.btn:hover {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+}
+
 @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+
+/* Responsive (mobile-first enhancements) */
+@media (max-width: 768px) {
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .brand { width: 100%; text-align: center; font-size: 20px; }
+  .session { width: 100%; max-width: 100%; gap: 8px; justify-content: space-between; }
+  .session select, .session span, .session button { flex: 1; min-width: 0; }
+
+  /* Panels and general spacing */
+  .panel { padding: 12px; border-radius: 10px; }
+  .row { gap: 8px; }
+
+  /* Auth and forms */
+  .form label { width: 100%; }
+  .form .two-col { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  input, select, button { font-size: 14px; }
+  button { padding: 10px 12px; }
+
+  /* Cliente layout */
+  .cliente-layout { display: block; }
+  .cliente-left, .cliente-right { width: 100%; margin: 0 0 12px 0; }
+  .cliente-tabs { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+  .cliente-tabs .tab-btn { flex: 0 0 auto; }
+
+  /* Conductor layout */
+  .conductor-layout { display: block; }
+  .conductor-tabs { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+  .conductor-tabs .tab-btn { flex: 0 0 auto; }
+
+  /* Admin layout */
+  .admin-layout { display: block; }
+  .admin-tabs { display: flex; overflow-x: auto; gap: 8px; padding: 8px 0; margin-bottom: 8px; }
+  .admin-tabs .tab-btn { flex: 0 0 auto; }
+  .admin-content .panel { margin-bottom: 12px; }
+
+  /* Grids */
+  .kpis, .grid, .kpis-grid, .analysis-grid, .operational-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+  /* Detail grid (modales conductor) */
+  .detail-grid { grid-template-columns: 1fr; }
+
+  /* Rutas cards */
+  #rutasList { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+  /* Modals */
+  #mapModal, #assignModal, #driverDetailModal, #clientConfirmModal, #clientSharedModal { max-width: 95vw !important; max-height: 90vh !important; }
+  #map { height: 50vh !important; }
+  #adminGpsMap { height: 45vh !important; }
+
+  /* Payment view */
+  #view-payment .two-col { grid-template-columns: 1fr; }
+  #payCardFields .two-col, #payTransferFields .two-col { grid-template-columns: 1fr; }
+
+  /* Tables/lists breathing */
+  .list-item { padding: 16px; }
+
+  /* Header badges and labels */
+  .badge { font-size: 12px; }
+}
 
 
