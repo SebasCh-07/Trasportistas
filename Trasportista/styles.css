@@ -1920,6 +1920,7 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.35)
 #assignModal[hidden] { display: none !important; }
 #mapModal[hidden] { display: none !important; }
 #driverDetailModal[hidden] { display: none !important; }
+#clientConfirmModal[hidden] { display: none !important; }
 
 /* Utility helpers */
 .hide { display: none !important; }
@@ -2016,5 +2017,8 @@ html {
 @media (max-width: 1200px) {
   .form.inline { grid-template-columns: 1fr 1fr; }
 }
+
+#mapModal .row:last-child { flex-wrap: nowrap; align-items: center; }
+#mapAddress { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 

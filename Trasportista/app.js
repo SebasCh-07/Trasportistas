@@ -215,6 +215,9 @@ function renderCliente() {
   cont.querySelectorAll(".reserveBtn").forEach(btn => btn.addEventListener("click", () => openReserva(Number(btn.dataset.id))));
   renderHistorial();
   renderTrackingForCliente();
+  // preparar opciones de origen
+  populateOrigenOptions();
+  wireOrigenPicker();
 }
 
 function openReserva(rutaId) {
@@ -253,6 +256,7 @@ function handleReserva(e) {
     estado: "pendiente", recogido: false,
     servicio: getServicioTipo(), metodoPago, promo: promoApplied?.code ?? null,
     conductorId: null, vehiculo: null,
+    servicioDetalles: selectedCustomService?.details || null,
   };
   reservas.push(nuevaReserva);
   storage.set("reservas", reservas);
@@ -1793,12 +1797,16 @@ function wireEvents() {
       leafletMap.invalidateSize();
     }, 50);
   }
-
+  
   function closePicker() {
     if (!mapModal) return;
     mapModal.hidden = true;
     mapModal.style.display = 'none';
   }
+  
+  // Exponer para uso global (p.ej., desde el selector de origen)
+  window.openPicker = openPicker;
+  window.closePicker = closePicker;
 
   function onMapClick(e) {
     const { lat, lng } = e.latlng;
@@ -1825,6 +1833,27 @@ function wireEvents() {
     regLng.value = String(lng);
     const addr = mapAddress.textContent || await reverseGeocode(lat, lng);
     pickedAddress.textContent = addr ? `Dirección: ${addr}` : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    // Si el picker fue invocado para origen en servicio
+    if (window.__pickerTarget === 'origin') {
+      const origenInput = document.getElementById('csOrigen');
+      const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (origenInput) origenInput.value = address;
+      // Guardar como favorita
+    const session = getSession();
+      const users = storage.get('users', []);
+      const idx = users.findIndex(u => u.id === session?.id);
+      if (idx >= 0) {
+        const favoritas = Array.isArray(users[idx].favoritasDirecciones) ? users[idx].favoritasDirecciones : [];
+        if (!favoritas.includes(address)) favoritas.push(address);
+        users[idx] = { ...users[idx], favoritasDirecciones: favoritas };
+        storage.set('users', users);
+      }
+      // refrescar selector de origen y seleccionar la nueva favorita
+      populateOrigenOptions();
+      const sel = document.getElementById('csOrigenSelect');
+      if (sel) sel.value = `fav:${address}`;
+      window.__pickerTarget = null;
+    }
     closePicker();
   });
 
@@ -3014,6 +3043,10 @@ function onServicioChange() {
   const servicioPrivadoFields = document.getElementById("servicioPrivadoFields");
   const servicioEncomiendaFields = document.getElementById("servicioEncomiendaFields");
   const descripcionDiv = document.getElementById("servicioDescripcion");
+  const destinoWrapper = document.getElementById('csDestinoWrapper');
+  const destinoInput = document.getElementById('csDestino');
+  const rutaWrapper = document.getElementById('csRutaWrapper');
+  const rutaSelect = document.getElementById('csRutaSelect');
   
   // Actualizar descripción del servicio
   updateServicioDescripcion(tipo);
@@ -3025,14 +3058,41 @@ function onServicioChange() {
   } else {
     compartido.hidden = true;
     customPanel.hidden = false;
-    
-    // Mostrar campos específicos según el tipo de servicio
-    if (servicioPrivadoFields) {
-      servicioPrivadoFields.style.display = tipo === "privado" ? "block" : "none";
+  }
+
+  // Alternar destino según tipo
+  if (tipo === 'privado') {
+    if (destinoWrapper) destinoWrapper.style.display = 'none';
+    if (destinoInput) destinoInput.required = false;
+    if (rutaWrapper) rutaWrapper.style.display = '';
+    if (rutaSelect) rutaSelect.required = true;
+    // llenar rutas preestablecidas desde storage.rutas
+    const rutas = storage.get('rutas', []);
+    if (rutaSelect) {
+      rutaSelect.innerHTML = '';
+      rutas.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = String(r.id);
+        opt.textContent = `${r.origen} → ${r.destino} • ${r.horario}`;
+        rutaSelect.appendChild(opt);
+      });
     }
-    if (servicioEncomiendaFields) {
-      servicioEncomiendaFields.style.display = tipo === "encomienda" ? "block" : "none";
-    }
+    if (servicioPrivadoFields) servicioPrivadoFields.style.display = '';
+    if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
+  } else if (tipo === 'encomienda') {
+    if (destinoWrapper) destinoWrapper.style.display = '';
+    if (destinoInput) destinoInput.required = true;
+    if (rutaWrapper) rutaWrapper.style.display = 'none';
+    if (rutaSelect) rutaSelect.required = false;
+    if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
+    if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = '';
+  } else {
+    if (destinoWrapper) destinoWrapper.style.display = '';
+    if (destinoInput) destinoInput.required = true;
+    if (rutaWrapper) rutaWrapper.style.display = 'none';
+    if (rutaSelect) rutaSelect.required = false;
+    if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
+    if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
   }
 }
 
@@ -3069,71 +3129,99 @@ function handleCustomServiceSubmit(e) {
   e.preventDefault();
   const tipo = getServicioTipo();
   const origen = document.getElementById("csOrigen").value.trim();
-  const destino = document.getElementById("csDestino").value.trim();
-  const fecha = document.getElementById("csFecha").value;
-  const horario = document.getElementById("csHorario").value.trim();
-  
-  if (!origen || !destino || !fecha || !horario) {
-    toast("Por favor completa todos los campos obligatorios");
-    return;
+  let destino = '';
+  let horario = '';
+
+  if (!origen) { toast("Por favor selecciona el origen"); return; }
+
+  if (tipo === 'privado') {
+    const rutaSelect = document.getElementById('csRutaSelect');
+    const rutas = storage.get('rutas', []);
+    const sel = rutas.find(r => String(r.id) === String(rutaSelect.value));
+    if (!sel) { toast('Seleccione un destino preestablecido'); return; }
+    destino = sel.destino;
+    horario = sel.horario;
+  } else {
+    destino = document.getElementById("csDestino").value.trim();
+    if (!destino) { toast('Ingrese destino'); return; }
+    horario = 'A coordinar';
   }
   
-  let servicioDetalles = { tipo, origen, destino, fecha, horario };
-  
+  let servicioDetalles = { tipo, origen, destino, horario };
   if (tipo === "privado") {
     const personas = document.getElementById("csPersonas").value;
     const tipoVehiculo = document.getElementById("csTipoVehiculo").value;
     const comentarios = document.getElementById("csComentarios").value.trim();
-    
-    if (!personas) {
-      toast("Por favor indica el número de pasajeros");
-      return;
-    }
-    
-    servicioDetalles = {
-      ...servicioDetalles,
-      personas: Number(personas),
-      tipoVehiculo,
-      comentarios
-    };
+    if (!personas) { toast("Por favor indica el número de pasajeros"); return; }
+    servicioDetalles = { ...servicioDetalles, personas: Number(personas), tipoVehiculo, comentarios };
   } else if (tipo === "encomienda") {
     const tamanoPaquete = document.getElementById("csTamanoPaquete").value;
     const tipoContenido = document.getElementById("csTipoContenido").value;
     const descripcionPaquete = document.getElementById("csDescripcionPaquete").value.trim();
-    
-    servicioDetalles = {
-      ...servicioDetalles,
-      tamanoPaquete,
-      tipoContenido,
-      descripcionPaquete
-    };
+    servicioDetalles = { ...servicioDetalles, tamanoPaquete, tipoContenido, descripcionPaquete };
   }
-  
-  selectedRutaId = null;
-  selectedCustomService = { 
-    id: Date.now(), 
-    ...servicioDetalles,
-    precio: 0, // Se calculará después
-    asientos: tipo === "privado" ? Number(servicioDetalles.personas || 1) : 0 
+
+  selectedCustomService = {
+    id: Date.now(),
+    origen: servicioDetalles.origen,
+    destino: servicioDetalles.destino,
+    horario: servicioDetalles.horario,
+    precio: tipo === 'privado' ? 25 : 15,
+    details: servicioDetalles,
   };
-  
-  // open reserve panel with sensible defaults
-  document.getElementById("tipoReserva").value = (tipo === "encomienda") ? "encomienda" : "asiento";
-  const info = document.getElementById("reservaInfo");
-  
-  let infoText = `${origen} → ${destino} • ${fecha} ${horario} • ${tipo}`;
-  if (tipo === "privado") {
-    infoText += ` • ${servicioDetalles.personas} persona(s) • ${servicioDetalles.tipoVehiculo}`;
-  } else if (tipo === "encomienda") {
-    infoText += ` • Paquete ${servicioDetalles.tamanoPaquete}`;
+
+  // Mostrar modal de confirmación en vez de panel lateral
+  const modal = document.getElementById('clientConfirmModal');
+  const det = document.getElementById('clientConfirmDetails');
+  if (det) {
+    det.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    item.innerHTML = `
+      <div class=\"row\"><strong>${selectedCustomService.origen} → ${selectedCustomService.destino}</strong><span class=\"badge\">${selectedCustomService.horario}</span></div>
+      <div><strong>Servicio:</strong> ${tipo}</div>
+      ${tipo==='privado' ? `<div><strong>Pasajeros:</strong> ${servicioDetalles.personas} • <strong>Vehículo:</strong> ${servicioDetalles.tipoVehiculo}</div>` : ''}
+      ${tipo==='encomienda' ? `<div><strong>Tamaño:</strong> ${servicioDetalles.tamanoPaquete} • <strong>Contenido:</strong> ${servicioDetalles.tipoContenido}</div>` : ''}
+      <div><strong>Precio estimado:</strong> $${selectedCustomService.precio}</div>
+    `;
+    det.appendChild(item);
   }
-  infoText += " • Precio: Por cotizar";
-  
-  info.textContent = infoText;
-  document.getElementById("reservaPanel").hidden = false;
-  
-  toast("Solicitud de cotización enviada. Te contactaremos pronto con el precio.");
+  if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
 }
+
+// Confirmación desde el modal (crea la reserva)
+(function wireClientConfirmModal(){
+  const form = document.getElementById('clientConfirmForm');
+  const closeBtn = document.getElementById('clientConfirmClose');
+  const closeModal = () => { const m = document.getElementById('clientConfirmModal'); if (m) { m.hidden = true; m.style.display = 'none'; } };
+  closeBtn?.addEventListener('click', closeModal);
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const session = getSession();
+    if (!session || session.role !== 'cliente') { toast('Inicia sesión como cliente'); return; }
+    const metodoPago = document.getElementById('confirmMetodoPago').value;
+    const codigoPromo = document.getElementById('confirmCodigoPromo').value.trim();
+    const promos = storage.get('promos', []);
+    const promoApplied = codigoPromo ? promos.find(p => p.code.toLowerCase() === codigoPromo.toLowerCase()) : null;
+    // Construir reserva desde selectedCustomService
+    const reservas = storage.get('reservas', []);
+    const ruta = selectedCustomService || { id: Date.now(), origen: '', destino: '', horario: 'A coordinar', precio: 0 };
+    const nuevaReserva = {
+      id: Date.now(), rutaId: ruta.id, clienteId: session.id,
+      tipo: getServicioTipo(), direccion: document.getElementById('csOrigen').value.trim(), horario: ruta.horario, origen: ruta.origen, destino: ruta.destino, precio: ruta.precio,
+      estado: 'pendiente', recogido: false,
+      servicio: getServicioTipo(), metodoPago, promo: promoApplied?.code ?? null,
+      conductorId: null, vehiculo: null,
+      servicioDetalles: selectedCustomService?.details || null,
+    };
+    reservas.push(nuevaReserva);
+    storage.set('reservas', reservas);
+    closeModal();
+    toast('Reserva creada');
+    renderHistorial();
+    if (views.admin.classList.contains('active')) renderAdmin();
+  });
+})();
 
 // Tracking (mock)
 let gpsTimer = null;
@@ -3378,6 +3466,75 @@ function handleAdminReservaAction(action, id, currentFilter) {
   storage.set('reservas', reservas);
   renderAdminReservas(currentFilter);
   renderAdmin();
+}
+
+function populateOrigenOptions() {
+  const sel = document.getElementById('csOrigenSelect');
+  if (!sel) return;
+  const session = getSession();
+  const users = storage.get('users', []);
+  const user = users.find(u => u.id === session?.id) || {};
+  const favoritas = Array.isArray(user.favoritasDirecciones) ? user.favoritasDirecciones : [];
+  sel.innerHTML = '';
+  // Dirección principal
+  const optSaved = document.createElement('option');
+  optSaved.value = 'saved';
+  optSaved.textContent = user?.direccion ? `Mi dirección: ${user.direccion}` : 'Mi dirección registrada';
+  sel.appendChild(optSaved);
+  // Favoritas
+  favoritas.forEach((addr, i) => {
+    const opt = document.createElement('option');
+    opt.value = `fav:${addr}`;
+    opt.textContent = `Favorita: ${addr}`;
+    sel.appendChild(opt);
+  });
+  // Nueva
+  const optNew = document.createElement('option');
+  optNew.value = 'new';
+  optNew.textContent = 'Elegir otra dirección...';
+  sel.appendChild(optNew);
+}
+
+function wireOrigenPicker() {
+  const sel = document.getElementById('csOrigenSelect');
+  const mapBtn = document.getElementById('csOrigenMapBtn');
+  const origenInput = document.getElementById('csOrigen');
+  const session = getSession();
+  const users = storage.get('users', []);
+  const user = users.find(u => u.id === session?.id) || {};
+  const applyState = () => {
+    if (!sel) return;
+    const val = sel.value || 'saved';
+    const isNew = val === 'new';
+    const isSaved = val === 'saved';
+    const isFav = val.startsWith('fav:');
+    if (isNew) {
+      origenInput.style.display = '';
+      origenInput.value = '';
+      if (mapBtn) mapBtn.disabled = false;
+      origenInput.required = true;
+    } else if (isSaved) {
+      origenInput.style.display = 'none';
+      origenInput.value = user?.direccion || '';
+      if (mapBtn) mapBtn.disabled = true;
+      origenInput.required = false;
+    } else if (isFav) {
+      const addr = val.slice(4);
+      origenInput.style.display = 'none';
+      origenInput.value = addr;
+      if (mapBtn) mapBtn.disabled = true;
+      origenInput.required = false;
+    }
+  };
+  if (sel) sel.addEventListener('change', applyState);
+  if (mapBtn) mapBtn.addEventListener('click', () => {
+    if (!sel || sel.value !== 'new') return;
+    window.__pickerTarget = 'origin';
+    openPicker();
+  });
+  // init default
+  if (sel) sel.value = 'saved';
+  applyState();
 }
 
 

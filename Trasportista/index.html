@@ -144,18 +144,17 @@
               <form id="customServiceForm" class="form">
                 <div class="two-col">
                   <label>Origen
-                    <input id="csOrigen" placeholder="Ciudad/Barrio" required />
+                    <div class="row" style="gap:8px; align-items:center;">
+                      <select id="csOrigenSelect" style="flex:1"></select>
+                      <button type="button" id="csOrigenMapBtn" class="secondary">Nueva dirección</button>
+                    </div>
+                    <input id="csOrigen" placeholder="Ciudad/Barrio" required style="display:none" />
                   </label>
-                  <label>Destino
+                  <label id="csDestinoWrapper">Destino
                     <input id="csDestino" placeholder="Ciudad/Barrio" required />
                   </label>
-                </div>
-                <div class="two-col">
-                  <label>Fecha del viaje
-                    <input id="csFecha" type="date" required />
-                  </label>
-                  <label>Horario
-                    <input id="csHorario" placeholder="HH:MM" required />
+                  <label id="csRutaWrapper" style="display:none">Destino (preestablecido)
+                    <select id="csRutaSelect"></select>
                   </label>
                 </div>
                 
@@ -1050,6 +1049,36 @@
     <div class="row" style="justify-content: flex-end; gap: 8px;">
       <button id="driverDetailOk" class="accent">Entendido</button>
     </div>
+  </div>
+
+  <!-- Modal Confirmación de reserva (Cliente) -->
+  <div id="clientConfirmModal" class="panel" hidden style="position: fixed; inset: 0; margin: auto; max-width: 720px; max-height: 80vh; z-index: 70; grid-template-rows: auto 1fr auto; gap: 10px;">
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <strong>Confirmar reserva</strong>
+      <button id="clientConfirmClose" class="secondary">Cerrar</button>
+    </div>
+    <div style="min-height:0; overflow:auto;">
+      <div id="clientConfirmDetails" class="list"></div>
+      <form id="clientConfirmForm" class="form" style="margin-top:10px">
+        <div class="two-col">
+          <label>Método de pago
+            <select id="confirmMetodoPago">
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="voucher">Voucher empresarial</option>
+            </select>
+          </label>
+          <label>Cupón/Voucher (opcional)
+            <input id="confirmCodigoPromo" placeholder="CUPON10 o VOC-123" />
+          </label>
+        </div>
+        <div class="row" style="justify-content: flex-end; gap: 8px;">
+          <button type="submit" class="accent">Confirmar</button>
+        </div>
+      </form>
+    </div>
+    <div class="row" style="justify-content: flex-end; gap: 8px;"></div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
