@@ -3,9 +3,9 @@
 // Seed & storage helpers (multi-tenant namespace)
 const storage = {
   get(key, fallback) {
-    try { return JSON.parse(localStorage.getItem(namespacedKey(key))) ?? fallback; } catch { return fallback; }
+    try { return JSON.parse(sessionStorage.getItem(namespacedKey(key))) ?? fallback; } catch { return fallback; }
   },
-  set(key, value) { localStorage.setItem(namespacedKey(key), JSON.stringify(value)); },
+  set(key, value) { sessionStorage.setItem(namespacedKey(key), JSON.stringify(value)); },
 };
 
 function namespacedKey(key) {
@@ -14,11 +14,11 @@ function namespacedKey(key) {
 }
 
 function getCompanyNamespace() {
-  return localStorage.getItem("tenant") || "TeLlevo";
+  return sessionStorage.getItem("tenant") || "TeLlevo";
 }
 
 function setCompanyNamespace(ns) {
-  localStorage.setItem("tenant", ns);
+  sessionStorage.setItem("tenant", ns);
 }
 
 // Seed data
@@ -49,12 +49,12 @@ const SEED = {
 
 function seedIfEmpty() {
   const key = namespacedKey("users");
-  if (!localStorage.getItem(key)) {
+  if (!sessionStorage.getItem(key)) {
     storage.set("users", SEED.users);
   } else {
     // migrate existing users to include email/password if missing (avoid breaking login)
     try {
-      const current = JSON.parse(localStorage.getItem(key));
+      const current = JSON.parse(sessionStorage.getItem(key));
       if (Array.isArray(current)) {
         const migrated = current.map((u, idx) => {
           let email = u.email;
@@ -71,23 +71,23 @@ function seedIfEmpty() {
             direccion: u.direccion || '',
           };
         });
-        localStorage.setItem(key, JSON.stringify(migrated));
+        sessionStorage.setItem(key, JSON.stringify(migrated));
       }
     } catch {}
   }
-  if (!localStorage.getItem(namespacedKey('mockClients'))) storage.set('mockClients', SEED.mockClients);
-  if (!localStorage.getItem(namespacedKey("rutas"))) storage.set("rutas", SEED.rutas);
-  if (!localStorage.getItem(namespacedKey("flota"))) storage.set("flota", SEED.flota);
-  if (!localStorage.getItem(namespacedKey("reservas"))) storage.set("reservas", SEED.reservas);
-  if (!localStorage.getItem(namespacedKey("promos"))) storage.set("promos", SEED.promos);
-  if (!localStorage.getItem(namespacedKey("tracking"))) storage.set("tracking", []);
-  if (!localStorage.getItem(namespacedKey("invoices"))) storage.set("invoices", []);
+  if (!sessionStorage.getItem(namespacedKey('mockClients'))) storage.set('mockClients', SEED.mockClients);
+  if (!sessionStorage.getItem(namespacedKey("rutas"))) storage.set("rutas", SEED.rutas);
+  if (!sessionStorage.getItem(namespacedKey("flota"))) storage.set("flota", SEED.flota);
+  if (!sessionStorage.getItem(namespacedKey("reservas"))) storage.set("reservas", SEED.reservas);
+  if (!sessionStorage.getItem(namespacedKey("promos"))) storage.set("promos", SEED.promos);
+  if (!sessionStorage.getItem(namespacedKey("tracking"))) storage.set("tracking", []);
+  if (!sessionStorage.getItem(namespacedKey("invoices"))) storage.set("invoices", []);
 }
 
 // Session
 function getSession() { return storage.get("session", null); }
 function setSession(session) { storage.set("session", session); }
-function clearSession() { try { localStorage.removeItem(namespacedKey("session")); } catch {} }
+function clearSession() { try { sessionStorage.removeItem(namespacedKey("session")); } catch {} }
 
 // Router
 const views = {
@@ -157,13 +157,13 @@ function toast(message) {
 
 function toggleTheme() {
   const isDark = document.documentElement.classList.toggle('dark');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  sessionStorage.setItem('theme', isDark ? 'dark' : 'light');
   const btn = document.getElementById('themeToggle');
   if (btn) btn.textContent = isDark ? '☀️' : '🌙';
 }
 
 function applySavedTheme() {
-  const saved = localStorage.getItem('theme');
+  const saved = sessionStorage.getItem('theme');
   if (saved === 'dark') {
     document.documentElement.classList.add('dark');
     const btn = document.getElementById('themeToggle');
