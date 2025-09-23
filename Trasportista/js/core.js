@@ -128,8 +128,6 @@ function updateSessionUi() {
   } else {
     sessionSpan.textContent = "Sin sesión";
   }
-  const sel = document.getElementById("companySelect");
-  if (sel) sel.value = getCompanyNamespace();
 }
 
 function navigateByRole(role) {

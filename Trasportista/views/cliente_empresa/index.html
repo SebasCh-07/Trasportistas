@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeLlevo - Cliente Empresa</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="../../styles/base.css" />
+  <link id="roleStyles" rel="stylesheet" href="../../styles/clienteEmpresa.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TeLlevo</div>
+    <div class="session">
+      <span id="sessionUser">Sin sesión</span>
+      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="view-cliente" class="view active">
+      <div class="cliente-layout">
+        <aside class="cliente-tabs">
+          <button class="tab-btn active" data-tab="servicios">Servicios</button>
+          <button class="tab-btn" data-tab="mis-viajes">Mis Viajes</button>
+          <button class="tab-btn" data-tab="historial">Historial</button>
+        </aside>
+        <div class="cliente-content">
+          <div class="tab-panel active" id="cliente-tab-servicios">
+            <div class="panel cliente-left">
+              <h2>Servicios</h2>
+              <div class="row" style="gap:8px; flex-wrap: wrap;">
+                <label class="badge">Elegir servicio</label>
+                <select id="servicioTipo">
+                  <option value="compartido">Compartido (por asiento)</option>
+                  <option value="privado">Privado (unidad exclusiva)</option>
+                  <option value="encomienda">Encomienda express</option>
+                  <option value="transfer">Transfer Aeropuerto (directo)</option>
+                  <option value="p2p">Cotización Punto a Punto</option>
+                </select>
+                </div>
+              <div id="servicioDescripcion" class="servicio-descripcion">
+                <p>Selecciona un tipo de servicio para ver su descripción</p>
+              </div>
+            </div>
+            <div class="panel cliente-left" id="compartidoPanel">
+              <h2>Rutas disponibles (compartido)</h2>
+              <div id="rutasList" class="grid"></div>
+            </div>
+            <div class="panel cliente-left" id="customServicePanel" hidden>
+              <h3>Configurar servicio</h3>
+              <form id="customServiceForm" class="form">
+                <div class="two-col">
+                  <label>Origen
+                    <div class="row" style="gap:8px; align-items:center;">
+                      <select id="csOrigenSelect" style="flex:1"></select>
+                      <button type="button" id="csOrigenMapBtn" class="secondary">Nueva dirección</button>
+                    </div>
+                    <input id="csOrigen" placeholder="Ciudad/Barrio" required style="display:none" />
+                  </label>
+                  <label id="csDestinoWrapper">Destino
+                    <input id="csDestino" placeholder="Ciudad/Barrio" required />
+                  </label>
+                  <label id="csRutaWrapper" style="display:none">Destino (preestablecido)
+                    <select id="csRutaSelect"></select>
+                  </label>
+                </div>
+                <div id="servicioPrivadoFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Número de pasajeros
+                      <input id="csPersonas" type="number" min="1" max="8" placeholder="Ej. 4" />
+                    </label>
+                    <label>Tipo de vehículo preferido
+                      <select id="csTipoVehiculo">
+                        <option value="sedan">Sedán (1-4 personas)</option>
+                        <option value="suv">SUV (1-6 personas)</option>
+                        <option value="van">Van (1-8 personas)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>Comentarios especiales
+                    <input id="csComentarios" placeholder="Equipaje especial, paradas intermedias, etc." />
+                  </label>
+                </div>
+                <div id="servicioEncomiendaFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Tamaño del paquete
+                      <select id="csTamanoPaquete">
+                        <option value="pequeno">Pequeño (hasta 5kg)</option>
+                        <option value="mediano">Mediano (5-15kg)</option>
+                        <option value="grande">Grande (15-30kg)</option>
+                      </select>
+                    </label>
+                    <label>Tipo de contenido
+                      <select id="csTipoContenido">
+                        <option value="documentos">Documentos</option>
+                        <option value="ropa">Ropa/Textiles</option>
+                        <option value="electronico">Electrónicos</option>
+                        <option value="fragil">Frágil</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>Descripción del contenido
+                    <input id="csDescripcionPaquete" placeholder="Describe brevemente el contenido" />
+                  </label>
+                </div>
+                <div id="servicioTransferFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Aeropuerto
+                      <select id="csAeropuerto">
+                        <option value="quito">Aeropuerto Mariscal Sucre (Quito)</option>
+                        <option value="guayaquil">Aeropuerto José Joaquín de Olmedo (Guayaquil)</option>
+                      </select>
+                    </label>
+                    <label>Tipo de transfer
+                      <select id="csTipoTransfer">
+                        <option value="aeropuerto-casa">Aeropuerto → Casa</option>
+                        <option value="casa-aeropuerto">Casa → Aeropuerto</option>
+                  </select>
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Número de pasajeros
+                      <input id="csPersonasTransfer" type="number" min="1" max="8" placeholder="Ej. 2" />
+                    </label>
+                    <label>Número de vuelo (opcional)
+                      <input id="csNumeroVuelo" placeholder="Ej. AV1234" />
+                    </label>
+                  </div>
+                  <label>Dirección de recogida/llegada
+                    <input id="csDireccionTransfer" placeholder="Calle y número, barrio/ciudad" />
+                  </label>
+                </div>
+                <div id="servicioP2PFields" style="display: none;">
+                  <div class="two-col">
+                    <label>Método de cálculo
+                      <select id="csMetodoCalculoP2P">
+                        <option value="kilometraje">Por kilometraje (API Maps)</option>
+                        <option value="zonas">Tarifas planas por zonas</option>
+                      </select>
+                    </label>
+                    <label>Número de pasajeros
+                      <input id="csPersonasP2P" type="number" min="1" max="8" placeholder="Ej. 4" />
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Tipo de vehículo preferido
+                      <select id="csTipoVehiculoP2P">
+                        <option value="sedan">Sedán (1-4 personas)</option>
+                        <option value="suv">SUV (1-6 personas)</option>
+                        <option value="van">Van (1-8 personas)</option>
+                      </select>
+                    </label>
+                    <label>Fecha y hora preferida
+                      <input id="csFechaHoraP2P" type="datetime-local" />
+                    </label>
+                  </div>
+                  <div id="p2pZonaFields" style="display: none;">
+                    <label>Zona de destino
+                      <select id="csZonaP2P">
+                        <option value="">Seleccionar zona</option>
+                        <option value="quito-centro">Quito Centro ($20)</option>
+                        <option value="quito-norte">Quito Norte (+$5)</option>
+                        <option value="quito-sur">Quito Sur (+$5)</option>
+                        <option value="quito-valle">Quito Valle (+$10)</option>
+                        <option value="guayaquil-centro">Guayaquil Centro ($25)</option>
+                        <option value="guayaquil-norte">Guayaquil Norte (+$5)</option>
+                        <option value="guayaquil-sur">Guayaquil Sur (+$5)</option>
+                        <option value="otra-zona">Otra zona (cotización especial)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="p2pPrecioPreview" style="display: none; margin: 10px 0; padding: 10px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #007bff;">
+                    <strong>💰 Cotización estimada:</strong> <span id="precioCalculadoP2P">$0</span>
+                    <div id="detalleCalculoP2P" style="font-size: 0.9em; color: #666; margin-top: 5px;"></div>
+                  </div>
+                  <label>Comentarios especiales
+                    <input id="csComentariosP2P" placeholder="Equipaje especial, paradas intermedias, etc." />
+                  </label>
+                </div>
+                <button type="submit" class="accent">Solicitar cotización</button>
+              </form>
+            </div>
+            <div class="panel cliente-right" id="reservaPanel" hidden>
+              <h3>Reservar</h3>
+              <div id="reservaInfo"></div>
+              <form id="reservaForm" class="form">
+                <label>Tipo
+                  <select id="tipoReserva">
+                    <option value="asiento">Asiento</option>
+                    <option value="encomienda">Encomienda</option>
+                  </select>
+                </label>
+                <label>Dirección de recogida
+                  <input id="direccion" type="text" placeholder="Calle y número" required />
+                </label>
+                <div class="two-col">
+                  <label>Método de pago
+                    <select id="metodoPago">
+                      <option value="efectivo">Efectivo</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="voucher">Voucher empresarial</option>
+                    </select>
+                  </label>
+                  <label>Cupón/Voucher (opcional)
+                    <input id="codigoPromo" placeholder="CUPON10 o VOC-123" />
+                  </label>
+                </div>
+                <button type="submit" class="accent">Confirmar reserva</button>
+              </form>
+              <div id="reservaMsg" class="msg"></div>
+            </div>
+            <div class="panel cliente-right" id="trackingPanel" hidden>
+              <h3>Tracking en vivo</h3>
+              <div id="trackingInfo" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="cliente-tab-mis-viajes">
+            <div class="panel">
+              <h2>Mis Viajes Activos</h2>
+              <div class="viajes-tabs">
+                <button class="viajes-tab-btn active" data-status="pendientes">Pendientes</button>
+                <button class="viajes-tab-btn" data-status="confirmados">Confirmados</button>
+                <button class="viajes-tab-btn" data-status="en-curso">En Curso</button>
+              </div>
+              <div class="viajes-content">
+                <div class="viajes-panel active" id="viajes-pendientes">
+                  <div id="viajesPendientesList" class="list"></div>
+                </div>
+                <div class="viajes-panel" id="viajes-confirmados">
+                  <div id="viajesConfirmadosList" class="list"></div>
+                </div>
+                <div class="viajes-panel" id="viajes-en-curso">
+                  <div id="viajesEnCursoList" class="list"></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel" id="trackingClientePanel">
+              <h3>Tracking en Tiempo Real</h3>
+              <div id="trackingClienteInfo" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="cliente-tab-historial">
+            <div class="panel">
+              <h2>Historial de Reservas</h2>
+              <div id="historialList" class="list"></div>
+            </div>
+            <div class="panel">
+              <h3>Calificar Servicio</h3>
+              <form id="ratingForm" class="form">
+                <div class="two-col">
+                  <label>Reserva completada
+                    <select id="ratingReserva"></select>
+                  </label>
+                  <label>Puntaje (1-5)
+                    <input id="ratingValor" type="number" min="1" max="5" step="1" />
+                  </label>
+                </div>
+                <label>Comentario (opcional)
+                  <input id="ratingComentario" placeholder="Cuéntanos sobre tu experiencia" />
+                </label>
+                <button type="submit" class="accent">Enviar calificación</button>
+                <div id="ratingMsg" class="msg"></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Reserva Compartida (reutilizado como en cliente) -->
+  <div id="clientSharedModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Reservar servicio compartido</h3>
+        <button id="clientSharedClose" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="clientSharedSummary" class="list" style="margin-bottom:8px;"></div>
+        <form id="clientSharedForm" class="form">
+          <label>Dirección de recogida
+            <div class="row" style="gap:8px; align-items:center;">
+              <input id="sharedDireccion" type="text" placeholder="Calle y número" required style="flex:1" />
+              <button type="button" id="sharedMapBtn" class="secondary">Elegir en mapa</button>
+            </div>
+          </label>
+          <div class="two-col">
+            <label>Personas
+              <input id="sharedPersonas" type="number" min="1" max="8" value="1" required />
+            </label>
+            <label>Equipaje (opcional)
+              <input id="sharedEquipaje" type="text" placeholder="Descripción breve" />
+            </label>
+          </div>
+          <div class="row" style="justify-content:flex-end; gap:8px;">
+            <button type="submit" class="accent">Continuar a pago</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../../app.js"></script>
+  <script>
+    // Activar vista como cliente (misma lógica y flujo), con estilos de cliente_empresa
+    try { applyRoleStyles('cliente_empresa'); } catch {}
+    try { showView('cliente'); } catch {}
+    try { renderCliente(); } catch {}
+  </script>
+</body>
+</html>
+
+

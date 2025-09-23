@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeLlevo - Admin</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="../../styles/base.css" />
+  <link id="roleStyles" rel="stylesheet" href="../../styles/admin.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TeLlevo</div>
+    <div class="session">
+      <span id="sessionUser">Sin sesión</span>
+      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="view-admin" class="view active">
+      <div class="admin-layout">
+        <aside class="admin-tabs">
+          <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+          <button class="tab-btn" data-tab="usuarios">Usuarios</button>
+          <button class="tab-btn" data-tab="clientes">Clientes</button>
+          <button class="tab-btn" data-tab="flota">Flota</button>
+          <button class="tab-btn" data-tab="rutas">Rutas</button>
+          <button class="tab-btn" data-tab="reservas">Reservas</button>
+          <button class="tab-btn" data-tab="promos">Cupones/Vouchers</button>
+          <button class="tab-btn" data-tab="gps">GPS</button>
+        </aside>
+        <div class="admin-content">
+          <div class="tab-panel active" id="tab-dashboard">
+            <div class="dashboard-section">
+              <div class="section-header">
+                <h2>📊 Resumen General</h2>
+                <p class="section-desc">Indicadores clave de rendimiento del negocio</p>
+              </div>
+              <div class="kpis-grid">
+                <div class="kpi-card kpi-primary"><div class="kpi-icon">💼</div><div class="kpi-content"><div class="kpi-num" id="kpiReservas">0</div><div class="kpi-label">Total Reservas</div><div class="kpi-sublabel">Todas las solicitudes</div></div></div>
+                <div class="kpi-card kpi-success"><div class="kpi-icon">💰</div><div class="kpi-content"><div class="kpi-num" id="kpiRevenue">$0</div><div class="kpi-label">Ingresos Totales</div><div class="kpi-sublabel">Facturación acumulada</div></div></div>
+                <div class="kpi-card kpi-info"><div class="kpi-icon">🚗</div><div class="kpi-content"><div class="kpi-num" id="kpiFlota">0</div><div class="kpi-label">Vehículos Activos</div><div class="kpi-sublabel">Flota disponible</div></div></div>
+                <div class="kpi-card kpi-warning"><div class="kpi-icon">⭐</div><div class="kpi-content"><div class="kpi-num" id="kpiRating">-</div><div class="kpi-label">Calificación</div><div class="kpi-sublabel">Promedio del servicio</div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-usuarios">
+            <div class="panel">
+              <h3>Usuarios</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span class="text-muted">Gestión de usuarios del sistema</span>
+                <button class="btn primary" id="addUsuarioBtn">+ Agregar Usuario</button>
+              </div>
+              <div id="adminUsuarios" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-clientes">
+            <div class="panel"><h3>Clientes</h3><div id="adminClientes" class="list"></div></div>
+          </div>
+          <div class="tab-panel" id="tab-flota">
+            <div class="panel">
+              <h3>Flota</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span class="text-muted">Gestión de vehículos</span>
+                <button class="btn primary" id="addFlotaBtn">+ Agregar Vehículo</button>
+              </div>
+              <div id="adminFlota" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-rutas">
+            <div class="panel">
+              <h3>Gestión de rutas</h3>
+              <form id="rutaForm" class="form" style="margin-bottom:12px">
+                <div class="two-col">
+                  <label>Provincia Origen
+                    <select id="rutaProvinciaOrigen" required>
+                      <option value="">Provincia...</option>
+                    </select>
+                  </label>
+                  <label>Ciudad Origen
+                    <select id="rutaCiudadOrigen" required>
+                      <option value="">Ciudad...</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Provincia Destino
+                    <select id="rutaProvinciaDestino" required>
+                      <option value="">Provincia...</option>
+                    </select>
+                  </label>
+                  <label>Ciudad Destino
+                    <select id="rutaCiudadDestino" required>
+                      <option value="">Ciudad...</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Horario
+                    <input id="rutaHorario" type="time" required />
+                  </label>
+                  <label>Precio (USD)
+                    <input id="rutaPrecio" type="number" step="0.01" min="0" required />
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Asientos
+                    <input id="rutaAsientos" type="number" min="1" required />
+                  </label>
+                  <div></div>
+                </div>
+                <div class="row" style="justify-content:flex-end; gap:8px; margin-top:8px;">
+                  <button type="submit" class="accent">+ Agregar ruta</button>
+                </div>
+                <div id="rutaMsg" class="msg"></div>
+              </form>
+              <div id="adminRutas" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-reservas">
+            <div class="panel">
+              <h3>Gestión de reservas</h3>
+              <div class="row" style="gap:8px; flex-wrap:wrap; margin:8px 0;">
+                <button class="btn secondary res-filter-btn active" data-filter="pendiente">Pendientes</button>
+                <button class="btn secondary res-filter-btn" data-filter="asignadas">Asignadas</button>
+                <button class="btn secondary res-filter-btn" data-filter="en-curso">En curso</button>
+                <button class="btn secondary res-filter-btn" data-filter="recogido">Completadas</button>
+              </div>
+              <div id="adminReservas" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-promos">
+            <div class="panel">
+              <h3>Cupones y Vouchers</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="text-muted">Gestión de promociones</span>
+                <button class="btn primary" id="promoNuevoBtn">+ Nuevo</button>
+              </div>
+              <div id="adminPromos" class="list"></div>
+              <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr 1fr 1fr auto auto; gap:6px; margin-top:8px">
+                <select id="promoTipo">
+                  <option value="cupon">Cupón</option>
+                  <option value="voucher">Voucher</option>
+                </select>
+                <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
+                <input id="promoDescuento" type="number" min="1" max="100" step="1" placeholder="% desc." title="Porcentaje de descuento (solo cupón)" />
+                <input id="promoBalance" type="number" min="0" step="0.01" placeholder="$ saldo" title="Saldo disponible (solo voucher)" style="display:none" />
+                <button id="promoSubmit" type="submit">Agregar</button>
+                <button id="promoCancelEdit" type="button" class="secondary" style="display:none">Cancelar</button>
+              </form>
+              <div id="promoMsg" class="msg"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-gps">
+            <div class="panel">
+              <h3>GPS en tiempo real</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 8px; gap:8px;">
+                <input id="gpsFilter" type="text" placeholder="Buscar conductor por nombre..." style="flex:1; max-width: 360px;" />
+                <span class="text-muted" id="gpsCount">0 activos</span>
+              </div>
+              <div class="two-col">
+                <div>
+                  <div id="adminGpsMap" style="height: 420px; border-radius: 8px; overflow: hidden; background: #eee;"></div>
+                </div>
+                <div>
+                  <div id="adminGpsList" class="list"></div>
+                </div>
+              </div>
+              <div class="text-muted" style="margin-top: 8px;">
+                El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  
+  <!-- Editar Ruta Modal -->
+  <div id="editarRutaModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Ruta</h3>
+        <button id="closeEditarRutaModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarRutaForm">
+          <div class="two-col">
+            <label>Provincia Origen
+              <select id="erProvinciaOrigen" required>
+                <option value="">Provincia...</option>
+              </select>
+            </label>
+            <label>Ciudad Origen
+              <select id="erCiudadOrigen" required>
+                <option value="">Ciudad...</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Provincia Destino
+              <select id="erProvinciaDestino" required>
+                <option value="">Provincia...</option>
+              </select>
+            </label>
+            <label>Ciudad Destino
+              <select id="erCiudadDestino" required>
+                <option value="">Ciudad...</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Horario
+              <input id="erHorario" type="time" required />
+            </label>
+            <label>Precio (USD)
+              <input id="erPrecio" type="number" step="0.01" min="0" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Asientos
+              <input id="erAsientos" type="number" min="1" required />
+            </label>
+            <div></div>
+          </div>
+          <div id="editarRutaMsg" class="msg"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" id="cancelarEditarRuta">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarRuta">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ver Vehículo Modal -->
+  <div id="verVehiculoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🚗 Detalles del Vehículo</h3>
+        <button class="close-btn" onclick="cerrarVerVehiculoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verVehiculoContent" class="view-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarVerVehiculoModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar Vehículo Modal -->
+  <div id="editarVehiculoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Vehículo</h3>
+        <button class="close-btn" onclick="cerrarEditarVehiculoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarVehiculoForm">
+          <div class="two-col">
+            <label>Placa
+              <input id="evPlaca" type="text" required />
+            </label>
+            <label>Tipo
+              <select id="evTipo" required>
+                <option value="sedan">Sedan</option>
+                <option value="suv">SUV</option>
+                <option value="van">Van</option>
+                <option value="camioneta">Camioneta</option>
+                <option value="bus">Bus</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Marca
+              <input id="evMarca" type="text" />
+            </label>
+            <label>Modelo
+              <input id="evModelo" type="text" />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Año
+              <input id="evAño" type="number" min="1900" max="2100" />
+            </label>
+            <label>Capacidad
+              <input id="evCapacidad" type="number" min="1" />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Color
+              <input id="evColor" type="text" />
+            </label>
+            <label>Conductor asignado
+              <select id="evConductor">
+                <option value="">Sin asignar</option>
+              </select>
+            </label>
+          </div>
+          <label>Observaciones
+            <textarea id="evObservaciones"></textarea>
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarEditarVehiculoModal()">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarVehiculo" onclick="confirmarEditarVehiculo()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ver Cliente Modal -->
+  <div id="verClienteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Detalles del Cliente</h3>
+        <button class="close-btn" onclick="cerrarVerClienteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="verClienteContent" class="view-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarVerClienteModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar Cliente Modal -->
+  <div id="editarClienteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Editar Cliente</h3>
+        <button class="close-btn" onclick="cerrarEditarClienteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarClienteForm">
+          <div class="form-group">
+            <label for="ecNombre">Nombre Completo:</label>
+            <input type="text" id="ecNombre" required>
+          </div>
+          <div class="form-group">
+            <label for="ecCedula">Cédula:</label>
+            <input type="text" id="ecCedula" required>
+          </div>
+          <div class="form-group">
+            <label for="ecEmail">Email:</label>
+            <input type="email" id="ecEmail">
+          </div>
+          <div class="form-group">
+            <label for="ecTelefono">Teléfono:</label>
+            <input type="tel" id="ecTelefono">
+          </div>
+          <div class="form-group">
+            <label for="ecDireccion">Dirección:</label>
+            <input type="text" id="ecDireccion">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary" onclick="cerrarEditarClienteModal()">Cancelar</button>
+        <button class="btn primary" id="confirmarEditarCliente">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Create Vehicle View -->
+  <section id="view-admin-vehicle-new" class="view" hidden>
+    <div class="panel" style="max-width: 900px; margin: 0 auto;">
+      <h2>Nuevo vehículo</h2>
+      <form id="adminCreateVehicleForm" class="form">
+        <div class="two-col">
+          <label>Placa
+            <input id="avPlaca" type="text" required />
+          </label>
+          <label>Tipo
+            <select id="avTipo" required>
+              <option value="sedan">Sedan</option>
+              <option value="suv">SUV</option>
+              <option value="van">Van</option>
+              <option value="camioneta">Camioneta</option>
+              <option value="bus">Bus</option>
+            </select>
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Marca
+            <input id="avMarca" type="text" required />
+          </label>
+          <label>Modelo
+            <input id="avModelo" type="text" required />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Año
+            <input id="avAño" type="number" min="1900" max="2100" required />
+          </label>
+          <label>Capacidad
+            <input id="avCapacidad" type="number" min="1" required />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Color
+            <input id="avColor" type="text" />
+          </label>
+          <label>Estado
+            <select id="avEstado">
+              <option value="disponible">Disponible</option>
+              <option value="servicio">En servicio</option>
+            </select>
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Conductor asignado
+            <select id="avConductor">
+              <option value="">Sin asignar</option>
+            </select>
+          </label>
+          <label>SOAT
+            <input id="avSoat" type="text" />
+          </label>
+        </div>
+        <label>Observaciones
+          <textarea id="avObservaciones"></textarea>
+        </label>
+        <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" id="avCancelar" class="secondary">Cancelar</button>
+          <button type="submit" class="accent">Crear vehículo</button>
+        </div>
+        <div id="avMsg" class="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Admin Create User View -->
+  <section id="view-admin-user-new" class="view" hidden>
+    <div class="panel" style="max-width: 900px; margin: 0 auto;">
+      <h2>Nuevo usuario</h2>
+      <form id="adminCreateUserForm" class="form">
+        <div class="two-col">
+          <label>Nombre completo
+            <input id="auNombre" type="text" required />
+          </label>
+          <label>CI
+            <input id="auCedula" type="text" required />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Rol
+            <select id="auRole" required>
+              <option value="conductor">Conductor</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </label>
+          <label>Teléfono
+            <input id="auTelefono" type="tel" />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Correo
+            <input id="auEmail" type="email" required />
+          </label>
+          <label>Contraseña
+            <input id="auPassword" type="password" required />
+          </label>
+        </div>
+        <label>Dirección
+          <input id="auDireccion" type="text" />
+        </label>
+        <div class="two-col">
+          <div class="photo-box">
+            <img id="auFotoPreview" alt="Vista previa" hidden />
+            <button id="auFotoBtn" class="secondary" type="button">Subir foto</button>
+            <input id="auFoto" type="file" accept="image/*" hidden />
+          </div>
+          <div class="text-muted" style="display:flex; align-items:center">Foto del usuario (opcional)</div>
+        </div>
+        <div class="row" style="justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" id="auCancelar" class="secondary">Cancelar</button>
+          <button type="submit" class="accent">Crear usuario</button>
+        </div>
+        <div id="auMsg" class="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../../app.js"></script>
+  <script>
+    try { applyRoleStyles('admin'); } catch {}
+    try { renderAdmin(); } catch {}
+    try { showView('admin'); } catch {}
+  </script>
+</body>
+</html>

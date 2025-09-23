@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeLlevo - Conductor</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="../../styles/base.css" />
+  <link id="roleStyles" rel="stylesheet" href="../../styles/conductor.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TeLlevo</div>
+    <div class="session">
+      <span id="sessionUser">Sin sesión</span>
+      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="view-conductor" class="view active">
+      <div class="conductor-layout">
+        <aside class="conductor-tabs">
+          <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+          <button class="tab-btn" data-tab="asignaciones">Asignaciones</button>
+        </aside>
+        <div class="conductor-content">
+          <div class="tab-panel active" id="conductor-tab-dashboard">
+            <div class="panel">
+              <h2>Dashboard</h2>
+              <div class="kpis">
+                <div class="kpi"><div class="kpi-num" id="conductorTotalAsignaciones">0</div><div class="kpi-label">Total Asignaciones</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorPendientes">0</div><div class="kpi-label">Pendientes</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorEnCurso">0</div><div class="kpi-label">En Curso</div></div>
+                <div class="kpi"><div class="kpi-num" id="conductorCompletadas">0</div><div class="kpi-label">Completadas</div></div>
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Próximos viajes</h3>
+              <div id="proximosViajes" class="list"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="conductor-tab-asignaciones">
+            <div class="panel">
+              <h2>Mis Asignaciones</h2>
+              <div class="asignaciones-tabs">
+                <button class="asig-tab-btn active" data-status="asignado">Asignado</button>
+                <button class="asig-tab-btn" data-status="en-curso">En Curso</button>
+                <button class="asig-tab-btn" data-status="finalizado">Finalizado</button>
+              </div>
+              <div class="asig-content">
+                <div class="asig-panel active" id="asig-asignado">
+                  <div id="viajesAsignados" class="list"></div>
+                </div>
+                <div class="asig-panel" id="asig-en-curso">
+                  <div id="viajesEnCurso" class="list"></div>
+                </div>
+                <div class="asig-panel" id="asig-finalizado">
+                  <div id="viajesFinalizados" class="list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../../app.js"></script>
+  <script>
+    try { applyRoleStyles('conductor'); } catch {}
+    try { renderConductor(); } catch {}
+    try { showView('conductor'); } catch {}
+  </script>
+</body>
+</html>
+
+

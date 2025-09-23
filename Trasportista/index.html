@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TeLlevo - Prototipo</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles/base.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,16 +14,6 @@
 <body>
   <header class="topbar">
     <div class="brand">TeLlevo</div>
-    
-    <div class="session">
-      <select id="companySelect">
-        <option value="TeLlevo">TeLlevo</option>
-        <option value="AndesTours">AndesTours</option>
-        <option value="AmazoniaTravel">AmazoniaTravel</option>
-      </select>
-      <span id="sessionUser">Sin sesión</span>
-      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
-    </div>
   </header>
 
   <main id="app">
@@ -72,6 +62,18 @@
               </label>
               <label>Contraseña
                 <input id="regPassword" type="password" required />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>Tipo de registro
+                <select id="regTipoCliente">
+                  <option value="cliente">Cliente TeLlevo</option>
+                  <option value="cliente_empresa">Cliente de Otra Empresa</option>
+                  <option value="empresa">Empresa</option>
+                </select>
+              </label>
+              <label id="regNombreEmpresaWrapper" style="display:none;">Nombre de empresa
+                <input id="regNombreEmpresa" type="text" placeholder="Nombre de la empresa asociada" />
               </label>
             </div>
             
@@ -134,10 +136,22 @@
                 <input id="regPassword" type="password" required />
             </label>
             </div>
+            <div class="two-col">
+              <label>Tipo de registro
+                <select id="regTipoCliente">
+                  <option value="cliente">Cliente TeLlevo</option>
+                  <option value="cliente_empresa">Cliente de Otra Empresa</option>
+                  <option value="empresa">Empresa</option>
+                </select>
+              </label>
+              <label id="regNombreEmpresaWrapper" style="display:none;">Nombre de empresa
+                <input id="regNombreEmpresa" type="text" placeholder="Nombre de la empresa asociada" />
+              </label>
+            </div>
             
             <div class="two-col">
               <div class="map-box">
-                <button id="openMapPicker" type="button" class="btn ghost" style="width:100%">Ubicar Dirección en mapa</button>
+                <button id="openMapPicker2" type="button" class="btn ghost" style="width:100%">Ubicar Dirección en mapa</button>
                 <div class="text-muted" id="pickedAddress" style="margin-top:6px"></div>
                 <input id="regLat" type="hidden" />
                 <input id="regLng" type="hidden" />
@@ -171,6 +185,12 @@
           <button class="tab-btn active" data-tab="servicios">Servicios</button>
           <button class="tab-btn" data-tab="mis-viajes">Mis Viajes</button>
           <button class="tab-btn" data-tab="historial">Historial</button>
+          <button class="tab-btn" data-tab="reservas">Reservas</button>
+          <button class="tab-btn" data-tab="rutas">Rutas</button>
+          <button class="tab-btn" data-tab="flota">Flota</button>
+          <button class="tab-btn" data-tab="clientes">Clientes</button>
+          <button class="tab-btn" data-tab="promos">Promos</button>
+          <button class="tab-btn" data-tab="gps">GPS</button>
         </aside>
         <div class="cliente-content">
           <div class="tab-panel active" id="cliente-tab-servicios">
@@ -182,6 +202,8 @@
             <option value="compartido">Compartido (por asiento)</option>
             <option value="privado">Privado (unidad exclusiva)</option>
             <option value="encomienda">Encomienda express</option>
+            <option value="transfer">Transfer Aeropuerto (directo)</option>
+            <option value="p2p">Cotización Punto a Punto</option>
           </select>
         </div>
               <div id="servicioDescripcion" class="servicio-descripcion">
@@ -204,7 +226,10 @@
                     <input id="csOrigen" placeholder="Ciudad/Barrio" required style="display:none" />
             </label>
                   <label id="csDestinoWrapper">Destino
-              <input id="csDestino" placeholder="Ciudad/Barrio" required />
+              <div class="row" style="gap:8px; align-items:center;">
+                <input id="csDestino" placeholder="Ciudad/Barrio" required style="flex:1" />
+                <button type="button" id="csDestinoMapBtn" class="secondary">Nueva dirección</button>
+              </div>
             </label>
                   <label id="csRutaWrapper" style="display:none">Destino (preestablecido)
                     <select id="csRutaSelect"></select>
@@ -230,6 +255,8 @@
                   </label>
           </div>
 
+          
+
                 <!-- Campos específicos para encomienda -->
                 <div id="servicioEncomiendaFields" style="display: none;">
           <div class="two-col">
@@ -253,6 +280,63 @@
                   <label>Descripción del contenido
                     <input id="csDescripcionPaquete" placeholder="Describe brevemente el contenido" />
           </label>
+                </div>
+
+                <!-- Campos específicos para Transfer Aeropuerto -->
+                <div id="servicioTransferFields" style="display:none;">
+                  <div class="two-col">
+                    <label>Tipo de transfer
+                      <select id="csTransferTipo">
+                        <option value="aeropuerto-casa">Aeropuerto → Casa</option>
+                        <option value="casa-aeropuerto">Casa → Aeropuerto</option>
+                      </select>
+                    </label>
+                    <label>Aeropuerto
+                      <select id="csTransferAeropuerto">
+                        <option value="UIO">Quito (UIO)</option>
+                        <option value="GYE">Guayaquil (GYE)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>Dirección de recogida/llegada
+                    <div class="row" style="gap:8px; align-items:center;">
+                      <input id="csDireccionTransfer" placeholder="Calle y número, barrio/ciudad" style="flex:1" />
+                      <button type="button" id="csDireccionTransferMapBtn" class="secondary">Nueva dirección</button>
+                    </div>
+                  </label>
+                </div>
+
+                <!-- Campos específicos para Punto a Punto -->
+                <div id="servicioP2PFields" style="display:none;">
+                  <div class="two-col">
+                    <label>Origen (texto)
+                      <div class="row" style="gap:8px; align-items:center;">
+                        <input id="csP2POrigen" placeholder="Ciudad/Barrio" style="flex:1" />
+                        <button type="button" id="csP2POrigenMapBtn" class="secondary">Nueva dirección</button>
+                      </div>
+                    </label>
+                    <label>Destino (texto)
+                      <div class="row" style="gap:8px; align-items:center;">
+                        <input id="csP2PDestino" placeholder="Ciudad/Barrio" style="flex:1" />
+                        <button type="button" id="csP2PDestinoMapBtn" class="secondary">Nueva dirección</button>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Método de cálculo
+                      <select id="csP2PMetodo">
+                        <option value="km">Por kilometraje (API Maps)</option>
+                        <option value="zona">Tarifas planas por zonas</option>
+                      </select>
+                    </label>
+                    <label>Zonificación (si aplica)
+                      <select id="csP2PZona">
+                        <option value="quito">Quito (plano admin)</option>
+                        <option value="otro">Otra zona</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="text-muted">Se mostrará el valor antes de reservar.</div>
                 </div>
 
                 <button type="submit" class="accent">Solicitar cotización</button>
@@ -299,11 +383,15 @@
               <h2>Mis Viajes Activos</h2>
               <div class="viajes-tabs">
                 <button class="viajes-tab-btn active" data-status="pendientes">Pendientes</button>
+                <button class="viajes-tab-btn" data-status="confirmados">Confirmados</button>
                 <button class="viajes-tab-btn" data-status="en-curso">En Curso</button>
               </div>
               <div class="viajes-content">
                 <div class="viajes-panel active" id="viajes-pendientes">
                   <div id="viajesPendientesList" class="list"></div>
+                </div>
+                <div class="viajes-panel" id="viajes-confirmados">
+                  <div id="viajesConfirmadosList" class="list"></div>
                 </div>
                 <div class="viajes-panel" id="viajes-en-curso">
                   <div id="viajesEnCursoList" class="list"></div>
@@ -352,10 +440,22 @@
           <button class="tab-btn" data-tab="mis-viajes">Mis Viajes</button>
           <button class="tab-btn" data-tab="historial">Historial</button>
         </aside>
-        <main class="cliente-content">
+        <div class="cliente-content">
           <!-- Servicios Tab -->
           <div class="tab-panel active" id="tab-servicios">
             <h2>Servicios de Transporte</h2>
+            <div class="panel" id="empresaHeaderPanel">
+              <div class="row" style="justify-content: space-between; align-items:center; gap:8px;">
+                <div class="row" style="gap:8px; align-items:center;">
+                  <strong id="empresaHeaderNombre">-</strong>
+                  <span class="badge" id="empresaHeaderTipo">Empresa</span>
+                </div>
+                <div class="row" style="gap:8px; align-items:center;">
+                  <span class="text-muted">Tarifa empresa</span>
+                  <span class="badge" id="empresaHeaderTarifa">$0.00</span>
+                </div>
+              </div>
+            </div>
             
             <!-- Servicios Compartidos -->
             <div class="panel">
@@ -414,7 +514,9 @@
                   </div>
                 </div>
 
-                <button type="submit" class="primary">Solicitar cotización</button>
+                <div class="row" style="justify-content:flex-end;">
+                  <button type="submit" class="primary">Solicitar cotización</button>
+                </div>
               </form>
             </div>
           </div>
@@ -445,7 +547,7 @@
             <h2>Historial de Viajes</h2>
             <div id="historialListEmpresa" class="list"></div>
           </div>
-        </main>
+        </div>
       </div>
     </section>
 
@@ -671,15 +773,43 @@
           <div class="tab-panel" id="tab-rutas">
             <div class="panel">
           <h3>Gestión de rutas</h3>
-          <div id="adminRutas" class="list"></div>
-          <form id="rutaForm" class="form inline">
-            <input id="rutaOrigen" placeholder="Origen" required />
-            <input id="rutaDestino" placeholder="Destino" required />
-            <input id="rutaHorario" placeholder="Horario (HH:MM)" required />
-            <input id="rutaPrecio" type="number" placeholder="Precio" required />
-            <input id="rutaAsientos" type="number" placeholder="Asientos" required />
-            <button type="submit">Añadir ruta</button>
-          </form>
+              <form id="rutaForm" class="form" style="margin-bottom:10px;">
+                <div class="two-col">
+                  <label>Provincia
+                    <select id="rutaProvincia" required>
+                      <option value="">Provincia...</option>
+                    </select>
+                  </label>
+                  <label>Ciudad
+                    <select id="rutaCiudad" required>
+                      <option value="">Ciudad...</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Origen
+                    <input id="rutaOrigen" placeholder="Ej. Quito" required />
+                  </label>
+                  <label>Destino
+                    <input id="rutaDestino" placeholder="Ej. Tena" required />
+                  </label>
+                </div>
+                <div class="two-col">
+                  <label>Horario
+                    <input id="rutaHorario" placeholder="HH:MM" required />
+                  </label>
+                  <label>Precio (USD)
+                    <input id="rutaPrecio" type="number" step="0.01" min="0" placeholder="0.00" required />
+                  </label>
+                </div>
+                <label>Asientos
+                  <input id="rutaAsientos" type="number" min="1" placeholder="Ej. 5" required />
+                </label>
+                <div class="row" style="justify-content:flex-end; gap:8px;">
+                  <button type="submit" class="accent">Agregar ruta</button>
+                </div>
+              </form>
+              <div id="adminRutas" class="list" style="margin-top:4px"></div>
           <div id="rutaMsg" class="msg"></div>
         </div>
           </div>
@@ -699,18 +829,27 @@
           <div class="tab-panel" id="tab-promos">
             <div class="panel">
               <h3>Cupones y Vouchers</h3>
-          <div id="adminPromos" class="list"></div>
-          <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr auto;">
-            <select id="promoTipo">
-              <option value="cupon">Cupón</option>
-              <option value="voucher">Voucher</option>
-            </select>
-            <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
-            <button type="submit">Agregar</button>
-          </form>
-          <div id="promoMsg" class="msg"></div>
-        </div>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="text-muted">Gestión de promociones</span>
+                <button class="btn primary" id="promoNuevoBtn">+ Nuevo</button>
+              </div>
+              <div id="adminPromos" class="list"></div>
+              <form id="promoForm" class="form inline" style="grid-template-columns: 1fr 1fr 1fr 1fr auto auto; gap:6px; margin-top:8px">
+                <select id="promoTipo">
+                  <option value="cupon">Cupón</option>
+                  <option value="voucher">Voucher</option>
+                </select>
+                <input id="promoCodigo" placeholder="CUPON10 o VOC-001" required />
+                <input id="promoDescuento" type="number" min="1" max="100" step="1" placeholder="% desc." title="Porcentaje de descuento (solo cupón)" />
+                <input id="promoBalance" type="number" min="0" step="0.01" placeholder="$ saldo" title="Saldo disponible (solo voucher)" style="display:none" />
+                <button id="promoSubmit" type="submit">Agregar</button>
+                <button id="promoCancelEdit" type="button" class="secondary" style="display:none">Cancelar</button>
+              </form>
+              <div id="promoMsg" class="msg"></div>
+            </div>
           </div>
+
+          
 
           <div class="tab-panel" id="tab-gps">
             <div class="panel">
@@ -970,6 +1109,56 @@
     </div>
   </div>
 
+  <!-- Modal Editar Ruta -->
+  <div id="editarRutaModal" class="modal" hidden>
+    <div class="modal-content" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3>Editar Ruta</h3>
+        <button id="closeEditarRutaModal" class="btn secondary">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="editarRutaForm" class="form">
+          <div class="two-col">
+            <label>Provincia
+              <select id="erProvincia" required>
+                <option value="">Provincia...</option>
+              </select>
+            </label>
+            <label>Ciudad
+              <select id="erCiudad" required>
+                <option value="">Ciudad...</option>
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Origen
+              <input id="erOrigen" required />
+            </label>
+            <label>Destino
+              <input id="erDestino" required />
+            </label>
+          </div>
+          <div class="two-col">
+            <label>Horario
+              <input id="erHorario" placeholder="HH:MM" required />
+            </label>
+            <label>Precio
+              <input id="erPrecio" type="number" step="0.01" min="0" required />
+            </label>
+          </div>
+          <label>Asientos
+            <input id="erAsientos" type="number" min="1" required />
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelarEditarRuta" class="btn secondary">Cancelar</button>
+        <button id="confirmarEditarRuta" class="btn accent">Guardar Cambios</button>
+      </div>
+      <div id="editarRutaMsg" class="msg"></div>
+    </div>
+  </div>
+
   <!-- Detalles Modal -->
   <div id="detallesModal" class="modal" hidden>
     <div class="modal-content">
@@ -1182,10 +1371,19 @@
       <button id="closeMapPicker" class="secondary">Cerrar</button>
     </div>
     <div id="map" style="height: 60vh; border:1px solid var(--border); border-radius: 10px;"></div>
-    <div class="row" style="gap:10px; flex-wrap: wrap;">
-      <span class="badge" id="mapCoords">-,-</span>
-      <span class="text-muted" id="mapAddress"></span>
-      <button id="saveMapPicker" class="accent">Usar esta ubicación</button>
+    <div class="row" style="gap:10px; flex-wrap: wrap; align-items: flex-start;">
+      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 250px;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span class="badge" id="mapCoords">-,-</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 12px; color: var(--muted); font-weight: 500;">Dirección:</span>
+          <span class="text-muted" id="mapAddress" style="word-wrap: break-word; white-space: normal; line-height: 1.4;"></span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; padding-top: 8px;">
+        <button id="saveMapPicker" class="accent">Usar esta ubicación</button>
+      </div>
     </div>
   </div>
 

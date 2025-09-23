@@ -1,0 +1,100 @@
+{
+  "provincias": [
+    {
+      "nombre": "Azuay",
+      "ciudades": ["Cuenca", "Gualaceo", "Paute", "Sígsig", "Chordeleg", "Nabón", "Oña", "Guachapala", "Sevilla de Oro", "Camilo Ponce Enríquez"]
+    },
+    {
+      "nombre": "Bolívar",
+      "ciudades": ["Guaranda", "Chillanes", "Chimbo", "Echeandía", "San Miguel", "Caluma", "Las Naves"]
+    },
+    {
+      "nombre": "Cañar",
+      "ciudades": ["Azogues", "Biblián", "Cañar", "La Troncal", "El Tambo", "Suscal", "Deleg"]
+    },
+    {
+      "nombre": "Carchi",
+      "ciudades": ["Tulcán", "Bolívar", "Espejo", "Mira", "Montúfar", "San Pedro de Huaca"]
+    },
+    {
+      "nombre": "Chimborazo",
+      "ciudades": ["Riobamba", "Alausí", "Colta", "Chambo", "Chunchi", "Guamote", "Guano", "Pallatanga", "Penipe"]
+    },
+    {
+      "nombre": "Cotopaxi",
+      "ciudades": ["Latacunga", "La Maná", "Pangua", "Pujilí", "Salcedo", "Saquisilí", "Sigchos"]
+    },
+    {
+      "nombre": "El Oro",
+      "ciudades": ["Machala", "Arenillas", "Atahualpa", "Balsas", "Chilla", "El Guabo", "Huaquillas", "Las Lajas", "Marcabelí", "Pasaje", "Piñas", "Portovelo", "Santa Rosa", "Zaruma"]
+    },
+    {
+      "nombre": "Esmeraldas",
+      "ciudades": ["Esmeraldas", "Atacames", "Eloy Alfaro", "Muisne", "Quinindé", "Rioverde", "San Lorenzo"]
+    },
+    {
+      "nombre": "Galápagos",
+      "ciudades": ["Puerto Ayora", "Puerto Baquerizo Moreno", "Puerto Villamil"]
+    },
+    {
+      "nombre": "Guayas",
+      "ciudades": ["Guayaquil", "Alfredo Baquerizo Moreno", "Balao", "Balzar", "Colimes", "Daule", "Durán", "El Empalme", "El Triunfo", "General Antonio Elizalde", "Isidro Ayora", "Lomas de Sargentillo", "Marcelino Maridueña", "Milagro", "Naranjal", "Naranjito", "Nobol", "Palestina", "Pedro Carbo", "Playas", "Salitre", "Samborondón", "Santa Lucía", "Simón Bolívar", "Yaguachi"]
+    },
+    {
+      "nombre": "Imbabura",
+      "ciudades": ["Ibarra", "Antonio Ante", "Cotacachi", "Otavalo", "Pimampiro", "San Miguel de Urcuquí"]
+    },
+    {
+      "nombre": "Loja",
+      "ciudades": ["Loja", "Calvas", "Catamayo", "Celica", "Chaguarpamba", "Espíndola", "Gonzanamá", "Macará", "Olmedo", "Paltas", "Pindal", "Puyango", "Quilanga", "Saraguro", "Sozoranga", "Zapotillo"]
+    },
+    {
+      "nombre": "Los Ríos",
+      "ciudades": ["Babahoyo", "Baba", "Buena Fe", "Mocache", "Montalvo", "Palenque", "Puebloviejo", "Quevedo", "Quinsaloma", "Urdaneta", "Valencia", "Ventanas", "Vinces"]
+    },
+    {
+      "nombre": "Manabí",
+      "ciudades": ["Portoviejo", "Bolívar", "Chone", "El Carmen", "Flavio Alfaro", "Jama", "Jaramijó", "Jipijapa", "Junín", "Manta", "Montecristi", "Olmedo", "Paján", "Pedernales", "Pichincha", "Puerto López", "Rocafuerte", "San Vicente", "Santa Ana", "Sucre", "Tosagua", "24 de Mayo"]
+    },
+    {
+      "nombre": "Morona Santiago",
+      "ciudades": ["Macas", "Gualaquiza", "Huamboya", "Limón Indanza", "Logroño", "Morona", "Pablo Sexto", "Palora", "San Juan Bosco", "Santiago de Méndez", "Sucúa", "Taisha", "Tiwintza"]
+    },
+    {
+      "nombre": "Napo",
+      "ciudades": ["Tena", "Archidona", "Carlos Julio Arosemena Tola", "El Chaco", "Quijos"]
+    },
+    {
+      "nombre": "Orellana",
+      "ciudades": ["Francisco de Orellana (Coca)", "Aguarico", "La Joya de los Sachas", "Loreto"]
+    },
+    {
+      "nombre": "Pastaza",
+      "ciudades": ["Puyo", "Arajuno", "Mera", "Santa Clara"]
+    },
+    {
+      "nombre": "Pichincha",
+      "ciudades": ["Quito", "Cayambe", "Mejía", "Pedro Moncayo", "Pedro Vicente Maldonado", "Puerto Quito", "Rumiñahui", "San Miguel de los Bancos"]
+    },
+    {
+      "nombre": "Santa Elena",
+      "ciudades": ["Santa Elena", "La Libertad", "Salinas"]
+    },
+    {
+      "nombre": "Santo Domingo de los Tsáchilas",
+      "ciudades": ["Santo Domingo", "La Concordia"]
+    },
+    {
+      "nombre": "Sucumbíos",
+      "ciudades": ["Nueva Loja (Lago Agrio)", "Cascales", "Cuyabeno", "Gonzalo Pizarro", "Putumayo", "Shushufindi", "Sucumbíos"]
+    },
+    {
+      "nombre": "Tungurahua",
+      "ciudades": ["Ambato", "Baños de Agua Santa", "Cevallos", "Mocha", "Patate", "Quero", "San Pedro de Pelileo", "Santiago de Píllaro", "Tisaleo"]
+    },
+    {
+      "nombre": "Zamora Chinchipe",
+      "ciudades": ["Zamora", "Chinchipe", "Yacuambi", "Yantzaza", "El Pangui", "Centinela del Cóndor", "Palanda", "Paquisha", "Nangaritza"]
+    }
+  ]
+}

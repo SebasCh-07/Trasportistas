@@ -1,0 +1,7 @@
+Cliente (TeLlevo): cliente@demo.com
+Cliente (otraEmpresa): cliente.empresa@demo.com
+Empresa: empresa@demo.com
+Admin: admin@demo.com
+Conductor: conductor@demo.com
+
+Password: 123456

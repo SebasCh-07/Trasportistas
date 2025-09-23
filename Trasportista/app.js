@@ -19,12 +19,27 @@ function setCompanyNamespace(ns) {
   sessionStorage.setItem("tenant", ns);
 }
 
+// Resolve asset paths consistently whether we're at root or inside views/*
+function asset(relPath) {
+  try {
+    const path = window.location.pathname.replace(/\\/g, '/');
+    if (/\/views\//.test(path)) {
+      const clean = relPath.replace(/^\.\//, '');
+      return `../../${clean}`;
+    }
+    return relPath;
+  } catch {
+    return relPath;
+  }
+}
+
 const SEED = {
   users: [
     { id: 1, role: "cliente", nombre: "Juan Pérez", cedula: "1234567890", email: "cliente@demo.com", password: "123456", direccion: "Av. Siempre Viva 123", foto: null },
     { id: 2, role: "conductor", nombre: "Carlos Ruiz", cedula: "0987654321", email: "conductor@demo.com", password: "123456", direccion: "Calle 10 #20", foto: null },
     { id: 3, role: "admin", nombre: "Administrador", cedula: "0000000000", email: "admin@demo.com", password: "123456", direccion: "Oficina Central", foto: null },
-    { id: 4, role: "empresa", nombre: "Ecuador Travel Tours", cedula: "0999999999", email: "empresa@demo.com", password: "123456", direccion: "Av. Amazonas 1234", foto: null, empresa: "Ecuador Travel Tours" },
+    { id: 4, role: "empresa", nombre: "Ecuador Travel Tours", cedula: "0999999999", email: "empresa@demo.com", password: "123456", direccion: "Av. Amazonas 1234", foto: null, empresa: "Ecuador Travel Tours", tarifaEmpresa: 1.5 },
+    { id: 5, role: "cliente_empresa", nombre: "Cliente Empresa Demo", cedula: "2223334445", email: "cliente.empresa@demo.com", password: "123456", direccion: "Av. Empresa 456", empresa: "Ecuador Travel Tours", foto: null },
   ],
   rutas: [
     { id: 1, origen: "Quito", destino: "Tena", horario: "08:00", precio: 10, asientos: 3 },
@@ -39,9 +54,11 @@ const SEED = {
     { type: "voucher", code: "VOC-001", balance: 100 },
   ],
   mockClients: [
-    { id: 10001, nombre: "María González", cedula: "1102233445", email: "maria@example.com", telefono: "+593987654321" },
-    { id: 10002, nombre: "Luis Andrade", cedula: "1719988776", email: "luis@example.com", telefono: "+593987650000" },
-    { id: 10003, nombre: "Ana Torres", cedula: "0911122233", email: "ana@example.com", telefono: "+593999111222" },
+    { id: 10001, nombre: "María González", cedula: "1102233445", email: "maria@example.com", telefono: "+593987654321", empresa: "Ecuador Travel Tours" },
+    { id: 10002, nombre: "Luis Andrade", cedula: "1719988776", email: "luis@example.com", telefono: "+593987650000", empresa: "Ecuador Travel Tours" },
+    { id: 10003, nombre: "Ana Torres", cedula: "0911122233", email: "ana@example.com", telefono: "+593999111222", empresa: "Ecuador Travel Tours" },
+    { id: 10004, nombre: "Pedro Morales", cedula: "1711223344", email: "pedro@example.com", telefono: "+593999888777", empresa: "Ecuador Travel Tours" },
+    { id: 10005, nombre: "Carmen Silva", cedula: "1712334455", email: "carmen@example.com", telefono: "+593999777666", empresa: "Ecuador Travel Tours" },
   ],
 };
 
@@ -70,11 +87,15 @@ function seedIfEmpty() {
           };
         });
         
-        // Verificar si existe el usuario de empresa, si no, agregarlo
-        const empresaExists = migrated.some(u => u.email === 'empresa@demo.com');
-        if (!empresaExists) {
-          migrated.push(SEED.users.find(u => u.email === 'empresa@demo.com'));
-        }
+        // Asegurar usuarios semilla importantes (empresa y cliente_empresa)
+        const ensureByEmail = (email) => {
+          if (!migrated.some(u => (u.email||'').toLowerCase() === email)) {
+            const seedUser = (SEED.users||[]).find(u => (u.email||'').toLowerCase() === email);
+            if (seedUser) migrated.push(seedUser);
+          }
+        };
+        ensureByEmail('empresa@demo.com');
+        ensureByEmail('cliente.empresa@demo.com');
         
         sessionStorage.setItem(key, JSON.stringify(migrated));
       }
@@ -117,29 +138,55 @@ function showAuthScreen(which) {
 }
 
 function showView(name) {
-  Object.entries(views).forEach(([key, v]) => {
-    v.classList.remove("active");
-    v.hidden = true;
-  });
-  if (views[name]) {
-    views[name].classList.add("active");
-    views[name].hidden = false;
+  // Ocultar todas las vistas presentes actualmente en el DOM
+  document.querySelectorAll('.view').forEach(v => { v.classList.remove('active'); v.hidden = true; });
+  // Encontrar dinámicamente la vista de destino
+  const target = document.getElementById(`view-${name}`);
+  if (target) {
+    target.classList.add('active');
+    target.hidden = false;
   }
   if (name === 'auth') showAuthScreen('login');
   highlightActiveNav(name);
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  
+  // Ejecutar funciones de renderizado específicas para cada vista
+  switch(name) {
+    case 'cliente':
+      try { renderCliente(); } catch {}
+      break;
+    case 'empresa':
+      try { renderEmpresa(); } catch {}
+      break;
+    case 'conductor':
+      try { renderConductor(); } catch {}
+      break;
+    case 'admin':
+      try { renderAdmin(); } catch {}
+      break;
+  }
+  
+  try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch { window.scrollTo(0,0); }
 }
 
 function updateSessionUi() {
   const sessionSpan = document.getElementById("sessionUser");
   const session = getSession();
-  if (session) {
-    sessionSpan.textContent = `${session.nombre} (${session.role})`;
-  } else {
-    sessionSpan.textContent = "Sin sesión";
+  if (sessionSpan) {
+    if (session) {
+      sessionSpan.textContent = `${session.nombre} (${session.role})`;
+    } else {
+      sessionSpan.textContent = "Sin sesión";
+    }
   }
-  const sel = document.getElementById("companySelect");
-  if (sel) sel.value = getCompanyNamespace();
+  // Actualizar marca según rol (para empresa/cliente_empresa mostrar EMPRESA)
+  const brand = document.querySelector('.brand');
+  if (brand) {
+    if (session && (session.role === 'empresa' || session.role === 'cliente_empresa')) {
+      brand.textContent = 'EMPRESA';
+    } else {
+      brand.textContent = 'TeLlevo';
+    }
+  }
 }
 
 // Auth logic
@@ -160,35 +207,44 @@ function handleLogin(e) {
 
 function handleRegister(e) {
   e.preventDefault();
-  const nombres = document.getElementById("regNombres").value.trim();
-  const apellidos = document.getElementById("regApellidos").value.trim();
+  const form = e.target;
+  const getInForm = (sel) => form?.querySelector(sel);
+  const nombres = getInForm('[id="regNombres"]')?.value?.trim() || '';
+  const apellidos = getInForm('[id="regApellidos"]')?.value?.trim() || '';
   const nombre = `${nombres} ${apellidos}`.trim();
-  const cedula = document.getElementById("regCedula").value.trim();
-  const role = "cliente";
-  const fotoFile = document.getElementById("regFoto")?.files?.[0] || null;
-  const direccion = document.getElementById("pickedAddress")?.textContent?.replace(/^Dirección:\s*/, '')?.trim() || '';
-  const lat = Number(document.getElementById('regLat')?.value || 0);
-  const lng = Number(document.getElementById('regLng')?.value || 0);
-  const telefono = document.getElementById('regTelefono')?.value?.trim() || '';
-  const referencia = document.getElementById('regReferencia')?.value?.trim() || '';
-  const email = document.getElementById("regEmail").value.trim();
-  const password = document.getElementById("regPassword").value;
+  const cedula = getInForm('[id="regCedula"]')?.value?.trim() || '';
+  const tipoCliente = (getInForm('[id="regTipoCliente"]')?.value || 'cliente').trim();
+  let role = 'cliente';
+  if (tipoCliente === 'empresa') role = 'empresa';
+  else if (tipoCliente === 'cliente_empresa') role = 'cliente_empresa';
+  const nombreEmpresa = getInForm('[id="regNombreEmpresa"]')?.value?.trim() || null;
+  const fotoFile = getInForm('[id="regFoto"]')?.files?.[0] || null;
+  const direccion = getInForm('[id="pickedAddress"]')?.textContent?.replace(/^Dirección:\s*/, '')?.trim() || '';
+  const lat = Number(getInForm('[id="regLat"]')?.value || 0);
+  const lng = Number(getInForm('[id="regLng"]')?.value || 0);
+  const telefono = getInForm('[id="regTelefono"]')?.value?.trim() || '';
+  const referencia = getInForm('[id="regReferencia"]')?.value?.trim() || '';
+  const email = getInForm('[id="regEmail"]')?.value?.trim() || '';
+  const password = getInForm('[id="regPassword"]')?.value || '';
   const users = storage.get("users", []);
   if (users.some(u => u.cedula === cedula)) {
-    document.getElementById("registerMsg").textContent = "Ya existe un usuario con esa cédula";
+    const msgEl = getInForm('#registerMsg'); if (msgEl) msgEl.textContent = 'Ya existe un usuario con esa cédula';
     return;
   }
   if (users.some(u => u.email?.toLowerCase() === email.toLowerCase())) {
-    document.getElementById("registerMsg").textContent = "Ya existe un usuario con ese correo";
+    const msgEl = getInForm('#registerMsg'); if (msgEl) msgEl.textContent = 'Ya existe un usuario con ese correo';
     return;
   }
   const finalize = (photoDataUrl) => {
     const newUser = { id: Date.now(), role, nombre, cedula, direccion, lat, lng, telefono, referencia, email, password, foto: photoDataUrl || null };
+    if (role === 'empresa' || role === 'cliente_empresa') {
+      newUser.empresa = nombreEmpresa || 'Otra Empresa';
+    }
     users.push(newUser);
     storage.set("users", users);
-    document.getElementById("registerMsg").textContent = "Registro exitoso. Ahora inicie sesión.";
+    const msgEl = getInForm('#registerMsg'); if (msgEl) msgEl.textContent = 'Registro exitoso. Ahora inicie sesión.';
     toast("Registro completado");
-    (document.getElementById("registerForm")).reset();
+    form.reset();
   };
   if (fotoFile) {
     const reader = new FileReader();
@@ -200,11 +256,40 @@ function handleRegister(e) {
 }
 
 function navigateByRole(role) {
-  if (role === "cliente") { renderCliente(); showView("cliente"); }
-  else if (role === "empresa") { renderEmpresa(); showView("empresa"); }
-  else if (role === "conductor") { renderConductor(); showView("conductor"); }
-  else if (role === "admin") { renderAdmin(); showView("admin"); }
-  else { showView("auth"); }
+  // Redirigir a páginas separadas por rol
+  const map = {
+    'cliente': 'views/cliente/index.html',
+    'cliente_empresa': 'views/cliente_empresa/index.html',
+    'empresa': 'views/empresa/index.html',
+    'conductor': 'views/conductor/index.html',
+    'admin': 'views/admin/index.html',
+  };
+  const target = map[role];
+  if (target) {
+    window.location.href = target;
+  } else {
+    showView('auth');
+  }
+}
+
+function applyRoleStyles(role) {
+  const link = document.getElementById('roleStyles');
+  if (!link) return;
+  const map = {
+    'cliente': 'styles/styles_cliente.css',
+    'cliente_empresa': 'styles/clienteEmpresa.css',
+    'empresa': 'styles/empresa.css',
+    'conductor': 'styles/styles_conductor.css',
+    'admin': 'styles/styles_admin.css',
+  };
+  // Usar resolver de assets para rutas correctas dentro de views/*
+  link.href = asset(map[role] || 'styles/base.css');
+  try {
+    const shouldContrast = (role === 'empresa' || role === 'cliente_empresa');
+    const root = document.documentElement;
+    if (shouldContrast) root.setAttribute('data-theme', 'contrast');
+    else root.removeAttribute('data-theme');
+  } catch {}
 }
 
 // Cliente
@@ -231,32 +316,30 @@ function renderCliente() {
   // preparar opciones de origen
   populateOrigenOptions();
   wireOrigenPicker();
+  wireMapButtons();
 }
 
 // Empresa (solo servicios privado y compartido)
 function renderEmpresa() {
-  console.log('renderEmpresa called');
-  const rutas = storage.get("rutas", []);
-  const cont = document.getElementById("rutasListEmpresa");
-  console.log('rutasListEmpresa element:', cont);
-  
-  if (!cont) {
-    console.error('rutasListEmpresa element not found');
-    return;
-  }
-  
-  cont.innerHTML = "";
-  rutas.forEach(r => {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <h4>${r.origen} → ${r.destino}</h4>
-      <div class="row"><span class="badge">${r.horario}</span><span class="price">$${r.precio}</span></div>
-      <div class="row"><span>Asientos disp.: ${r.asientos}</span><button ${r.asientos<=0?"disabled":""} data-id="${r.id}" class="reserveBtn">Reservar</button></div>
-    `;
-    cont.appendChild(card);
-  });
-  cont.querySelectorAll(".reserveBtn").forEach(btn => btn.addEventListener("click", () => openReservaEmpresa(Number(btn.dataset.id))));
+  // Header empresa
+  const session = getSession();
+  const tarifa = (() => {
+    if (session?.role === 'empresa') return Number(session.tarifaEmpresa || 0);
+    if (session?.role === 'cliente_empresa') {
+      const users = storage.get('users', []);
+      const emp = users.find(u => u.role === 'empresa' && (u.empresa === session.empresa));
+      return Number(emp?.tarifaEmpresa || 0);
+    }
+    return 0;
+  })();
+  const nombre = session?.empresa || session?.nombre || '-';
+  const headerNombre = document.getElementById('empresaHeaderNombre');
+  const headerTarifa = document.getElementById('empresaHeaderTarifa');
+  if (headerNombre) headerNombre.textContent = nombre;
+  if (headerTarifa) headerTarifa.textContent = `$${tarifa.toFixed(2)}`;
+
+  // Renderizar dashboard
+  renderEmpresaDashboard();
   
   renderHistorialEmpresa();
   renderMisViajesEmpresa();
@@ -264,7 +347,724 @@ function renderEmpresa() {
   // preparar opciones de origen para empresa
   populateOrigenOptionsEmpresa();
   wireOrigenPickerEmpresa();
+  wireEmpresaTabs();
+  wireEmpresaViajesTabs();
 }
+
+// Cliente Empresa (mismo flujo que cliente, pero con rutas de empresa y tarifas)
+function renderClienteEmpresa() {
+  // Header empresa (nombre y tarifa aplicada al cliente_empresa)
+  const session = getSession();
+  const tarifa = (() => {
+    if (session?.role === 'empresa') return Number(session.tarifaEmpresa || 0);
+    if (session?.role === 'cliente_empresa') {
+      const users = storage.get('users', []);
+      const emp = users.find(u => u.role === 'empresa' && (u.empresa === session.empresa));
+      return Number(emp?.tarifaEmpresa || 0);
+    }
+    return 0;
+  })();
+  const nombre = session?.empresa || session?.nombre || '-';
+  const headerNombre = document.getElementById('empresaHeaderNombre');
+  const headerTarifa = document.getElementById('empresaHeaderTarifa');
+  if (headerNombre) headerNombre.textContent = nombre;
+  if (headerTarifa) headerTarifa.textContent = `$${tarifa.toFixed(2)}`;
+
+  // Renderizar rutas disponibles (compartido) para cliente_empresa
+  renderRutasClienteEmpresa();
+
+  // Wire del selector de servicios (simple descripción)
+  const servicioSelect = document.getElementById('servicioTipoEmpresa');
+  const servicioDesc = document.getElementById('servicioDescripcionEmpresa');
+  if (servicioSelect && servicioDesc) {
+    const updateDesc = () => {
+      const v = servicioSelect.value;
+      if (v === 'privado') {
+        servicioDesc.innerHTML = '<p>Unidad exclusiva para tu traslado, precio a convenir.</p>';
+      } else {
+        servicioDesc.innerHTML = '<p>Servicio compartido por asiento en rutas disponibles.</p>';
+      }
+    };
+    servicioSelect.onchange = updateDesc;
+    updateDesc();
+  }
+
+  // Mis viajes e historial (reutiliza funciones de empresa orientadas a cliente)
+  renderMisViajesEmpresa();
+  renderHistorialEmpresa();
+
+  // Wire pestañas específicas de cliente_empresa
+  wireClienteEmpresaTabs();
+  // Wire subtabs de viajes (reutiliza)
+  wireEmpresaViajesTabs();
+}
+
+function renderRutasClienteEmpresa() {
+  const cont = document.getElementById('rutasListEmpresa');
+  if (!cont) return;
+  const rutas = storage.get('rutas', []);
+  cont.innerHTML = '';
+  if (!rutas.length) { cont.innerHTML = "<div class='text-muted'>Sin rutas</div>"; return; }
+  const session = getSession();
+  const empresaKey = (session?.empresa || session?.id || 'empresa');
+  rutas.forEach(r => {
+    const tarifaAdicional = getRutaTarifaAdicional(empresaKey, r.id);
+    const precioFinal = (Number(r.precio) || 0) + (Number(tarifaAdicional) || 0);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h4>${r.origen} → ${r.destino}</h4>
+      <div class="row"><span class="badge">${r.horario}</span><span class="price">$${precioFinal.toFixed(2)}</span></div>
+      <div class="row"><span>Asientos disp.: ${r.asientos}</span><button ${r.asientos<=0?"disabled":""} data-id="${r.id}" class="reserveEmpresaBtn">Reservar</button></div>
+    `;
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll('.reserveEmpresaBtn').forEach(btn =>
+    btn.addEventListener('click', () => openReservaEmpresa(Number(btn.dataset.id)))
+  );
+}
+
+function wireClienteEmpresaTabs() {
+  const scope = document.getElementById('view-empresa');
+  if (!scope) return;
+  const buttons = scope.querySelectorAll('.tab-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      // activar botón
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // activar panel
+      const map = {
+        'servicios': 'tab-servicios',
+        'mis-viajes': 'tab-mis-viajes-empresa',
+        'historial': 'tab-historial-empresa',
+      };
+      const targetId = map[tab];
+      scope.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(targetId);
+      if (panel) panel.classList.add('active');
+      // refrescos por pestaña
+      if (targetId === 'tab-servicios') renderRutasClienteEmpresa();
+      if (targetId === 'tab-mis-viajes-empresa') renderMisViajesEmpresa();
+      if (targetId === 'tab-historial-empresa') renderHistorialEmpresa();
+    });
+  });
+}
+
+function wireEmpresaTabs() {
+  document.querySelectorAll('#view-empresa .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('#view-empresa .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#view-empresa .tab-panel').forEach(p => p.classList.remove('active'));
+      let panelId = 'tab-dashboard';
+      if (tab === 'reservas') panelId = 'tab-reservas-empresa';
+      else if (tab === 'rutas') panelId = 'tab-rutas-empresa';
+      else if (tab === 'flota') panelId = 'tab-flota-empresa';
+      else if (tab === 'clientes') panelId = 'tab-clientes-empresa';
+      else if (tab === 'gps') panelId = 'tab-gps-empresa';
+      const panel = document.getElementById(panelId);
+      if (panel) panel.classList.add('active');
+      if (panelId === 'tab-dashboard') renderEmpresaDashboard();
+      if (panelId === 'tab-reservas-empresa') renderEmpresaReservas('pendiente');
+      if (panelId === 'tab-rutas-empresa') renderEmpresaRutas();
+      if (panelId === 'tab-flota-empresa') renderEmpresaFlota();
+      if (panelId === 'tab-clientes-empresa') renderEmpresaClientes();
+      
+      if (panelId === 'tab-gps-empresa') renderEmpresaGps(document.getElementById('empresaGpsFilter')?.value?.trim()||'');
+      
+    });
+  });
+}
+
+// --- Rutas: helpers de tarifa por empresa ---
+function getRutaTarifaAdicional(empresaKey, rutaId) {
+  try {
+    const map = storage.get('empresaRutaTarifas', {});
+    const byEmpresa = map?.[empresaKey] || {};
+    return Number(byEmpresa[rutaId] || 0);
+  } catch { return 0; }
+}
+
+function setRutaTarifaAdicional(empresaKey, rutaId, valueNumber) {
+  const map = storage.get('empresaRutaTarifas', {});
+  const byEmpresa = map[empresaKey] || {};
+  byEmpresa[rutaId] = Number(valueNumber) || 0;
+  map[empresaKey] = byEmpresa;
+  storage.set('empresaRutaTarifas', map);
+}
+
+// --- Rutas: acciones Ver / Editar ---
+let __rutaSeleccionadaId = null;
+function verRuta(rutaId) {
+  const rutas = storage.get('rutas', []);
+  const r = rutas.find(x => x.id === rutaId);
+  if (!r) return;
+  const session = getSession();
+  const empresaKey = (session?.empresa || session?.id || 'empresa');
+  const tarifaAdicional = getRutaTarifaAdicional(empresaKey, rutaId);
+  const precioFinal = (Number(r.precio)||0) + (Number(tarifaAdicional)||0);
+  const cont = document.getElementById('verRutaContent');
+  if (cont) {
+    cont.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+        <div>
+          <div style="font-size:18px; font-weight:600;">${r.origen} → ${r.destino}</div>
+          <div class="row" style="gap:6px; margin-top:4px;">
+            <span class="badge">⏰ ${r.horario}</span>
+            <span class="badge">🪑 Asientos: ${r.asientos}</span>
+          </div>
+        </div>
+      </div>
+      <div class="two-col" style="gap:12px;">
+        <div>
+          <div class="panel" style="padding:12px;">
+            <div class="row" style="justify-content:space-between; margin-bottom:6px;">
+              <span class="text-muted">Precio base</span>
+              <strong>$${Number(r.precio).toFixed(2)}</strong>
+            </div>
+            <div class="row" style="justify-content:space-between; margin-bottom:6px;">
+              <span class="text-muted">Tarifa adicional</span>
+              <strong>$${Number(tarifaAdicional||0).toFixed(2)}</strong>
+            </div>
+            <div class="row" style="justify-content:space-between;">
+              <span class="text-muted">Precio final</span>
+              <strong>$${precioFinal.toFixed(2)}</strong>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel" style="padding:12px;">
+            <div style="font-weight:600; margin-bottom:6px;">Resumen</div>
+            <div class="row" style="justify-content:space-between; margin-bottom:4px;"><span>Origen</span><span>${r.origen}</span></div>
+            <div class="row" style="justify-content:space-between; margin-bottom:4px;"><span>Destino</span><span>${r.destino}</span></div>
+            <div class="row" style="justify-content:space-between; margin-bottom:4px;"><span>Horario</span><span>${r.horario}</span></div>
+            <div class="row" style="justify-content:space-between;"><span>Asientos</span><span>${r.asientos}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  const modal = document.getElementById('verRutaModal');
+  if (modal) modal.style.display = 'block';
+}
+
+function cerrarVerRutaModal() {
+  const modal = document.getElementById('verRutaModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function editarRuta(rutaId) {
+  __rutaSeleccionadaId = rutaId;
+  const session = getSession();
+  const empresaKey = (session?.empresa || session?.id || 'empresa');
+  const tarifaAdicional = getRutaTarifaAdicional(empresaKey, rutaId);
+  const input = document.getElementById('erTarifa');
+  if (input) input.value = Number(tarifaAdicional||0).toFixed(2);
+  const modal = document.getElementById('editarRutaModal');
+  if (modal) modal.style.display = 'block';
+  const btn = document.getElementById('confirmarEditarRuta');
+  if (btn) {
+    btn.onclick = () => {
+      const value = Number(document.getElementById('erTarifa')?.value || 0);
+      if (value < 0 || Number.isNaN(value)) { toast('Tarifa inválida'); return; }
+      setRutaTarifaAdicional(empresaKey, rutaId, value);
+      cerrarEditarRutaModal();
+      renderEmpresaRutas();
+      toast('Tarifa actualizada');
+    };
+  }
+}
+
+function cerrarEditarRutaModal() {
+  const modal = document.getElementById('editarRutaModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Función para renderizar el dashboard de empresa
+function renderEmpresaDashboard() {
+  const session = getSession();
+  const reservas = storage.get('reservas', []).filter(r => r.clienteId === session?.id);
+  const rutas = storage.get('rutas', []);
+  const flota = storage.get('flota', []);
+  const ratings = storage.get('ratings', []);
+  
+  // Calcular KPIs
+  const totalReservas = reservas.length;
+  const ingresos = reservas.reduce((sum, r) => sum + (parseFloat(r.precio) || 0), 0);
+  const viajesActivos = reservas.filter(r => r.estado === 'en-curso').length;
+  const pendientes = reservas.filter(r => r.estado === 'pendiente').length;
+  const enCurso = reservas.filter(r => r.estado === 'en-curso').length;
+  
+  // Completados hoy
+  const hoy = new Date().toDateString();
+  const completadosHoy = reservas.filter(r => 
+    r.estado === 'recogido' && new Date(r.fecha).toDateString() === hoy
+  ).length;
+  
+  // Calificación promedio
+  const empresaRatings = ratings.filter(r => r.clienteId === session?.id);
+  const calificacionPromedio = empresaRatings.length > 0 
+    ? (empresaRatings.reduce((sum, r) => sum + r.valor, 0) / empresaRatings.length).toFixed(1)
+    : '-';
+  
+  // Actualizar KPIs
+  updateElement('empresaTotalReservas', totalReservas);
+  updateElement('empresaIngresos', `$${ingresos.toFixed(2)}`);
+  updateElement('empresaViajesActivos', viajesActivos);
+  updateElement('empresaCalificacion', calificacionPromedio);
+  
+  // Actualizar estado operacional
+  updateElement('empresaPendientes', pendientes);
+  updateElement('empresaEnCurso', enCurso);
+  updateElement('empresaCompletadosHoy', completadosHoy);
+  
+  // Actividad reciente
+  renderEmpresaRecentActivity();
+  
+  // Rutas más populares
+  renderEmpresaTopRutas();
+  
+  // Estadísticas de flota
+  renderEmpresaFleetStats();
+}
+
+function updateElement(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function renderEmpresaRecentActivity() {
+  const cont = document.getElementById('empresaRecentActivity');
+  if (!cont) return;
+  
+  const session = getSession();
+  const reservas = storage.get('reservas', [])
+    .filter(r => r.clienteId === session?.id)
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+    .slice(0, 5);
+  
+  cont.innerHTML = '';
+  if (!reservas.length) {
+    cont.innerHTML = "<div class='text-muted'>Sin actividad reciente</div>";
+    return;
+  }
+  
+  reservas.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'activity-item';
+    div.innerHTML = `
+      <div class="activity-icon">${getActivityIcon(r.estado)}</div>
+      <div class="activity-content">
+        <div class="activity-title">${r.origen} → ${r.destino}</div>
+        <div class="activity-meta">${r.estado} • $${r.precio}</div>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function renderEmpresaTopRutas() {
+  const cont = document.getElementById('empresaTopRutas');
+  if (!cont) return;
+  
+  const session = getSession();
+  const reservas = storage.get('reservas', []).filter(r => r.clienteId === session?.id);
+  
+  // Contar rutas más populares
+  const rutasCount = {};
+  reservas.forEach(r => {
+    const ruta = `${r.origen} → ${r.destino}`;
+    rutasCount[ruta] = (rutasCount[ruta] || 0) + 1;
+  });
+  
+  const topRutas = Object.entries(rutasCount)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5);
+  
+  cont.innerHTML = '';
+  if (!topRutas.length) {
+    cont.innerHTML = "<div class='text-muted'>Sin datos de rutas</div>";
+    return;
+  }
+  
+  topRutas.forEach(([ruta, count]) => {
+    const div = document.createElement('div');
+    div.className = 'route-item';
+    div.innerHTML = `
+      <div class="route-name">${ruta}</div>
+      <div class="route-count">${count} viajes</div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function renderEmpresaFleetStats() {
+  const cont = document.getElementById('empresaFleetStats');
+  if (!cont) return;
+  
+  const flota = storage.get('flota', []);
+  const totalFlota = flota.length;
+  const flotaActiva = flota.filter(v => v.estado === 'activo').length;
+  const flotaMantenimiento = flota.filter(v => v.estado === 'mantenimiento').length;
+  
+  cont.innerHTML = `
+    <div class="fleet-stats">
+      <div class="fleet-stat">
+        <div class="fleet-number">${totalFlota}</div>
+        <div class="fleet-label">Total</div>
+      </div>
+      <div class="fleet-stat">
+        <div class="fleet-number">${flotaActiva}</div>
+        <div class="fleet-label">Activos</div>
+      </div>
+      <div class="fleet-stat">
+        <div class="fleet-number">${flotaMantenimiento}</div>
+        <div class="fleet-label">Mantenimiento</div>
+      </div>
+    </div>
+  `;
+}
+
+function getActivityIcon(estado) {
+  const icons = {
+    'pendiente': '⏳',
+    'confirmada': '✅',
+    'en-curso': '🚗',
+    'recogido': '🏁',
+    'cancelada': '❌'
+  };
+  return icons[estado] || '📋';
+}
+
+// Función para cambiar pestañas desde el dashboard
+function switchEmpresaTab(tabName) {
+  const tabBtn = document.querySelector(`#view-empresa .tab-btn[data-tab="${tabName}"]`);
+  if (tabBtn) {
+    tabBtn.click();
+  }
+}
+
+function renderEmpresaReservas(filter = 'pendiente') {
+  const cont = document.getElementById('empresaReservas');
+  if (!cont) return;
+  const session = getSession();
+  const reservas = storage.get('reservas', []).filter(r => r.clienteId === session?.id);
+  const filtered = reservas.filter(r => (filter === 'pendiente' ? r.estado === 'pendiente' : r.estado === filter));
+  cont.innerHTML = '';
+  if (!filtered.length) { cont.innerHTML = "<div class='text-muted'>Sin reservas</div>"; return; }
+  filtered.sort((a,b)=>b.id-a.id).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `
+      <div class="row"><strong>${r.origen} → ${r.destino}</strong><span class="badge">${r.estado}</span></div>
+      <div>Horario: ${r.horario} • Precio: $${r.precio}</div>
+      <div>Método: ${r.metodoPago || '-'}${r.promo?` • Cupón: ${r.promo}`:''}</div>
+    `;
+    cont.appendChild(div);
+  });
+  document.querySelectorAll('.empresa-res-filter-btn').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.empresa-res-filter-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      renderEmpresaReservas(b.getAttribute('data-filter'));
+    }
+  });
+}
+
+function renderEmpresaRutas() {
+  const cont = document.getElementById('empresaRutas');
+  if (!cont) return;
+  const rutas = storage.get('rutas', []);
+  cont.innerHTML = '';
+  if (!rutas.length) { cont.innerHTML = "<div class='text-muted'>Sin rutas</div>"; return; }
+  const session = getSession();
+  const empresaKey = (session?.empresa || session?.id || 'empresa');
+  rutas.forEach(r => {
+    const tarifaAdicional = getRutaTarifaAdicional(empresaKey, r.id);
+    const precioFinal = (Number(r.precio) || 0) + (Number(tarifaAdicional) || 0);
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `
+      <div class="row">
+        <strong>${r.origen} → ${r.destino}</strong>
+        <span class="badge">${r.horario}</span>
+      </div>
+      <div>
+        Precio base: $${Number(r.precio).toFixed(2)} • Tarifa: $${Number(tarifaAdicional||0).toFixed(2)} • Precio final: <strong>$${precioFinal.toFixed(2)}</strong> • Asientos: ${r.asientos}
+      </div>
+      <div class="row" style="gap:8px; margin-top:6px;">
+        <button class="btn secondary" onclick="verRuta(${r.id})"><span>👁️</span> Ver</button>
+        <button class="btn secondary" onclick="editarRuta(${r.id})"><span>✏️</span> Editar</button>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function renderEmpresaFlota() {
+  const cont = document.getElementById('empresaFlota');
+  if (!cont) return;
+  
+  const session = getSession();
+  if (!session) { 
+    cont.innerHTML = "<div class='text-muted'>Inicie sesión</div>"; 
+    return; 
+  }
+
+  const flota = storage.get('flota', []);
+  const mockFlota = [
+    { id: 801, placa: 'XYZ-101', conductor: 'Conductor Demo 1', capacidad: 5, tipo: 'sedan', marca: 'Toyota', modelo: 'Corolla', año: 2020, color: 'Blanco' },
+    { id: 802, placa: 'XYZ-102', conductor: 'Conductor Demo 2', capacidad: 7, tipo: 'suv', marca: 'Honda', modelo: 'CR-V', año: 2021, color: 'Negro' },
+    { id: 803, placa: 'XYZ-103', conductor: 'Conductor Demo 3', capacidad: 4, tipo: 'sedan', marca: 'Nissan', modelo: 'Sentra', año: 2019, color: 'Gris' },
+    { id: 804, placa: 'XYZ-104', conductor: 'Carlos Ruiz', capacidad: 5, tipo: 'sedan', marca: 'Chevrolet', modelo: 'Cruze', año: 2022, color: 'Azul' },
+  ];
+  
+  // Filtrar solo vehículos de la empresa (asumiendo que la empresa tiene acceso a toda la flota demo)
+  const allFlota = [...flota, ...mockFlota];
+  
+  cont.innerHTML = '';
+  if (!allFlota.length) { 
+    cont.innerHTML = "<div class='text-muted'>Sin flota registrada</div>"; 
+    return; 
+  }
+
+  allFlota.forEach(v => {
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    
+    // Obtener información del conductor
+    const conductorNombre = v.conductor || 'Sin asignar';
+    
+    // Determinar estado del vehículo
+    const reservas = storage.get('reservas', []);
+    const viajesActivos = reservas.filter(r => r.vehiculo === v.placa && r.estado === 'en-curso');
+    const estado = viajesActivos.length > 0 ? 'En Servicio' : 'Disponible';
+    const estadoClass = viajesActivos.length > 0 ? 'status-busy' : 'status-available';
+    
+    // Icono según tipo de vehículo
+    const tipoIcon = {
+      'sedan': '🚗',
+      'suv': '🚙', 
+      'van': '🚐',
+      'camioneta': '🛻',
+      'bus': '🚌'
+    }[v.tipo] || '🚗';
+    
+    div.innerHTML = `
+      <div class="admin-item">
+        <div class="admin-item-info">
+          <div class="admin-item-header">
+            <span class="admin-item-title">${tipoIcon} ${v.placa}</span>
+            <span class="badge ${estadoClass}">${estado}</span>
+          </div>
+          <div class="admin-item-details">
+            <div class="admin-item-detail">
+              <span class="detail-label">Tipo:</span>
+              <span class="detail-value">${v.tipo || 'No especificado'}</span>
+            </div>
+            <div class="admin-item-detail">
+              <span class="detail-label">Marca/Modelo:</span>
+              <span class="detail-value">${v.marca || 'N/A'} ${v.modelo || ''}</span>
+            </div>
+            <div class="admin-item-detail">
+              <span class="detail-label">Capacidad:</span>
+              <span class="detail-value">${v.capacidad || '-'} pasajeros</span>
+            </div>
+            <div class="admin-item-detail">
+              <span class="detail-label">Conductor:</span>
+              <span class="detail-value">${conductorNombre}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="admin-item-actions">
+          <button class="btn secondary" onclick="verVehiculo('${v.placa}')">
+            <span>👁️</span> Ver
+          </button>
+        </div>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function renderEmpresaClientes() {
+  const cont = document.getElementById('empresaClientes');
+  if (!cont) return;
+
+  const session = getSession();
+  if (!session) { cont.innerHTML = "<div class='text-muted'>Inicie sesión</div>"; return; }
+
+  const users = storage.get('users', []);
+  const mockClients = storage.get('mockClients', []);
+  const reservas = storage.get('reservas', []);
+  const clientesAll = [
+    ...users.filter(u => u.role === 'cliente_empresa' && u.empresa === session.empresa),
+    ...mockClients
+      .filter(m => m.empresa === session.empresa)
+      .map(m => ({ ...m, role: 'cliente_empresa' }))
+  ];
+
+  cont.innerHTML = '';
+  if (clientesAll.length === 0) {
+    cont.innerHTML = "<div class='empty-state'>👥 No hay clientes de tu empresa</div>";
+    return;
+  }
+
+  clientesAll.forEach(u => {
+    const mias = reservas.filter(r => r.clienteId === u.id);
+    const entregadas = mias.filter(r => r.estado === 'recogido');
+    const pendientes = mias.filter(r => !r.conductorId).length;
+    const rated = mias.filter(r => typeof r.rating === 'number');
+    const avg = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(1) : null;
+    const gastoTotal = mias.reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+
+    let clientLevel = '';
+    let levelClass = '';
+    if (mias.length === 0) { clientLevel = '🆕 Nuevo'; levelClass = 'level-new'; }
+    else if (mias.length >= 10) { clientLevel = '⭐ VIP'; levelClass = 'level-vip'; }
+    else if (mias.length >= 5) { clientLevel = '💎 Premium'; levelClass = 'level-premium'; }
+    else { clientLevel = '👤 Regular'; levelClass = 'level-regular'; }
+
+    const div = document.createElement('div');
+    div.className = 'admin-list-item';
+    div.innerHTML = `
+      <div class="admin-item-header">
+        <div class="admin-item-main">
+          <div class="admin-item-avatar"><span class="avatar-icon">👤</span></div>
+          <div class="admin-item-details">
+            <div class="admin-item-name">${u.nombre}</div>
+            <div class="admin-item-meta">CI: ${u.cedula || '-'} • ${u.email || 'Sin email'}</div>
+            <div class="admin-item-contact">📞 ${u.telefono || 'Sin teléfono'}</div>
+          </div>
+        </div>
+        <div class="admin-item-badge"><span class="client-level-badge ${levelClass}">${clientLevel}</span></div>
+      </div>
+      <div class="admin-item-stats">
+        <div class="stat-item"><span class="stat-icon">📋</span><span class="stat-label">Total Reservas:</span><span class="stat-value">${mias.length}</span></div>
+        <div class="stat-item"><span class="stat-icon">✅</span><span class="stat-label">Completadas:</span><span class="stat-value">${entregadas.length}</span></div>
+        <div class="stat-item"><span class="stat-icon">⏳</span><span class="stat-label">Pendientes:</span><span class="stat-value">${pendientes}</span></div>
+        <div class="stat-item"><span class="stat-icon">💰</span><span class="stat-label">Gasto Total:</span><span class="stat-value">$${gastoTotal}</span></div>
+        ${avg ? `<div class="stat-item"><span class="stat-icon">⭐</span><span class="stat-label">Calificación:</span><span class="stat-value">${avg}/5</span></div>` : ''}
+      </div>
+      <div class="admin-item-actions">
+        <button class="btn secondary" onclick="verCliente(${u.id})"><span>👁️</span> Ver</button>
+        <button class="btn secondary" onclick="editarCliente(${u.id})"><span>✏️</span> Editar</button>
+        <button class="btn danger" onclick="deleteCliente(${u.id})"><span>🗑️</span> Eliminar</button>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+// eliminado renderEmpresaPromos
+
+// --- EMPRESA GPS ---
+let empresaGpsMap = null;
+let empresaGpsMarkers = [];
+let empresaGpsMarkerByKey = {};
+function renderEmpresaGps(filterText = '') {
+  const cont = document.getElementById('empresaGpsMap');
+  const list = document.getElementById('empresaGpsList');
+  const countEl = document.getElementById('empresaGpsCount');
+  if (!cont || !list) return;
+  if (!empresaGpsMap) {
+    empresaGpsMap = L.map('empresaGpsMap').setView([-0.1807, -78.4678], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(empresaGpsMap);
+  }
+  // limpiar marcadores previos
+  empresaGpsMarkers.forEach(m => empresaGpsMap.removeLayer(m));
+  empresaGpsMarkers = [];
+  empresaGpsMarkerByKey = {};
+  list.innerHTML = '';
+
+  const session = getSession();
+  if (!session) return;
+
+  const users = storage.get('users', []);
+  const tracking = storage.get('tracking', []); // [{conductorId, lat, lng, updatedAt, reservaId}]
+  const reservas = storage.get('reservas', []).filter(r => r.clienteId === session.id);
+
+  // Conductores del sistema
+  const allDrivers = users.filter(u => u.role === 'conductor');
+  const visiblesDrivers = filterText
+    ? allDrivers.filter(u => (u.nombre || '').toLowerCase().includes(filterText.toLowerCase()))
+    : allDrivers;
+
+  // Mapear conductor -> tracking activo (solo reservas de la empresa en curso)
+  const reservasEmpresaIds = new Set(reservas.map(r => r.id));
+  const trackingActivos = tracking.filter(t => 
+    reservasEmpresaIds.has(t.reservaId) && 
+    reservas.some(r => r.id === t.reservaId && (r.estado === 'en-curso'))
+  );
+  const activoByDriverId = new Map();
+  trackingActivos.forEach(t => {
+    // preferir el más reciente por si hay múltiples
+    const prev = activoByDriverId.get(t.conductorId);
+    if (!prev || (t.updatedAt || 0) > (prev.updatedAt || 0)) activoByDriverId.set(t.conductorId, t);
+  });
+
+  let visiblesActivosCount = 0;
+  visiblesDrivers.forEach(driver => {
+    const t = activoByDriverId.get(driver.id) || null;
+    const res = t ? reservas.find(r => r.id === t.reservaId) : null;
+    const isActive = Boolean(t && t.lat && t.lng);
+
+    const item = document.createElement('div');
+    item.className = 'list-item';
+    if (!isActive) item.style.opacity = '0.6';
+    item.style.cursor = isActive ? 'pointer' : 'not-allowed';
+
+    const titleRow = isActive
+      ? `<div class="row"><strong>${driver.nombre}</strong><span class="badge" style="background:#16a34a; color:#fff;">Activo</span><span class="badge">${new Date(t.updatedAt||Date.now()).toLocaleTimeString()}</span></div>`
+      : `<div class="row"><strong>${driver.nombre}</strong><span class="badge" style="background:#9ca3af; color:#fff;">Inactivo</span></div>`;
+
+    const bodyLines = isActive
+      ? `
+        <div>Reserva: #${t.reservaId} • ${res?.origen||''} → ${res?.destino||''}</div>
+        <div>Posición: ${t.lat?.toFixed(5)||'-'}, ${t.lng?.toFixed(5)||'-'}</div>
+      `
+      : `<div class="text-muted">En espera de que el conductor inicie el viaje</div>`;
+
+    item.innerHTML = `${titleRow}${bodyLines}`;
+
+    if (isActive) {
+      // marcador en el mapa
+      const marker = L.marker([t.lat, t.lng]).addTo(empresaGpsMap).bindPopup(`${driver.nombre}<br/>${res?.origen || ''} → ${res?.destino || ''}`);
+      empresaGpsMarkers.push(marker);
+      const key = `${t.conductorId}:${t.reservaId}`;
+      empresaGpsMarkerByKey[key] = marker;
+      item.dataset.key = key;
+      item.addEventListener('click', () => {
+        const key2 = item.dataset.key;
+        const m = empresaGpsMarkerByKey[key2];
+        if (m) {
+          try {
+            const latlng = m.getLatLng();
+            empresaGpsMap.setView(latlng, 15);
+            m.openPopup();
+          } catch {}
+        }
+      });
+      visiblesActivosCount++;
+    }
+
+    list.appendChild(item);
+  });
+
+  if (countEl) countEl.textContent = `${visiblesActivosCount} activos`;
+  if (empresaGpsMarkers.length > 1) {
+    const group = L.featureGroup(empresaGpsMarkers);
+    try { empresaGpsMap.fitBounds(group.getBounds().pad(0.2)); } catch {}
+  } else if (empresaGpsMarkers.length === 1) {
+    try { empresaGpsMap.setView(empresaGpsMarkers[0].getLatLng(), 15); } catch {}
+  }
+}
+
+// eliminado renderEmpresaZonas
 
 function openReservaEmpresa(rutaId) {
   selectedRutaId = rutaId;
@@ -290,19 +1090,32 @@ function openReserva(rutaId) {
   selectedCustomService = null;
   const rutas = storage.get("rutas", []);
   const ruta = rutas.find(r => r.id === rutaId);
-  // abrir modal compartido en lugar de panel
-  const modal = document.getElementById('clientSharedModal');
+  if (!ruta) return;
+
+  // Rellenar contenido del modal
   const sum = document.getElementById('clientSharedSummary');
-  if (sum && ruta) {
+  if (sum) {
     sum.innerHTML = '';
     const item = document.createElement('div');
     item.className = 'list-item';
     item.innerHTML = `
-      <div class=\"row\"><strong>${ruta.origen} → ${ruta.destino}</strong><span class=\"badge\">${ruta.horario}</span></div>
+      <div class="row"><strong>${ruta.origen} → ${ruta.destino}</strong><span class="badge">${ruta.horario}</span></div>
       <div><strong>Precio por asiento:</strong> $${ruta.precio}</div>
+      <div><strong>Asientos disponibles:</strong> ${ruta.asientos}</div>
     `;
     sum.appendChild(item);
   }
+
+  // Limpiar campos del formulario del modal
+  const dir = document.getElementById('sharedDireccion');
+  const per = document.getElementById('sharedPersonas');
+  const eq = document.getElementById('sharedEquipaje');
+  if (dir) dir.value = '';
+  if (per) per.value = '1';
+  if (eq) eq.value = '';
+
+  // Mostrar modal
+  const modal = document.getElementById('clientSharedModal');
   if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
 }
 
@@ -436,6 +1249,7 @@ function renderHistorial() {
 function renderHistorialEmpresa() {
   const session = getSession();
   const cont = document.getElementById("historialListEmpresa");
+  if (!cont) return;
   cont.innerHTML = "";
   
   if (!session) { 
@@ -529,9 +1343,10 @@ function wireOrigenPickerEmpresa() {
 function renderMisViajesEmpresa() {
   const session = getSession();
   
-  if (!session || session.role !== "empresa") {
-    document.getElementById("viajesPendientesListEmpresa").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
-    document.getElementById("viajesEnCursoListEmpresa").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+  if (!session || (session.role !== "empresa" && session.role !== "cliente_empresa")) {
+    const p = document.getElementById("viajesPendientesListEmpresa"); if (p) p.innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    const c = document.getElementById("viajesConfirmadosListEmpresa"); if (c) c.innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    const e = document.getElementById("viajesEnCursoListEmpresa"); if (e) e.innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
     return;
   }
 
@@ -539,11 +1354,15 @@ function renderMisViajesEmpresa() {
     .filter(r => r.clienteId === session.id)
     .sort((a, b) => b.id - a.id);
 
-  // Viajes pendientes (confirmados pero no iniciados)
+  // Pendientes (solicitados/pendientes)
   const pendientes = reservas.filter(r => r.estado === "pendiente" && !r.recogido);
   renderViajesEnContenedorEmpresa("viajesPendientesListEmpresa", pendientes, "pendiente");
 
-  // Viajes en curso (iniciados pero no completados)
+  // Confirmados
+  const confirmados = reservas.filter(r => r.estado === "confirmada");
+  renderViajesEnContenedorEmpresa("viajesConfirmadosListEmpresa", confirmados, "confirmado");
+
+  // En curso
   const enCurso = reservas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso));
   renderViajesEnContenedorEmpresa("viajesEnCursoListEmpresa", enCurso, "en-curso");
 }
@@ -553,7 +1372,11 @@ function renderViajesEnContenedorEmpresa(containerId, viajes, tipo) {
   if (!cont) return;
   
   if (viajes.length === 0) {
-    cont.innerHTML = `<div class="text-muted">No hay viajes ${tipo === 'pendiente' ? 'pendientes' : 'en curso'}</div>`;
+    let mensaje = 'No hay viajes';
+    if (tipo === 'pendiente') mensaje = 'No hay viajes pendientes';
+    else if (tipo === 'confirmado') mensaje = 'No hay viajes confirmados';
+    else if (tipo === 'en-curso') mensaje = 'No hay viajes en curso';
+    cont.innerHTML = `<div class="text-muted">${mensaje}</div>`;
     return;
   }
   
@@ -561,15 +1384,33 @@ function renderViajesEnContenedorEmpresa(containerId, viajes, tipo) {
   viajes.forEach(v => {
     const div = document.createElement("div");
     div.className = "list-item";
+    const estadoTexto = tipo === 'en-curso' ? 'En curso' : (tipo === 'confirmado' ? 'Confirmado' : 'Pendiente');
     div.innerHTML = `
-      <div class="row"><strong>${v.origen} → ${v.destino}</strong><span class="badge">${v.estado}</span></div>
-      <div><strong>Servicio:</strong> ${v.servicio} • <strong>Horario:</strong> ${v.horario}</div>
+      <div class="row"><strong>${v.origen} → ${v.destino}</strong><span class="badge">${estadoTexto}</span></div>
+      <div><strong>Servicio:</strong> ${v.servicio || '-'} • <strong>Horario:</strong> ${v.horario || '-'}</div>
       <div><strong>Precio total:</strong> $${v.precio}${v.esEmpresa ? ` (Transporte: $${v.precioTransporte || v.precio} + Empresa: $${v.tarifaEmpresa || 0})` : ''}</div>
-      <div><strong>Dirección:</strong> ${v.direccion}</div>
+      <div><strong>Dirección:</strong> ${v.direccion || '-'}</div>
       ${tipo === 'pendiente' ? `<button class="btn secondary" onclick="cancelarViaje(${v.id})">Cancelar</button>` : ''}
       ${tipo === 'en-curso' ? `<button class="btn primary" onclick="verTrackingViaje(${v.id})">Ver Tracking</button>` : ''}
     `;
     cont.appendChild(div);
+  });
+}
+
+function wireEmpresaViajesTabs() {
+  const scope = document.getElementById('tab-mis-viajes-empresa');
+  if (!scope) return;
+  const buttons = scope.querySelectorAll('.viajes-tab-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.getAttribute('data-status');
+      scope.querySelectorAll('.viajes-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      scope.querySelectorAll('.viajes-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById(`empresa-viajes-${status}`);
+      if (panel) panel.classList.add('active');
+      renderMisViajesEmpresa();
+    });
   });
 }
 
@@ -579,7 +1420,8 @@ function renderMisViajes() {
   
   if (!session || (session.role !== "cliente" && session.role !== "empresa")) {
     document.getElementById("viajesPendientesList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
-    document.getElementById("viajesEnCursoList").innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    const ec = document.getElementById("viajesEnCursoList"); if (ec) ec.innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
+    const cf = document.getElementById("viajesConfirmadosList"); if (cf) cf.innerHTML = "<div class='text-muted'>Inicie sesión para ver sus viajes</div>";
     return;
   }
 
@@ -595,6 +1437,10 @@ function renderMisViajes() {
   const enCurso = reservas.filter(r => r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso));
   renderViajesEnContenedor("viajesEnCursoList", enCurso, "en-curso");
 
+  // Viajes confirmados (confirmada por admin/operador, aún no en curso)
+  const confirmados = reservas.filter(r => r.estado === "confirmada");
+  renderViajesEnContenedor("viajesConfirmadosList", confirmados, "confirmado");
+
   // Tracking en tiempo real
   renderTrackingCliente();
 }
@@ -604,7 +1450,10 @@ function renderViajesEnContenedor(containerId, reservas, tipo) {
   cont.innerHTML = "";
   
   if (reservas.length === 0) {
-    const mensaje = tipo === "pendiente" ? "No tienes viajes pendientes" : "No tienes viajes en curso";
+    let mensaje = "No tienes viajes";
+    if (tipo === "pendiente") mensaje = "No tienes viajes pendientes";
+    else if (tipo === "en-curso") mensaje = "No tienes viajes en curso";
+    else if (tipo === "confirmado") mensaje = "No tienes viajes confirmados";
     cont.innerHTML = `<div class='text-muted'>${mensaje}</div>`;
     return;
   }
@@ -614,18 +1463,24 @@ function renderViajesEnContenedor(containerId, reservas, tipo) {
     div.className = "list-item";
     
     const fechaCreacion = new Date(res.id).toLocaleDateString('es-ES');
-    const estadoTexto = tipo === "en-curso" ? "En curso" : "Confirmado";
-    const estadoBadge = tipo === "en-curso" ? "warn" : "success";
+  const estadoTexto = tipo === "en-curso" ? "En curso" : (tipo === "confirmado" ? "Confirmado" : "Pendiente");
+  const estadoBadge = tipo === "en-curso" ? "warn" : (tipo === "confirmado" ? "success" : "muted");
     
     let actionButtons = "";
-    if (tipo === "pendiente") {
+  if (tipo === "pendiente") {
       actionButtons = `
         <div class="row" style="gap: 8px;">
           <button class="btn secondary detailViajeBtn" data-id="${res.id}">Ver detalles</button>
           <button class="btn danger cancelViajeBtn" data-id="${res.id}">Cancelar</button>
         </div>
       `;
-    } else if (tipo === "en-curso") {
+  } else if (tipo === "confirmado") {
+    actionButtons = `
+      <div class="row" style="gap: 8px;">
+        <button class="btn secondary detailViajeBtn" data-id="${res.id}">Ver detalles</button>
+      </div>
+    `;
+  } else if (tipo === "en-curso") {
       actionButtons = `
         <div class="row" style="gap: 8px;">
           <button class="btn secondary detailViajeBtn" data-id="${res.id}">Ver detalles</button>
@@ -1076,6 +1931,11 @@ function confirmarRecogida(reservaId) {
     const activeTab = document.querySelector('#view-admin .tab-btn.active')?.getAttribute('data-tab');
     if (activeTab === 'gps') renderAdminGps(document.getElementById('gpsFilter')?.value?.trim()||'');
   }
+  // si empresa GPS está visible, refrescar
+  if (views.empresa.classList.contains('active')) {
+    const activeTab = document.querySelector('#view-empresa .tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'gps') renderEmpresaGps(document.getElementById('empresaGpsFilter')?.value?.trim()||'');
+  }
   toast("Viaje cambiado a Finalizado");
 }
 
@@ -1084,6 +1944,7 @@ function renderAdmin() {
   const reservas = storage.get("reservas", []);
   const rutas = storage.get("rutas", []);
   const flota = storage.get("flota", []);
+  const zonas = storage.get('zonas', []);
   const users = storage.get("users", []);
   
   // Datos visuales adicionales (no persistidos)
@@ -1100,8 +1961,10 @@ function renderAdmin() {
   ];
 
   // Actualizar KPIs principales
-  document.getElementById("kpiReservas").textContent = reservas.length;
-  document.getElementById("kpiFlota").textContent = flota.length;
+  const kpiReservasEl = document.getElementById("kpiReservas");
+  if (kpiReservasEl) kpiReservasEl.textContent = reservas.length;
+  const kpiFlotaEl = document.getElementById("kpiFlota");
+  if (kpiFlotaEl) kpiFlotaEl.textContent = flota.length;
   const revenue = reservas.reduce((sum, r) => sum + (Number(r.precio)||0), 0);
   const kpiRevenue = document.getElementById('kpiRevenue');
   if (kpiRevenue) kpiRevenue.textContent = `$${revenue.toLocaleString()}`;
@@ -1117,27 +1980,49 @@ function renderAdmin() {
     new Date(r.id).toDateString() === hoy
   ).length;
 
-  document.getElementById("opPendientes").textContent = pendientes;
-  document.getElementById("opEnCurso").textContent = enCurso;
-  document.getElementById("opCompletadosHoy").textContent = completadosHoy;
+  const opPend = document.getElementById("opPendientes"); if (opPend) opPend.textContent = pendientes;
+  const opCurso = document.getElementById("opEnCurso"); if (opCurso) opCurso.textContent = enCurso;
+  const opComp = document.getElementById("opCompletadosHoy"); if (opComp) opComp.textContent = completadosHoy;
 
   const rutasCont = document.getElementById("adminRutas");
-  rutasCont.innerHTML = "";
-  rutas.forEach(r => {
-    const div = document.createElement("div");
-    div.className = "list-item";
-    div.textContent = `${r.origen} → ${r.destino} • ${r.horario} • $${r.precio} • Asientos: ${r.asientos}`;
-    rutasCont.appendChild(div);
-  });
+  if (rutasCont) {
+    rutasCont.innerHTML = "";
+    rutas.slice().sort((a,b)=> b.id - a.id).forEach(r => {
+      const zonaLabel = (r.provincia && r.ciudad) ? `${r.provincia} / ${r.ciudad}` : 'Sin zona';
+      const div = document.createElement("div");
+      div.className = "list-item";
+      div.innerHTML = `
+        <div class="row" style="justify-content: space-between; gap:8px; align-items:center;">
+          <div style="min-width:0;">
+            <div><strong>${r.origen} → ${r.destino}</strong> • ${r.horario}</div>
+            <div class="text-muted" style="font-size:12px">${zonaLabel} • Precio: $${Number(r.precio).toFixed(2)} • Asientos: ${r.asientos}</div>
+          </div>
+          <div class="row" style="gap:6px;">
+            <button class="btn secondary" data-act="edit-ruta" data-id="${r.id}">Editar</button>
+            <button class="btn danger" data-act="del-ruta" data-id="${r.id}">Eliminar</button>
+          </div>
+        </div>`;
+      rutasCont.appendChild(div);
+    });
+    rutasCont.querySelectorAll('button[data-act]')?.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.getAttribute('data-id'));
+        const act = btn.getAttribute('data-act');
+        if (act === 'del-ruta') deleteRuta(id);
+        else if (act === 'edit-ruta') openEditarRuta(id);
+      });
+    });
+  }
 
   // Flota - Rediseñado
   const flotaCont = document.getElementById("adminFlota");
-  flotaCont.innerHTML = "";
+  if (flotaCont) flotaCont.innerHTML = "";
   const displayFlota = [...flota, ...mockFlota];
   
-  if (displayFlota.length === 0) {
-    flotaCont.innerHTML = '<div class="empty-state">🚗 No hay vehículos registrados</div>';
-  } else {
+  if (flotaCont) {
+    if (displayFlota.length === 0) {
+      flotaCont.innerHTML = '<div class="empty-state">🚗 No hay vehículos registrados</div>';
+    } else {
   displayFlota.forEach(v => {
       const viajesAsignados = reservas.filter(r => r.vehiculo === v.placa && r.estado !== 'recogido').length;
       const viajesCompletados = reservas.filter(r => r.vehiculo === v.placa && r.estado === 'recogido').length;
@@ -1229,8 +2114,9 @@ function renderAdmin() {
           </button>
         </div>
       `;
-    flotaCont.appendChild(div);
+      flotaCont.appendChild(div);
   });
+    }
   }
 
   // usuarios (conductor y admin) - Rediseñado
@@ -1695,7 +2581,17 @@ function renderAdmin() {
     promos.forEach(p => {
       const div = document.createElement("div");
       div.className = "list-item";
-      div.textContent = `${p.type.toUpperCase()} • ${p.code}${p.discountPct?` • ${p.discountPct}%`:p.balance?` • $${p.balance}`:""}`;
+      const meta = p.type === 'cupon' ? `${p.discountPct ?? 0}%` : `$${Number(p.balance ?? 0).toFixed(2)}`;
+      div.innerHTML = `
+        <div class="item-main">
+          <div class="item-title">${p.code}</div>
+          <div class="item-meta">${p.type === 'cupon' ? 'Cupón' : 'Voucher'} · ${meta}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn secondary" onclick="editPromo('${p.code.replace(/'/g, "&#39;")}')">✏️ Editar</button>
+          <button class="btn danger" onclick="deletePromo('${p.code.replace(/'/g, "&#39;")}')">🗑️ Eliminar</button>
+        </div>
+      `;
       promoCont.appendChild(div);
     });
   }
@@ -1709,6 +2605,7 @@ function renderAdmin() {
   }
 
   renderAdminReservas();
+  // Zonas eliminadas
 
   // dentro de renderAdmin(), después de KPIs y otros renders, añadimos:
   const resFilterBtns = document.querySelectorAll('.res-filter-btn');
@@ -1717,6 +2614,159 @@ function renderAdmin() {
   first?.classList.add('active');
   renderAdminReservas('pendiente');
 }
+
+// ==========================
+// Admin: Cupones y Vouchers (CRUD)
+// ==========================
+function renderPromosList() {
+  const list = document.getElementById('adminPromos');
+  if (!list) return;
+  const promos = storage.get('promos', []);
+  if (!Array.isArray(promos) || promos.length === 0) {
+    list.innerHTML = '<div class="empty-state">🎟️ No hay promociones</div>';
+    return;
+  }
+  list.innerHTML = '';
+  promos.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    const meta = p.type === 'cupon' ? `${p.discountPct ?? 0}%` : `$${Number(p.balance ?? 0).toFixed(2)}`;
+    div.innerHTML = `
+      <div class="item-main">
+        <div class="item-title">${p.code}</div>
+        <div class="item-meta">${p.type === 'cupon' ? 'Cupón' : 'Voucher'} · ${meta}</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn secondary" onclick="editPromo('${p.code.replace(/'/g, "&#39;")}')">✏️ Editar</button>
+        <button class="btn danger" onclick="deletePromo('${p.code.replace(/'/g, "&#39;")}')">🗑️ Eliminar</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function setPromoFormMode(mode) {
+  const submitBtn = document.getElementById('promoSubmit');
+  const cancelBtn = document.getElementById('promoCancelEdit');
+  const form = document.getElementById('promoForm');
+  if (!submitBtn || !form || !cancelBtn) return;
+  if (mode === 'edit') {
+    submitBtn.textContent = 'Actualizar';
+    cancelBtn.style.display = '';
+  } else {
+    submitBtn.textContent = 'Agregar';
+    cancelBtn.style.display = 'none';
+    form.removeAttribute('data-editing');
+  }
+}
+
+function onPromoTypeChange() {
+  const tipo = document.getElementById('promoTipo');
+  const descuento = document.getElementById('promoDescuento');
+  const balance = document.getElementById('promoBalance');
+  if (!tipo || !descuento || !balance) return;
+  if (tipo.value === 'cupon') {
+    descuento.style.display = '';
+    descuento.required = true;
+    balance.style.display = 'none';
+    balance.required = false;
+  } else {
+    descuento.style.display = 'none';
+    descuento.required = false;
+    balance.style.display = '';
+    balance.required = true;
+  }
+}
+
+function initAdminPromos() {
+  const form = document.getElementById('promoForm');
+  const tipo = document.getElementById('promoTipo');
+  const cancelar = document.getElementById('promoCancelEdit');
+  const nuevo = document.getElementById('promoNuevoBtn');
+  if (!form || !tipo) return;
+  onPromoTypeChange();
+  tipo.addEventListener('change', onPromoTypeChange);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = document.getElementById('promoCodigo')?.value.trim();
+    const discountPct = Number(document.getElementById('promoDescuento')?.value || 0);
+    const balance = Number(document.getElementById('promoBalance')?.value || 0);
+    if (!code) { toast('Ingrese un código'); return; }
+    const promos = storage.get('promos', []);
+    const editing = form.getAttribute('data-editing');
+    if (tipo.value === 'cupon') {
+      if (!(discountPct > 0 && discountPct <= 100)) { toast('Descuento inválido (1-100)'); return; }
+    } else if (tipo.value === 'voucher') {
+      if (!(balance >= 0)) { toast('Saldo inválido'); return; }
+    }
+    const idx = promos.findIndex(p => p.code.toLowerCase() === code.toLowerCase());
+    if (!editing) {
+      if (idx >= 0) { toast('El código ya existe'); return; }
+      const newPromo = tipo.value === 'cupon' ? { type: 'cupon', code, discountPct } : { type: 'voucher', code, balance };
+      promos.push(newPromo);
+    } else {
+      // Modo edición
+      const oldIdx = promos.findIndex(p => p.code === editing);
+      if (oldIdx >= 0) {
+        promos[oldIdx] = tipo.value === 'cupon' ? { type: 'cupon', code, discountPct } : { type: 'voucher', code, balance };
+      } else {
+        // Si no se encontró, actuar como inserción
+        const newPromo = tipo.value === 'cupon' ? { type: 'cupon', code, discountPct } : { type: 'voucher', code, balance };
+        promos.push(newPromo);
+      }
+    }
+    storage.set('promos', promos);
+    form.reset();
+    setPromoFormMode('add');
+    onPromoTypeChange();
+    renderPromosList();
+    toast('Promoción guardada');
+  });
+  cancelar?.addEventListener('click', () => {
+    form.reset();
+    setPromoFormMode('add');
+    onPromoTypeChange();
+  });
+  nuevo?.addEventListener('click', () => {
+    form.reset();
+    setPromoFormMode('add');
+    onPromoTypeChange();
+    document.getElementById('promoCodigo')?.focus();
+  });
+  renderPromosList();
+}
+
+function editPromo(code) {
+  const promos = storage.get('promos', []);
+  const p = promos.find(x => x.code === code);
+  if (!p) { toast('Promoción no encontrada'); return; }
+  const form = document.getElementById('promoForm');
+  const tipo = document.getElementById('promoTipo');
+  if (!form || !tipo) return;
+  tipo.value = p.type;
+  onPromoTypeChange();
+  document.getElementById('promoCodigo').value = p.code;
+  const desc = document.getElementById('promoDescuento');
+  const bal = document.getElementById('promoBalance');
+  if (p.type === 'cupon') { if (desc) desc.value = String(p.discountPct ?? 0); if (bal) bal.value = ''; }
+  else { if (bal) bal.value = String(p.balance ?? 0); if (desc) desc.value = ''; }
+  form.setAttribute('data-editing', p.code);
+  setPromoFormMode('edit');
+}
+
+function deletePromo(code) {
+  const promos = storage.get('promos', []);
+  const next = promos.filter(p => p.code !== code);
+  storage.set('promos', next);
+  renderPromosList();
+  toast('Promoción eliminada');
+}
+
+try {
+  window.initAdminPromos = initAdminPromos;
+  window.editPromo = editPromo;
+  window.deletePromo = deletePromo;
+} catch {}
 
 function renderTodasReservas() {
   const reservas = storage.get("reservas", []).sort((a, b) => b.id - a.id);
@@ -2008,18 +3058,17 @@ function abrirModalEditar(reservaId) {
 
 // Forms & Nav wiring
 function wireEvents() {
-  document.getElementById("loginForm").addEventListener("submit", handleLogin);
-  document.getElementById("registerForm").addEventListener("submit", handleRegister);
-  document.getElementById("reservaForm").addEventListener("submit", handleReserva);
-  document.getElementById("rutaForm").addEventListener("submit", handleAddRuta);
-  document.getElementById("logoutBtn").addEventListener("click", () => { clearSession(); updateSessionUi(); showView("auth"); });
-  const companySelect = document.getElementById("companySelect");
-  companySelect?.addEventListener("change", (e) => {
-    setCompanyNamespace(e.target.value);
-    seedIfEmpty();
-    const session = getSession();
+  document.getElementById("loginForm")?.addEventListener("submit", handleLogin);
+  document.getElementById("registerForm")?.addEventListener("submit", handleRegister);
+  document.getElementById("registerFormStandalone")?.addEventListener("submit", handleRegister);
+  document.getElementById("reservaForm")?.addEventListener("submit", handleReserva);
+  document.getElementById("rutaForm")?.addEventListener("submit", handleAddRuta);
+  document.getElementById("logoutBtn")?.addEventListener("click", () => {
+    clearSession();
     updateSessionUi();
-    if (session) navigateByRole(session.role); else showView("auth");
+    const path = window.location.pathname.replace(/\\/g, '/');
+    const target = path.includes('/views/') ? '../../index.html' : 'index.html';
+    window.location.href = target;
   });
 
   // theme toggle (removed button; keep applying saved or default theme)
@@ -2034,6 +3083,8 @@ function wireEvents() {
       document.querySelectorAll('#view-admin .tab-panel').forEach(p => p.classList.remove('active'));
       const panel = document.getElementById(`tab-${tab}`);
       if (panel) panel.classList.add('active');
+      if (tab === 'promos') { try { initAdminPromos(); } catch {} }
+      // zonas eliminadas
     });
   });
 
@@ -2115,26 +3166,47 @@ function wireEvents() {
   document.getElementById('goToLoginFromRegister')?.addEventListener('click', (e) => { e.preventDefault(); showView('auth'); });
 
   // pretty uploader
-  const regFotoBtn = document.getElementById('regFotoBtn');
-  const regFotoInput = document.getElementById('regFoto');
-  const regFotoPreview = document.getElementById('regFotoPreview');
-  regFotoBtn?.addEventListener('click', () => regFotoInput?.click());
-  regFotoInput?.addEventListener('change', () => {
-    const file = regFotoInput.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast('La imagen supera 2MB'); regFotoInput.value = ''; return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (regFotoPreview) {
-        regFotoPreview.src = String(reader.result);
-        regFotoPreview.hidden = false;
-      }
-    };
-    reader.readAsDataURL(file);
+  // Soporta duplicidad de IDs en formularios (usando ámbito del form)
+  [document.getElementById('registerForm'), document.getElementById('registerFormStandalone')]
+    .filter(Boolean)
+    .forEach(form => {
+      const fotoBtn = form.querySelector('[id="regFotoBtn"]');
+      const fotoInput = form.querySelector('[id="regFoto"]');
+      const fotoPreview = form.querySelector('[id="regFotoPreview"]');
+      fotoBtn?.addEventListener('click', () => fotoInput?.click());
+      fotoInput?.addEventListener('change', () => {
+        const file = fotoInput.files?.[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { toast('La imagen supera 2MB'); fotoInput.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (fotoPreview) {
+            fotoPreview.src = String(reader.result);
+            fotoPreview.hidden = false;
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+  // Mostrar/ocultar campo de empresa según tipo de cliente (soporta ambos formularios)
+  const tipoClienteSelects = Array.from(document.querySelectorAll('[id="regTipoCliente"]'));
+  function toggleEmpresaFieldFor(selectEl) {
+    try {
+      const form = selectEl.closest('form');
+      const wrapper = form?.querySelector('[id="regNombreEmpresaWrapper"]');
+      if (!wrapper) return;
+      const isEmpresa = (selectEl.value || 'cliente') === 'empresa';
+      wrapper.style.display = isEmpresa ? '' : 'none';
+    } catch {}
+  }
+  tipoClienteSelects.forEach(sel => {
+    toggleEmpresaFieldFor(sel);
+    sel.addEventListener('change', () => toggleEmpresaFieldFor(sel));
   });
 
   // map picker
-  const openMapPickerBtns = Array.from(document.querySelectorAll('#openMapPicker'));
+  const openMapPickerBtns = Array.from(document.querySelectorAll('#openMapPicker, #openMapPicker2'));
   const mapModal = document.getElementById('mapModal');
   const closeMapPicker = document.getElementById('closeMapPicker');
   const saveMapPicker = document.getElementById('saveMapPicker');
@@ -2221,6 +3293,13 @@ function wireEvents() {
       const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       if (input) input.value = address;
       window.__pickerTarget = null;
+    } else if (window.__pickerTargetInput) {
+      // Manejar todos los campos de entrada específicos
+      const input = document.getElementById(window.__pickerTargetInput);
+      const address = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (input) input.value = address;
+      window.__pickerTarget = null;
+      window.__pickerTargetInput = null;
     }
     closePicker();
   });
@@ -2237,6 +3316,28 @@ function wireEvents() {
   // custom service form
   const csForm = document.getElementById("customServiceForm");
   if (csForm) csForm.addEventListener("submit", handleCustomServiceSubmit);
+  
+  // P2P calculation method change
+  const metodoCalculoP2P = document.getElementById("csMetodoCalculoP2P");
+  if (metodoCalculoP2P) {
+    metodoCalculoP2P.addEventListener("change", onP2PMetodoChange);
+  }
+  
+  // P2P zone selection change
+  const zonaP2P = document.getElementById("csZonaP2P");
+  if (zonaP2P) {
+    zonaP2P.addEventListener("change", onP2PZonaChange);
+  }
+  
+  // P2P fields change for price calculation
+  const p2pFields = ["csPersonasP2P", "csTipoVehiculoP2P", "csOrigen", "csDestino"];
+  p2pFields.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.addEventListener("input", calculateP2PPrice);
+      field.addEventListener("change", calculateP2PPrice);
+    }
+  });
 
   // gps controls
   const gpsStart = document.getElementById("gpsStart");
@@ -2260,6 +3361,7 @@ function wireEvents() {
   document.getElementById('addUsuarioBtn')?.addEventListener('click', () => {
     showView('admin-user-new');
   });
+  // Solo en pestaña Usuarios
   document.getElementById('addFlotaBtn')?.addEventListener('click', () => {
     showView('admin-vehicle-new');
   });
@@ -2267,6 +3369,10 @@ function wireEvents() {
   // admin create user form
   const auForm = document.getElementById('adminCreateUserForm');
   if (auForm) {
+    document.getElementById('auBack')?.addEventListener('click', () => {
+      showView('admin');
+      renderAdmin();
+    });
     document.getElementById('auCancelar')?.addEventListener('click', () => {
       showView('admin');
       renderAdmin();
@@ -2600,6 +3706,107 @@ function wireEvents() {
   // set inicial
   renderAdminReservas('pendiente');
 }
+/* function renderAdminZonas() {
+  const cont = document.getElementById('adminZonas');
+  if (!cont) return;
+  const zonas = storage.get('zonas', []);
+  cont.innerHTML = '';
+  if (!zonas.length) {
+    cont.innerHTML = "<div class='text-muted'>Sin zonas configuradas</div>";
+  } else {
+    zonas.forEach(z => {
+      const item = document.createElement('div');
+      item.className = 'admin-list-item';
+      item.innerHTML = `
+        <div><strong>${z.provincia || '-'} - ${z.ciudad || '-'}</strong></div>
+        <div>Precio base: $${Number(z.precio).toFixed(2)} • Extra fuera de zona: $${Number(z.extra).toFixed(2)}</div>
+        <div class="row" style="gap:8px;">
+          <button class="btn secondary" data-id="${z.id}" data-act="edit-zona">Editar</button>
+          <button class="btn danger" data-id="${z.id}" data-act="del-zona">Eliminar</button>
+        </div>
+      `;
+      cont.appendChild(item);
+    });
+  }
+
+  const form = document.getElementById('zonaForm');
+  const msg = document.getElementById('zonaMsg');
+  const provSel = document.getElementById('zonaProvincia');
+  const citySel = document.getElementById('zonaCiudad');
+
+  // Provincias y ciudades desde archivo jsonProvincias
+  let EC = null;
+  try {
+    const raw = document.getElementById('jsonProvinciaCache')?.textContent;
+    if (raw) {
+      EC = JSON.parse(raw);
+    }
+  } catch {}
+  const populateFromData = (data) => {
+    if (!data?.provincias) return;
+    if (provSel && provSel.options.length <= 1) {
+      data.provincias.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.nombre; o.textContent = p.nombre; provSel.appendChild(o);
+      });
+    }
+  };
+  if (!EC) {
+    // fallback: intentar fetch del archivo local
+    fetch(asset('jsonProvincias')).then(r => r.json()).then(data => { EC = data; populateFromData(data); updateCities(); }).catch(()=>{
+      EC = { provincias: [] };
+      updateCities();
+    });
+  } else { populateFromData(EC); }
+  // actualizar ciudades según provincia
+  const updateCities = () => {
+    if (!citySel) return;
+    citySel.innerHTML = '<option value="">Ciudad...</option>';
+    const p = provSel.value;
+    const prov = EC?.provincias?.find(x => x.nombre === p);
+    (prov?.ciudades || []).forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; citySel.appendChild(o); });
+  };
+  provSel?.addEventListener('change', updateCities);
+  updateCities();
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const provincia = provSel.value;
+    const ciudad = citySel.value;
+    const precio = Number(document.getElementById('zonaPrecio').value);
+    const extra = Number(document.getElementById('zonaExtra').value);
+    if (!provincia || !ciudad || isNaN(precio) || isNaN(extra)) { msg.textContent = 'Completa todos los campos'; return; }
+    let zonas = storage.get('zonas', []);
+    const idx = zonas.findIndex(z => (z.provincia||'').toLowerCase() === provincia.toLowerCase() && (z.ciudad||'').toLowerCase() === ciudad.toLowerCase());
+    if (idx >= 0) zonas[idx] = { ...zonas[idx], provincia, ciudad, precio, extra };
+    else zonas.push({ id: Date.now(), provincia, ciudad, precio, extra });
+    storage.set('zonas', zonas);
+    (document.getElementById('zonaForm')).reset();
+    msg.textContent = 'Zona guardada';
+    renderAdminZonas();
+  });
+
+  cont.querySelectorAll('button[data-act]')?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.getAttribute('data-id'));
+      const act = btn.getAttribute('data-act');
+      let zonas = storage.get('zonas', []);
+      if (act === 'del-zona') {
+        zonas = zonas.filter(z => z.id !== id);
+        storage.set('zonas', zonas);
+        renderAdminZonas();
+      } else if (act === 'edit-zona') {
+        const z = zonas.find(z => z.id === id);
+        if (z) {
+          provSel.value = z.provincia || '';
+          updateCities();
+          citySel.value = z.ciudad || '';
+          document.getElementById('zonaPrecio').value = z.precio;
+          document.getElementById('zonaExtra').value = z.extra;
+        }
+      }
+    });
+  });
+} */
 
 // Funciones para modales de usuarios
 function verUsuario(userId) {
@@ -2780,6 +3987,11 @@ function confirmarEditarUsuario() {
   } else {
     toast('Error: Usuario no encontrado en la base de datos real');
   }
+
+  // Inicializar CRUD de promociones si la pestaña está activa
+  if (document.querySelector('#tab-promos')?.classList.contains('active')) {
+    try { initAdminPromos(); } catch {}
+  }
 }
 
 function cerrarVerUsuarioModal() {
@@ -2795,6 +4007,24 @@ function cerrarEditarUsuarioModal() {
 function verCliente(clienteId) {
   const users = storage.get("users", []);
   const mockClients = storage.get('mockClients', []);
+  const session = getSession();
+  
+  // Si estamos en contexto de empresa, buscar clientes de empresa
+  if (session && session.role === 'empresa') {
+    const allClientes = [
+      ...users.filter(u => u.role === 'cliente_empresa' && u.empresa === session.empresa),
+      ...mockClients
+        .filter(m => m.empresa === session.empresa)
+        .map(m => ({ ...m, role: 'cliente_empresa' }))
+    ];
+    const cliente = allClientes.find(c => c.id === clienteId);
+    if (cliente) {
+      mostrarVerClienteModal(cliente);
+      return;
+    }
+  }
+  
+  // Fallback para clientes regulares (admin)
   const allClientes = [
     ...users.filter(u => u.role === 'cliente'),
     ...mockClients.map(m => ({ ...m, role: 'cliente' }))
@@ -2917,9 +4147,144 @@ function verCliente(clienteId) {
   document.getElementById('verClienteModal').style.display = 'block';
 }
 
+function mostrarVerClienteModal(cliente) {
+  const reservas = storage.get("reservas", []);
+  const misReservas = reservas.filter(r => r.clienteId === cliente.id);
+  const completadas = misReservas.filter(r => r.estado === 'recogido');
+  const pendientes = misReservas.filter(r => !r.conductorId);
+  const gastoTotal = misReservas.reduce((sum, r) => sum + (Number(r.precio) || 0), 0);
+  const rated = misReservas.filter(r => typeof r.rating === 'number');
+  const avgRating = rated.length ? (rated.reduce((a,b)=>a+b.rating,0)/rated.length).toFixed(1) : null;
+
+  let clientLevel = '';
+  let levelClass = '';
+  if (misReservas.length === 0) { 
+    clientLevel = '🆕 Nuevo'; 
+    levelClass = 'level-new'; 
+  } else if (misReservas.length >= 10) { 
+    clientLevel = '⭐ VIP'; 
+    levelClass = 'level-vip'; 
+  } else if (misReservas.length >= 5) { 
+    clientLevel = '💎 Premium'; 
+    levelClass = 'level-premium'; 
+  } else { 
+    clientLevel = '👤 Regular'; 
+    levelClass = 'level-regular'; 
+  }
+
+  const content = document.getElementById('verClienteContent');
+  content.innerHTML = `
+    <div class="view-section">
+      <div class="view-section-title">👤 Información Personal</div>
+      <div class="view-detail-grid">
+        <div class="view-detail-item">
+          <div class="view-detail-label">Nombre Completo</div>
+          <div class="view-detail-value">${cliente.nombre}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Cédula</div>
+          <div class="view-detail-value">${cliente.cedula}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Email</div>
+          <div class="view-detail-value ${!cliente.email ? 'empty' : ''}">${cliente.email || 'No registrado'}</div>
+        </div>
+        <div class="view-detail-item">
+          <div class="view-detail-label">Teléfono</div>
+          <div class="view-detail-value ${!cliente.telefono ? 'empty' : ''}">${cliente.telefono || 'No registrado'}</div>
+        </div>
+        ${cliente.empresa ? `
+        <div class="view-detail-item">
+          <div class="view-detail-label">Empresa</div>
+          <div class="view-detail-value">${cliente.empresa}</div>
+        </div>
+        ` : ''}
+        <div class="view-detail-item">
+          <div class="view-detail-label">Nivel de Cliente</div>
+          <div class="view-detail-value">
+            <span class="client-level-badge ${levelClass}">${clientLevel}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-section">
+      <div class="view-section-title">📊 Estadísticas de Uso</div>
+      <div class="view-stats-grid">
+        <div class="view-stat-card">
+          <div class="view-stat-number">${misReservas.length}</div>
+          <div class="view-stat-label">Total Reservas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${completadas.length}</div>
+          <div class="view-stat-label">Completadas</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">${pendientes}</div>
+          <div class="view-stat-label">Pendientes</div>
+        </div>
+        <div class="view-stat-card">
+          <div class="view-stat-number">$${gastoTotal}</div>
+          <div class="view-stat-label">Gasto Total</div>
+        </div>
+        ${avgRating ? `
+        <div class="view-stat-card">
+          <div class="view-stat-number">${avgRating}/5</div>
+          <div class="view-stat-label">Calificación</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+
+    ${misReservas.length > 0 ? `
+    <div class="view-section">
+      <div class="view-section-title">📋 Historial de Reservas</div>
+      <div class="view-reservas-list">
+        ${misReservas.slice(0, 5).map(r => {
+          const estado = r.estado === 'recogido' ? 'completado' : 
+                        r.estado === 'en-curso' ? 'en-curso' : 
+                        r.conductorId ? 'asignado' : 'pendiente';
+          return `
+            <div class="view-reserva-item">
+              <div class="view-reserva-header">
+                <div class="view-reserva-route">${r.origen} → ${r.destino}</div>
+                <div class="view-reserva-status ${estado}">${estado}</div>
+              </div>
+              <div class="view-reserva-details">
+                ${new Date(r.id).toLocaleDateString('es-ES')} • ${r.horario} • $${r.precio}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+
+  document.getElementById('verClienteModal').style.display = 'block';
+}
+
 function editarCliente(clienteId) {
   const users = storage.get("users", []);
   const mockClients = storage.get('mockClients', []);
+  const session = getSession();
+  
+  // Si estamos en contexto de empresa, buscar clientes de empresa
+  if (session && session.role === 'empresa') {
+    const allClientes = [
+      ...users.filter(u => u.role === 'cliente_empresa' && u.empresa === session.empresa),
+      ...mockClients
+        .filter(m => m.empresa === session.empresa)
+        .map(m => ({ ...m, role: 'cliente_empresa' }))
+    ];
+    const cliente = allClientes.find(c => c.id === clienteId);
+    if (cliente) {
+      mostrarEditarClienteModal(cliente);
+      return;
+    }
+  }
+  
+  // Fallback para clientes regulares (admin)
   const allClientes = [
     ...users.filter(u => u.role === 'cliente'),
     ...mockClients.map(m => ({ ...m, role: 'cliente' }))
@@ -2940,6 +4305,20 @@ function editarCliente(clienteId) {
 
   // Guardar el ID para usar en confirmar
   document.getElementById('editarClienteForm').dataset.clienteId = clienteId;
+
+  document.getElementById('editarClienteModal').style.display = 'block';
+}
+
+function mostrarEditarClienteModal(cliente) {
+  // Pre-llenar el formulario
+  document.getElementById('ecNombre').value = cliente.nombre || '';
+  document.getElementById('ecCedula').value = cliente.cedula || '';
+  document.getElementById('ecEmail').value = cliente.email || '';
+  document.getElementById('ecTelefono').value = cliente.telefono || '';
+  document.getElementById('ecDireccion').value = cliente.direccion || '';
+
+  // Guardar el ID para usar en confirmar
+  document.getElementById('editarClienteForm').dataset.clienteId = cliente.id;
 
   document.getElementById('editarClienteModal').style.display = 'block';
 }
@@ -2974,7 +4353,9 @@ function confirmarEditarCliente() {
   }
   
   cerrarEditarClienteModal();
-  renderAdmin();
+  const empresaView = document.getElementById('tab-clientes-empresa');
+  if (empresaView) { renderEmpresaClientes(); }
+  else { renderAdmin(); }
   toast('Cliente actualizado exitosamente');
 }
 
@@ -3294,7 +4675,9 @@ function deleteCliente(id) {
     const filteredMock = mockClients.filter(u => u.id !== id);
     storage.set("users", filteredUsers);
     storage.set("mockClients", filteredMock);
-    renderAdmin();
+    const empresaView = document.getElementById('tab-clientes-empresa');
+    if (empresaView) { renderEmpresaClientes(); }
+    else { renderAdmin(); }
     toast('Cliente eliminado');
   }
 }
@@ -3330,14 +4713,30 @@ function deleteFlota(placa) {
 // Admin: add route
 function handleAddRuta(e) {
   e.preventDefault();
-  const origen = document.getElementById("rutaOrigen").value.trim();
-  const destino = document.getElementById("rutaDestino").value.trim();
+  const provOri = document.getElementById('rutaProvinciaOrigen')?.value || '';
+  const cityOri = document.getElementById('rutaCiudadOrigen')?.value || '';
+  const provDes = document.getElementById('rutaProvinciaDestino')?.value || '';
+  const cityDes = document.getElementById('rutaCiudadDestino')?.value || '';
   const horario = document.getElementById("rutaHorario").value.trim();
   const precio = Number(document.getElementById("rutaPrecio").value);
   const asientos = Number(document.getElementById("rutaAsientos").value);
-  if (!origen || !destino || !horario || !precio || !asientos) { document.getElementById("rutaMsg").textContent = "Complete todos los campos"; return; }
+  if (!provOri || !cityOri || !provDes || !cityDes || !horario || !precio || !asientos) { document.getElementById("rutaMsg").textContent = "Complete todos los campos"; return; }
   const rutas = storage.get("rutas", []);
-  const nueva = { id: Date.now(), origen, destino, horario, precio, asientos };
+  const nueva = {
+    id: Date.now(),
+    // Compatibilidad y nuevos campos
+    provincia: provOri,
+    ciudad: cityOri,
+    originProvince: provOri,
+    originCity: cityOri,
+    destProvince: provDes,
+    destCity: cityDes,
+    origen: cityOri,
+    destino: cityDes,
+    horario,
+    precio,
+    asientos
+  };
   rutas.push(nueva);
   storage.set("rutas", rutas);
   document.getElementById("rutaMsg").textContent = "Ruta añadida";
@@ -3348,6 +4747,172 @@ function handleAddRuta(e) {
   toast("Ruta añadida");
 }
 
+// --- Rutas: CRUD helpers ---
+function deleteRuta(id) {
+  const rutas = storage.get('rutas', []);
+  const filtered = rutas.filter(r => r.id !== id);
+  storage.set('rutas', filtered);
+  renderAdmin();
+  toast('Ruta eliminada');
+}
+
+let editingRutaId = null;
+function openEditarRuta(id) {
+  const modal = document.getElementById('editarRutaModal');
+  const form = document.getElementById('editarRutaForm');
+  if (!modal || !form) return;
+  const r = storage.get('rutas', []).find(x => x.id === id);
+  if (!r) return;
+  editingRutaId = id;
+  document.getElementById('erHorario').value = r.horario || '';
+  document.getElementById('erPrecio').value = String(r.precio ?? '');
+  document.getElementById('erAsientos').value = String(r.asientos ?? '');
+  // preparar selects de Origen
+  ensureProvinciaCiudadSelectors('erProvinciaOrigen', 'erCiudadOrigen', () => {
+    const provOrigen = r.originProvince || r.provincia || findProvinceByCity(r.originCity || r.origen) || '';
+    document.getElementById('erProvinciaOrigen').value = provOrigen;
+    populateCitiesFor('erProvinciaOrigen', 'erCiudadOrigen');
+    document.getElementById('erCiudadOrigen').value = r.originCity || r.ciudad || r.origen || '';
+  });
+  // preparar selects de Destino
+  ensureProvinciaCiudadSelectors('erProvinciaDestino', 'erCiudadDestino', () => {
+    const provDestino = r.destProvince || findProvinceByCity(r.destCity || r.destino) || '';
+    document.getElementById('erProvinciaDestino').value = provDestino;
+    populateCitiesFor('erProvinciaDestino', 'erCiudadDestino');
+    document.getElementById('erCiudadDestino').value = r.destCity || r.destino || '';
+  });
+  modal.hidden = false;
+}
+
+function closeEditarRuta() {
+  const modal = document.getElementById('editarRutaModal');
+  if (modal) modal.hidden = true;
+  editingRutaId = null;
+}
+
+document.getElementById('closeEditarRutaModal')?.addEventListener('click', closeEditarRuta);
+document.getElementById('cancelarEditarRuta')?.addEventListener('click', closeEditarRuta);
+document.getElementById('confirmarEditarRuta')?.addEventListener('click', () => {
+  if (!editingRutaId) return closeEditarRuta();
+  const provOri = document.getElementById('erProvinciaOrigen')?.value || '';
+  const cityOri = document.getElementById('erCiudadOrigen')?.value || '';
+  const provDes = document.getElementById('erProvinciaDestino')?.value || '';
+  const cityDes = document.getElementById('erCiudadDestino')?.value || '';
+  const horario = document.getElementById('erHorario').value.trim();
+  const precio = Number(document.getElementById('erPrecio').value);
+  const asientos = Number(document.getElementById('erAsientos').value);
+  if (!provOri || !cityOri || !provDes || !cityDes || !horario || !precio || !asientos) {
+    document.getElementById('editarRutaMsg').textContent = 'Completa todos los campos';
+    return;
+  }
+  const rutas = storage.get('rutas', []);
+  const idx = rutas.findIndex(r => r.id === editingRutaId);
+  if (idx >= 0) {
+    rutas[idx] = {
+      ...rutas[idx],
+      provincia: provOri,
+      ciudad: cityOri,
+      originProvince: provOri,
+      originCity: cityOri,
+      destProvince: provDes,
+      destCity: cityDes,
+      origen: cityOri,
+      destino: cityDes,
+      horario,
+      precio,
+      asientos
+    };
+    storage.set('rutas', rutas);
+    toast('Ruta actualizada');
+    renderAdmin();
+  }
+  closeEditarRuta();
+});
+
+// --- Provincias/Ciudades: carga y helpers ---
+let EC_CACHE = null;
+function ensureProvinciaCiudadSelectors(provId, cityId, onReady) {
+  const provSel = document.getElementById(provId);
+  const citySel = document.getElementById(cityId);
+  if (!provSel || !citySel) return;
+  function populateFromData(data) {
+    provSel.innerHTML = '<option value="">Provincia...</option>';
+    data.provincias?.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.nombre;
+      opt.textContent = p.nombre;
+      provSel.appendChild(opt);
+    });
+  }
+  function updateCities() {
+    const nombre = provSel.value;
+    citySel.innerHTML = '<option value="">Ciudad...</option>';
+    const p = EC_CACHE?.provincias?.find(x => x.nombre === nombre);
+    p?.ciudades?.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      citySel.appendChild(opt);
+    });
+  }
+  provSel.onchange = updateCities;
+  if (EC_CACHE) { populateFromData(EC_CACHE); if (onReady) onReady(); return; }
+  try {
+    if (window.__EC_DATA__) {
+      EC_CACHE = window.__EC_DATA__;
+      populateFromData(EC_CACHE);
+      if (onReady) onReady();
+      return;
+    }
+  } catch {}
+  fetch(asset('jsonProvincias')).then(r=>r.json()).then(data => {
+    EC_CACHE = data;
+    try { window.__EC_DATA__ = data; } catch {}
+    populateFromData(data);
+    if (onReady) onReady();
+  }).catch(()=>{
+    EC_CACHE = { provincias: [] };
+    populateFromData(EC_CACHE);
+    if (onReady) onReady();
+  });
+}
+
+function populateCitiesFor(provId, cityId) {
+  const provSel = document.getElementById(provId);
+  const citySel = document.getElementById(cityId);
+  if (!provSel || !citySel) return;
+  const p = EC_CACHE?.provincias?.find(x => x.nombre === provSel.value);
+  citySel.innerHTML = '<option value="">Ciudad...</option>';
+  p?.ciudades?.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    citySel.appendChild(opt);
+  });
+}
+
+function findProvinceByCity(cityName) {
+  if (!cityName || !EC_CACHE?.provincias) return '';
+  const p = EC_CACHE.provincias.find(p => (p.ciudades||[]).includes(cityName));
+  return p ? p.nombre : '';
+}
+
+// Wire selects de rutas (form principal) al activar pestaña Rutas o al cargar admin
+;(function wireRutasProvinciaCiudad(){
+  const init = () => {
+    ensureProvinciaCiudadSelectors('rutaProvinciaOrigen', 'rutaCiudadOrigen');
+    ensureProvinciaCiudadSelectors('rutaProvinciaDestino', 'rutaCiudadDestino');
+  };
+  // al cargar
+  init();
+  // al cambiar de pestaña
+  document.querySelectorAll('#view-admin .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'rutas') setTimeout(init, 50);
+    });
+  });
+})();
 // Admin: add promo
 function handleAddPromo(e) {
   e.preventDefault();
@@ -3410,6 +4975,8 @@ function onServicioChange() {
   const customPanel = document.getElementById("customServicePanel");
   const servicioPrivadoFields = document.getElementById("servicioPrivadoFields");
   const servicioEncomiendaFields = document.getElementById("servicioEncomiendaFields");
+  const servicioTransferFields = document.getElementById('servicioTransferFields');
+  const servicioP2PFields = document.getElementById('servicioP2PFields');
   const descripcionDiv = document.getElementById("servicioDescripcion");
   const destinoWrapper = document.getElementById('csDestinoWrapper');
   const destinoInput = document.getElementById('csDestino');
@@ -3447,6 +5014,8 @@ function onServicioChange() {
     }
     if (servicioPrivadoFields) servicioPrivadoFields.style.display = '';
     if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
+    if (servicioTransferFields) servicioTransferFields.style.display = 'none';
+    if (servicioP2PFields) servicioP2PFields.style.display = 'none';
   } else if (tipo === 'encomienda') {
     if (destinoWrapper) destinoWrapper.style.display = '';
     if (destinoInput) destinoInput.required = true;
@@ -3454,6 +5023,26 @@ function onServicioChange() {
     if (rutaSelect) rutaSelect.required = false;
     if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
     if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = '';
+    if (servicioTransferFields) servicioTransferFields.style.display = 'none';
+    if (servicioP2PFields) servicioP2PFields.style.display = 'none';
+  } else if (tipo === 'transfer') {
+    if (destinoWrapper) destinoWrapper.style.display = 'none';
+    if (destinoInput) destinoInput.required = false;
+    if (rutaWrapper) rutaWrapper.style.display = 'none';
+    if (rutaSelect) rutaSelect.required = false;
+    if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
+    if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
+    if (servicioTransferFields) servicioTransferFields.style.display = '';
+    if (servicioP2PFields) servicioP2PFields.style.display = 'none';
+  } else if (tipo === 'p2p') {
+    if (destinoWrapper) destinoWrapper.style.display = '';
+    if (destinoInput) destinoInput.required = true;
+    if (rutaWrapper) rutaWrapper.style.display = 'none';
+    if (rutaSelect) rutaSelect.required = false;
+    if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
+    if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
+    if (servicioTransferFields) servicioTransferFields.style.display = 'none';
+    if (servicioP2PFields) servicioP2PFields.style.display = '';
   } else {
     if (destinoWrapper) destinoWrapper.style.display = '';
     if (destinoInput) destinoInput.required = true;
@@ -3461,6 +5050,8 @@ function onServicioChange() {
     if (rutaSelect) rutaSelect.required = false;
     if (servicioPrivadoFields) servicioPrivadoFields.style.display = 'none';
     if (servicioEncomiendaFields) servicioEncomiendaFields.style.display = 'none';
+    if (servicioTransferFields) servicioTransferFields.style.display = 'none';
+    if (servicioP2PFields) servicioP2PFields.style.display = 'none';
   }
 }
 
@@ -3486,6 +5077,12 @@ function updateServicioDescripcion(tipo) {
       descripcion = "📦 <strong>Encomienda Express:</strong> Envío rápido y seguro de paquetes y documentos. Servicio puerta a puerta con seguimiento en tiempo real.";
       descripcionDiv.classList.add("encomienda");
       break;
+    case "transfer":
+      descripcion = "✈️ <strong>Transfer Aeropuerto (directo):</strong> Solo aeropuertos habilitados (Quito, Guayaquil). Selecciona Aeropuerto ↔ Casa. Precio automático según configuración del admin.";
+      break;
+    case "p2p":
+      descripcion = "📍 <strong>Cotización Punto a Punto:</strong> Cotiza cualquier ruta fuera de las predeterminadas. Opciones de cálculo: por kilometraje (API Maps) o tarifas planas por zonas. Se muestra el valor antes de reservar.";
+      break;
     default:
       descripcion = "Selecciona un tipo de servicio para ver su descripción";
   }
@@ -3509,6 +5106,26 @@ function handleCustomServiceSubmit(e) {
     if (!sel) { toast('Seleccione un destino preestablecido'); return; }
     destino = sel.destino;
     horario = sel.horario;
+  } else if (tipo === 'transfer') {
+    // Transfer: origen/destino se deducen por tipo de transfer
+    const tipoTransfer = document.getElementById('csTipoTransfer').value;
+    const aeropuerto = document.getElementById('csAeropuerto').value;
+    const direccionTransfer = document.getElementById('csDireccionTransfer').value.trim();
+    
+    if (!direccionTransfer) { toast('Por favor ingresa la dirección de recogida/llegada'); return; }
+    
+    if (tipoTransfer === 'aeropuerto-casa') {
+      origen = aeropuerto === 'quito' ? 'Aeropuerto Mariscal Sucre (Quito)' : 'Aeropuerto José Joaquín de Olmedo (Guayaquil)';
+      destino = direccionTransfer;
+    } else {
+      origen = direccionTransfer;
+      destino = aeropuerto === 'quito' ? 'Aeropuerto Mariscal Sucre (Quito)' : 'Aeropuerto José Joaquín de Olmedo (Guayaquil)';
+    }
+    horario = 'A coordinar';
+  } else if (tipo === 'p2p') {
+    destino = document.getElementById("csDestino").value.trim();
+    if (!destino) { toast('Ingrese destino'); return; }
+    horario = 'A coordinar';
   } else {
     destino = document.getElementById("csDestino").value.trim();
     if (!destino) { toast('Ingrese destino'); return; }
@@ -3527,6 +5144,57 @@ function handleCustomServiceSubmit(e) {
     const tipoContenido = document.getElementById("csTipoContenido").value;
     const descripcionPaquete = document.getElementById("csDescripcionPaquete").value.trim();
     servicioDetalles = { ...servicioDetalles, tamanoPaquete, tipoContenido, descripcionPaquete };
+  } else if (tipo === 'transfer') {
+    const personasTransfer = document.getElementById('csPersonasTransfer').value;
+    const numeroVuelo = document.getElementById('csNumeroVuelo').value.trim();
+    const tipoTransfer = document.getElementById('csTipoTransfer').value;
+    const aeropuerto = document.getElementById('csAeropuerto').value;
+    
+    if (!personasTransfer) { toast("Por favor indica el número de pasajeros"); return; }
+    
+    servicioDetalles = { 
+      ...servicioDetalles, 
+      personas: Number(personasTransfer), 
+      tipoTransfer, 
+      aeropuerto,
+      numeroVuelo: numeroVuelo || null
+    };
+  } else if (tipo === 'p2p') {
+    const personasP2P = document.getElementById('csPersonasP2P').value;
+    const tipoVehiculoP2P = document.getElementById('csTipoVehiculoP2P').value;
+    const fechaHoraP2P = document.getElementById('csFechaHoraP2P').value;
+    const comentariosP2P = document.getElementById('csComentariosP2P').value.trim();
+    const metodoCalculoP2P = document.getElementById('csMetodoCalculoP2P').value;
+    const zonaP2P = document.getElementById('csZonaP2P').value;
+    
+    if (!personasP2P) { toast("Por favor indica el número de pasajeros"); return; }
+    
+    servicioDetalles = { 
+      ...servicioDetalles, 
+      personas: Number(personasP2P), 
+      tipoVehiculo: tipoVehiculoP2P,
+      fechaHora: fechaHoraP2P || null,
+      comentarios: comentariosP2P || null,
+      metodoCalculo: metodoCalculoP2P,
+      zona: zonaP2P || null
+    };
+  }
+
+  // Precios base: transfer según aeropuerto, p2p según configuración
+  let precioEstimado = 15;
+  if (tipo === 'transfer') {
+    const aeropuerto = document.getElementById('csAeropuerto').value;
+    // Precio automático según configuración del admin
+    precioEstimado = aeropuerto === 'quito' ? 25 : 30; // Quito: $25, Guayaquil: $30
+  } else if (tipo === 'p2p') {
+    // Usar el precio calculado dinámicamente
+    const precioCalculadoElement = document.getElementById("precioCalculadoP2P");
+    if (precioCalculadoElement) {
+      const precioTexto = precioCalculadoElement.textContent;
+      precioEstimado = parseInt(precioTexto.replace('$', '')) || 20;
+    } else {
+      precioEstimado = 20; // Precio base por defecto
+    }
   }
 
   selectedCustomService = {
@@ -3534,7 +5202,7 @@ function handleCustomServiceSubmit(e) {
     origen: servicioDetalles.origen,
     destino: servicioDetalles.destino,
     horario: servicioDetalles.horario,
-    precio: tipo === 'privado' ? 25 : 15,
+    precio: tipo === 'privado' ? 25 : precioEstimado,
     details: servicioDetalles,
   };
 
@@ -3550,11 +5218,107 @@ function handleCustomServiceSubmit(e) {
       <div><strong>Servicio:</strong> ${tipo}</div>
       ${tipo==='privado' ? `<div><strong>Pasajeros:</strong> ${servicioDetalles.personas} • <strong>Vehículo:</strong> ${servicioDetalles.tipoVehiculo}</div>` : ''}
       ${tipo==='encomienda' ? `<div><strong>Tamaño:</strong> ${servicioDetalles.tamanoPaquete} • <strong>Contenido:</strong> ${servicioDetalles.tipoContenido}</div>` : ''}
+      ${tipo==='transfer' ? `<div><strong>Pasajeros:</strong> ${servicioDetalles.personas} • <strong>Tipo:</strong> ${servicioDetalles.tipoTransfer} • <strong>Aeropuerto:</strong> ${servicioDetalles.aeropuerto}</div>` : ''}
+      ${tipo==='p2p' ? `<div><strong>Pasajeros:</strong> ${servicioDetalles.personas} • <strong>Vehículo:</strong> ${servicioDetalles.tipoVehiculo} • <strong>Cálculo:</strong> ${servicioDetalles.metodoCalculo}</div>` : ''}
       <div><strong>Precio estimado:</strong> $${selectedCustomService.precio}</div>
     `;
     det.appendChild(item);
   }
   if (modal) { modal.hidden = false; modal.style.display = 'grid'; }
+}
+
+// P2P calculation methods
+function onP2PMetodoChange() {
+  const metodo = document.getElementById("csMetodoCalculoP2P").value;
+  const zonaFields = document.getElementById("p2pZonaFields");
+  const precioPreview = document.getElementById("p2pPrecioPreview");
+  
+  if (metodo === "zonas") {
+    if (zonaFields) zonaFields.style.display = '';
+    calculateP2PPrice();
+  } else {
+    if (zonaFields) zonaFields.style.display = 'none';
+    calculateP2PPrice();
+  }
+  
+  if (precioPreview) precioPreview.style.display = '';
+}
+
+function onP2PZonaChange() {
+  calculateP2PPrice();
+}
+
+function calculateP2PPrice() {
+  const metodo = document.getElementById("csMetodoCalculoP2P")?.value;
+  if (!metodo) return;
+  
+  const precioPreview = document.getElementById("p2pPrecioPreview");
+  const precioCalculado = document.getElementById("precioCalculadoP2P");
+  const detalleCalculo = document.getElementById("detalleCalculoP2P");
+  
+  if (!precioPreview || !precioCalculado || !detalleCalculo) return;
+  
+  let precio = 0;
+  let detalle = "";
+  
+  if (metodo === "kilometraje") {
+    // Cálculo por kilometraje (simulado - en producción usar API Maps)
+    const origen = document.getElementById("csOrigen")?.value?.trim();
+    const destino = document.getElementById("csDestino")?.value?.trim();
+    
+    if (origen && destino) {
+      // Simulación de cálculo por distancia
+      const distanciaKm = Math.random() * 50 + 10; // 10-60 km simulado
+      precio = Math.round(distanciaKm * 1.5 + 15); // $1.5 por km + $15 base
+      detalle = `Distancia estimada: ${distanciaKm.toFixed(1)} km × $1.5/km + $15 base`;
+    } else {
+      precio = 15;
+      detalle = "Ingresa origen y destino para calcular por kilometraje";
+    }
+  } else if (metodo === "zonas") {
+    const zona = document.getElementById("csZonaP2P")?.value;
+    if (zona) {
+      // Tarifas por zonas
+      const tarifasZonas = {
+        "quito-centro": { base: 20, extra: 0 },
+        "quito-norte": { base: 20, extra: 5 },
+        "quito-sur": { base: 20, extra: 5 },
+        "quito-valle": { base: 20, extra: 10 },
+        "guayaquil-centro": { base: 25, extra: 0 },
+        "guayaquil-norte": { base: 25, extra: 5 },
+        "guayaquil-sur": { base: 25, extra: 5 },
+        "otra-zona": { base: 30, extra: 0 }
+      };
+      
+      const tarifa = tarifasZonas[zona] || { base: 20, extra: 0 };
+      precio = tarifa.base + tarifa.extra;
+      
+      const nombreZona = document.getElementById("csZonaP2P").selectedOptions[0]?.text || zona;
+      detalle = `Tarifa zona: ${nombreZona}`;
+    } else {
+      precio = 20;
+      detalle = "Selecciona una zona para ver la tarifa";
+    }
+  }
+  
+  // Ajuste por tipo de vehículo
+  const tipoVehiculo = document.getElementById("csTipoVehiculoP2P")?.value;
+  if (tipoVehiculo) {
+    const ajustesVehiculo = {
+      "sedan": 0,
+      "suv": 5,
+      "van": 10
+    };
+    const ajuste = ajustesVehiculo[tipoVehiculo] || 0;
+    precio += ajuste;
+    if (ajuste > 0) {
+      detalle += ` + $${ajuste} (${tipoVehiculo.toUpperCase()})`;
+    }
+  }
+  
+  precioCalculado.textContent = `$${precio}`;
+  detalleCalculo.textContent = detalle;
+  precioPreview.style.display = '';
 }
 
 // Confirmación desde el modal (crea la reserva)
@@ -3677,9 +5441,17 @@ function renderAdminReservas(filter = 'pendiente') {
   const users = storage.get('users', []);
   const rutas = storage.get('rutas', []);
   let visibles = [];
-  if (filter === 'pendiente') visibles = reservas.filter(r => r.estado === 'pendiente' && !r.conductorId);
-  else if (filter === 'asignadas') visibles = reservas.filter(r => r.conductorId && (r.estado === 'pendiente' || r.estado === 'en-curso'));
-  else if (filter === 'recogido') visibles = reservas.filter(r => r.estado === 'recogido');
+  if (filter === 'pendiente') {
+    visibles = reservas.filter(r => r.estado === 'pendiente' && !r.conductorId);
+  } else if (filter === 'asignadas') {
+    visibles = reservas.filter(r => r.conductorId && r.estado === 'pendiente');
+  } else if (filter === 'en-curso') {
+    visibles = reservas.filter(r => r.estado === 'en-curso');
+  } else if (filter === 'recogido') {
+    visibles = reservas.filter(r => r.estado === 'recogido');
+  } else {
+    visibles = reservas;
+  }
   cont.innerHTML = '';
   if (visibles.length === 0) {
     cont.innerHTML = `<div class='text-muted'>No hay reservas ${filter}</div>`;
@@ -3692,8 +5464,11 @@ function renderAdminReservas(filter = 'pendiente') {
     if (filter === 'pendiente') {
       actions = `<button class=\"btn primary\" data-act=\"open-assign\" data-id=\"${r.id}\">Asignar</button>`;
     } else if (filter === 'asignadas') {
-      const estadoLabel = r.estado === 'en-curso' ? 'En curso' : 'Asignado';
-      actions = `<span class=\"badge ${r.estado==='en-curso'?'warn':'info'}\">${estadoLabel}</span>
+      actions = `<span class=\"badge info\">Asignada</span>
+                 <button class=\"btn secondary\" data-act=\"start\" data-id=\"${r.id}\">Iniciar</button>
+                 <button class=\"btn danger\" data-act=\"cancel\" data-id=\"${r.id}\">Cancelar</button>`;
+    } else if (filter === 'en-curso') {
+      actions = `<span class=\"badge warn\">En curso</span>
                  <button class=\"btn secondary\" data-act=\"finish\" data-id=\"${r.id}\">Marcar completada</button>`;
     } else if (filter === 'recogido') {
       actions = `<span class=\"badge success\">Completada</span>`;
@@ -3887,9 +5662,52 @@ function wireOrigenPicker() {
   applyState();
 }
 
+// Configurar botones de mapa para todos los campos de ubicación
+function wireMapButtons() {
+  // Botón para destino general
+  const destinoMapBtn = document.getElementById('csDestinoMapBtn');
+  if (destinoMapBtn) {
+    destinoMapBtn.addEventListener('click', () => {
+      window.__pickerTarget = 'destino';
+      window.__pickerTargetInput = 'csDestino';
+      openPicker();
+    });
+  }
+
+  // Botón para dirección de transfer
+  const transferMapBtn = document.getElementById('csDireccionTransferMapBtn');
+  if (transferMapBtn) {
+    transferMapBtn.addEventListener('click', () => {
+      window.__pickerTarget = 'transfer';
+      window.__pickerTargetInput = 'csDireccionTransfer';
+      openPicker();
+    });
+  }
+
+  // Botones para P2P
+  const p2pOrigenMapBtn = document.getElementById('csP2POrigenMapBtn');
+  if (p2pOrigenMapBtn) {
+    p2pOrigenMapBtn.addEventListener('click', () => {
+      window.__pickerTarget = 'p2pOrigen';
+      window.__pickerTargetInput = 'csP2POrigen';
+      openPicker();
+    });
+  }
+
+  const p2pDestinoMapBtn = document.getElementById('csP2PDestinoMapBtn');
+  if (p2pDestinoMapBtn) {
+    p2pDestinoMapBtn.addEventListener('click', () => {
+      window.__pickerTarget = 'p2pDestino';
+      window.__pickerTargetInput = 'csP2PDestino';
+      openPicker();
+    });
+  }
+}
+
 // --- ADMIN GPS ---
 let adminGpsMap = null;
 let adminGpsMarkers = [];
+let adminGpsMarkerByKey = {};
 function renderAdminGps(filterText = '') {
   const cont = document.getElementById('adminGpsMap');
   const list = document.getElementById('adminGpsList');
@@ -3902,37 +5720,82 @@ function renderAdminGps(filterText = '') {
   // limpiar marcadores previos
   adminGpsMarkers.forEach(m => adminGpsMap.removeLayer(m));
   adminGpsMarkers = [];
+  adminGpsMarkerByKey = {};
   list.innerHTML = '';
 
   const users = storage.get('users', []);
   const tracking = storage.get('tracking', []); // [{conductorId, lat, lng, updatedAt, reservaId}]
   const reservas = storage.get('reservas', []);
-  const activos = tracking.filter(t => reservas.some(r => r.id === t.reservaId && (r.estado === 'en-curso')));
-  const visibles = filterText ? activos.filter(t => {
-    const name = users.find(u => u.id === t.conductorId)?.nombre || '';
-    return name.toLowerCase().includes(filterText.toLowerCase());
-  }) : activos;
 
-  visibles.forEach(t => {
-    const name = users.find(u => u.id === t.conductorId)?.nombre || `ID ${t.conductorId}`;
-    const res = reservas.find(r => r.id === t.reservaId);
-    if (t.lat && t.lng) {
-      const marker = L.marker([t.lat, t.lng]).addTo(adminGpsMap).bindPopup(`${name}<br/>${res?.origen || ''} → ${res?.destino || ''}`);
-      adminGpsMarkers.push(marker);
-    }
+  // Conductores del sistema
+  const allDrivers = users.filter(u => u.role === 'conductor');
+  const visiblesDrivers = filterText
+    ? allDrivers.filter(u => (u.nombre || '').toLowerCase().includes(filterText.toLowerCase()))
+    : allDrivers;
+
+  // Mapear conductor -> tracking activo (solo reservas en curso)
+  const trackingActivos = tracking.filter(t => reservas.some(r => r.id === t.reservaId && (r.estado === 'en-curso')));
+  const activoByDriverId = new Map();
+  trackingActivos.forEach(t => {
+    // preferir el más reciente por si hay múltiples
+    const prev = activoByDriverId.get(t.conductorId);
+    if (!prev || (t.updatedAt || 0) > (prev.updatedAt || 0)) activoByDriverId.set(t.conductorId, t);
+  });
+
+  let visiblesActivosCount = 0;
+  visiblesDrivers.forEach(driver => {
+    const t = activoByDriverId.get(driver.id) || null;
+    const res = t ? reservas.find(r => r.id === t.reservaId) : null;
+    const isActive = Boolean(t && t.lat && t.lng);
+
     const item = document.createElement('div');
     item.className = 'list-item';
-    item.innerHTML = `
-      <div class=\"row\"><strong>${name}</strong><span class=\"badge\">${new Date(t.updatedAt||Date.now()).toLocaleTimeString()}</span></div>
-      <div>Reserva: #${t.reservaId} • ${res?.origen||''} → ${res?.destino||''}</div>
-      <div>Posición: ${t.lat?.toFixed(5)||'-'}, ${t.lng?.toFixed(5)||'-'}</div>
-    `;
+    if (!isActive) item.style.opacity = '0.6';
+    item.style.cursor = isActive ? 'pointer' : 'not-allowed';
+
+    const titleRow = isActive
+      ? `<div class=\"row\"><strong>${driver.nombre}</strong><span class=\"badge\" style=\"background:#16a34a; color:#fff;\">Activo</span><span class=\"badge\">${new Date(t.updatedAt||Date.now()).toLocaleTimeString()}</span></div>`
+      : `<div class=\"row\"><strong>${driver.nombre}</strong><span class=\"badge\" style=\"background:#9ca3af; color:#fff;\">Inactivo</span></div>`;
+
+    const bodyLines = isActive
+      ? `
+        <div>Reserva: #${t.reservaId} • ${res?.origen||''} → ${res?.destino||''}</div>
+        <div>Posición: ${t.lat?.toFixed(5)||'-'}, ${t.lng?.toFixed(5)||'-'}</div>
+      `
+      : `<div class=\"text-muted\">En espera de que el conductor inicie el viaje</div>`;
+
+    item.innerHTML = `${titleRow}${bodyLines}`;
+
+    if (isActive) {
+      // marcador en el mapa
+      const marker = L.marker([t.lat, t.lng]).addTo(adminGpsMap).bindPopup(`${driver.nombre}<br/>${res?.origen || ''} → ${res?.destino || ''}`);
+      adminGpsMarkers.push(marker);
+      const key = `${t.conductorId}:${t.reservaId}`;
+      adminGpsMarkerByKey[key] = marker;
+      item.dataset.key = key;
+      item.addEventListener('click', () => {
+        const key2 = item.dataset.key;
+        const m = adminGpsMarkerByKey[key2];
+        if (m) {
+          try {
+            const latlng = m.getLatLng();
+            adminGpsMap.setView(latlng, 15);
+            m.openPopup();
+          } catch {}
+        }
+      });
+      visiblesActivosCount++;
+    }
+
     list.appendChild(item);
   });
-  if (countEl) countEl.textContent = `${visibles.length} activos`;
-  if (visibles.length) {
+
+  if (countEl) countEl.textContent = `${visiblesActivosCount} activos`;
+  if (adminGpsMarkers.length > 1) {
     const group = L.featureGroup(adminGpsMarkers);
     try { adminGpsMap.fitBounds(group.getBounds().pad(0.2)); } catch {}
+  } else if (adminGpsMarkers.length === 1) {
+    try { adminGpsMap.setView(adminGpsMarkers[0].getLatLng(), 15); } catch {}
   }
 }
 
@@ -3960,11 +5823,46 @@ setInterval(() => {
   }
 }, 5000);
 
+// Wire filtro GPS Empresa
+(function wireEmpresaGps(){
+  const input = document.getElementById('empresaGpsFilter');
+  input?.addEventListener('input', () => renderEmpresaGps(input.value.trim()));
+})();
+
+// Refrescar GPS al cambiar a la pestaña GPS Empresa
+(function observeEmpresaTabs(){
+  document.querySelectorAll('#view-empresa .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'gps') setTimeout(() => renderEmpresaGps(document.getElementById('empresaGpsFilter')?.value?.trim()||''), 60);
+    });
+  });
+})();
+
+// Timer para refrescar posiciones activas de empresa (cada 5s)
+setInterval(() => {
+  if (views.empresa?.classList.contains('active')) {
+    const activeTab = document.querySelector('#view-empresa .tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'gps') renderEmpresaGps(document.getElementById('empresaGpsFilter')?.value?.trim()||'');
+  }
+}, 5000);
+
 // navega a pago con un draft de reserva
 function goToPayment(draft) {
   window.__payDraft = draft;
   const session = getSession();
   const isEmpresa = session && session.role === 'empresa';
+  const isClienteEmpresa = session && session.role === 'cliente_empresa';
+  // Buscar tarifa fija de la empresa para clientes de otra empresa
+  let tarifaEmpresaFija = 0;
+  if (isClienteEmpresa) {
+    try {
+      const users = storage.get('users', []);
+      const empresaName = session.empresa || session.nombre;
+      const emp = users.find(u => u.role === 'empresa' && (u.empresa === empresaName || u.nombre === empresaName));
+      tarifaEmpresaFija = Number(emp?.tarifaEmpresa || 0);
+    } catch {}
+  }
   
   const summary = document.getElementById('paySummary');
   if (summary) {
@@ -3978,7 +5876,7 @@ function goToPayment(draft) {
       ${draft.servicioDetalles?.equipaje ? `<div><strong>Equipaje:</strong> ${draft.servicioDetalles.equipaje}</div>` : ''}
       ${draft.servicio==='privado' && draft.servicioDetalles?.tipoVehiculo ? `<div><strong>Vehículo:</strong> ${draft.servicioDetalles.tipoVehiculo}</div>` : ''}
       <div><strong>Precio transporte:</strong> $<span id=\"payPrice\">${draft.precio}</span></div>
-      ${isEmpresa ? `<div><strong>Tarifa empresa:</strong> $<span id=\"empresaTarifaDisplay\">0.00</span></div>` : ''}
+      ${(isEmpresa || isClienteEmpresa) ? `<div><strong>Tarifa empresa:</strong> $<span id=\"empresaTarifaDisplay\">${isClienteEmpresa ? tarifaEmpresaFija.toFixed(2) : '0.00'}</span></div>` : ''}
       <div><strong>Total:</strong> $<span id=\"payTotalDisplay\">${draft.precio}</span></div>
     `;
     summary.appendChild(item);
@@ -3987,13 +5885,14 @@ function goToPayment(draft) {
   // Mostrar/ocultar campo de tarifa de empresa
   const empresaTarifaSection = document.getElementById('empresaTarifaSection');
   if (empresaTarifaSection) {
+    // Solo Empresa puede editar; Cliente de Otra Empresa no edita
     empresaTarifaSection.style.display = isEmpresa ? 'block' : 'none';
   }
   
   // Función para actualizar total cuando cambie la tarifa de empresa
   const updateTotal = () => {
     const precioTransporte = Number(draft.precio) || 0;
-    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const tarifaEmpresa = isEmpresa ? Number(document.getElementById('empresaTarifa')?.value || 0) : (isClienteEmpresa ? tarifaEmpresaFija : 0);
     const total = precioTransporte + tarifaEmpresa;
     
     const empresaTarifaDisplay = document.getElementById('empresaTarifaDisplay');
@@ -4024,7 +5923,7 @@ function goToPayment(draft) {
     
     // Calcular el precio total actual (transporte + tarifa empresa)
     const precioTransporte = Number(draft.precio) || 0;
-    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const tarifaEmpresa = isEmpresa ? Number(document.getElementById('empresaTarifa')?.value || 0) : (isClienteEmpresa ? tarifaEmpresaFija : 0);
     const precioTotal = precioTransporte + tarifaEmpresa;
     
     let text = '';
@@ -4046,7 +5945,7 @@ function goToPayment(draft) {
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     const session = getSession();
-    if (!session || (session.role !== 'cliente' && session.role !== 'empresa')) { toast('Inicia sesión como cliente o empresa'); return; }
+    if (!session || (session.role !== 'cliente' && session.role !== 'empresa' && session.role !== 'cliente_empresa')) { toast('Inicia sesión como cliente o empresa'); return; }
     const draft = window.__payDraft;
     if (!draft) { toast('Sin datos de pago'); return; }
     const metodoPago = document.getElementById('payMethod').value;
@@ -4069,7 +5968,19 @@ function goToPayment(draft) {
     const promos = storage.get('promos', []);
     const promoApplied = codigoPromo ? promos.find(p => p.code.toLowerCase() === codigoPromo.toLowerCase()) : null;
     const precioBase = Number(draft.precio) || 0;
-    const tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    const isEmpresa = session.role === 'empresa';
+    const isClienteEmpresa = session.role === 'cliente_empresa';
+    // calcular tarifa
+    let tarifaEmpresa = 0;
+    if (isEmpresa) tarifaEmpresa = Number(document.getElementById('empresaTarifa')?.value || 0);
+    else if (isClienteEmpresa) {
+      try {
+        const users = storage.get('users', []);
+        const empresaName = session.empresa || session.nombre;
+        const emp = users.find(u => u.role === 'empresa' && (u.empresa === empresaName || u.nombre === empresaName));
+        tarifaEmpresa = Number(emp?.tarifaEmpresa || 0);
+      } catch { tarifaEmpresa = 0; }
+    }
     const precioConTarifa = precioBase + tarifaEmpresa;
     const precioFinal = promoApplied && promoApplied.discountPct ? Math.max(0, Math.round(precioConTarifa * (100 - promoApplied.discountPct)) / 100) : precioConTarifa;
 
@@ -4082,9 +5993,9 @@ function goToPayment(draft) {
       conductorId: null, vehiculo: null,
       servicioDetalles: draft.servicioDetalles || null,
       // Información específica para empresas
-      esEmpresa: session.role === 'empresa',
-      nombreEmpresa: session.role === 'empresa' ? session.empresa || session.nombre : null,
-      tarifaEmpresa: session.role === 'empresa' ? tarifaEmpresa : 0,
+      esEmpresa: (session.role === 'empresa' || session.role === 'cliente_empresa'),
+      nombreEmpresa: (session.role === 'empresa' || session.role === 'cliente_empresa') ? (session.empresa || session.nombre) : null,
+      tarifaEmpresa: (session.role === 'empresa' || session.role === 'cliente_empresa') ? tarifaEmpresa : 0,
       precioTransporte: precioBase,
     };
     reservas.push(nueva);

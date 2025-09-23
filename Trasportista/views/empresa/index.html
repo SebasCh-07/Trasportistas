@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeLlevo - Empresa</title>
+  <link rel="icon" type="image/x-icon" href="../../favicon.ico">
+  <link rel="stylesheet" href="../../styles/base.css" />
+  <link id="roleStyles" rel="stylesheet" href="../../styles/empresa.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">EMPRESA</div>
+    <div class="session">
+      <span id="sessionUser">Sin sesión</span>
+      <button id="logoutBtn" class="secondary" title="Cerrar sesión">Salir</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="view-empresa" class="view active">
+      <div class="cliente-layout">
+        <aside class="cliente-tabs">
+          <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+          
+          <button class="tab-btn" data-tab="reservas">Reservas</button>
+          <button class="tab-btn" data-tab="rutas">Rutas</button>
+          <button class="tab-btn" data-tab="flota">Flota</button>
+          <button class="tab-btn" data-tab="clientes">Clientes</button>
+          
+          <button class="tab-btn" data-tab="gps">GPS</button>
+          
+        </aside>
+        <div class="cliente-content">
+          <div class="tab-panel active" id="tab-dashboard">
+            <!-- Dashboard Empresa -->
+            <div class="dashboard-section">
+              <div class="section-header">
+                <h2>📊 Dashboard Empresarial</h2>
+                <p class="section-desc">Resumen ejecutivo de tu empresa de transporte</p>
+              </div>
+              
+              <!-- Información de la Empresa -->
+              <div class="panel" id="empresaHeaderPanel">
+                <div class="row" style="justify-content: space-between; align-items:center; gap:8px;">
+                  <div class="row" style="gap:8px; align-items:center;">
+                    <strong id="empresaHeaderNombre">-</strong>
+                    <span class="badge" id="empresaHeaderTipo">Empresa</span>
+                  </div>
+                  <div class="row" style="gap:8px; align-items:center;">
+                    <span class="text-muted">Tarifa empresa</span>
+                    <span class="badge" id="empresaHeaderTarifa">$0.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPIs Principales -->
+              <div class="kpis-grid">
+                <div class="kpi-card kpi-primary">
+                  <div class="kpi-icon">💼</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="empresaTotalReservas">0</div>
+                    <div class="kpi-label">Total Reservas</div>
+                    <div class="kpi-sublabel">Solicitudes de transporte</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-success">
+                  <div class="kpi-icon">💰</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="empresaIngresos">$0</div>
+                    <div class="kpi-label">Ingresos Totales</div>
+                    <div class="kpi-sublabel">Facturación acumulada</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-info">
+                  <div class="kpi-icon">🚗</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="empresaViajesActivos">0</div>
+                    <div class="kpi-label">Viajes Activos</div>
+                    <div class="kpi-sublabel">En curso actualmente</div>
+                  </div>
+                </div>
+                <div class="kpi-card kpi-warning">
+                  <div class="kpi-icon">⭐</div>
+                  <div class="kpi-content">
+                    <div class="kpi-num" id="empresaCalificacion">-</div>
+                    <div class="kpi-label">Calificación</div>
+                    <div class="kpi-sublabel">Promedio del servicio</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estado Operacional -->
+              <div class="dashboard-section">
+                <div class="section-header">
+                  <h3>🚦 Estado Operacional</h3>
+                  <p class="section-desc">Monitoreo en tiempo real de las operaciones</p>
+                </div>
+                <div class="operational-grid">
+                  <div class="operational-card">
+                    <div class="op-header">
+                      <span class="op-icon">⏳</span>
+                      <span class="op-title">Reservas Pendientes</span>
+                    </div>
+                    <div class="op-content">
+                      <div class="op-number" id="empresaPendientes">0</div>
+                      <div class="op-desc">Sin confirmar</div>
+                    </div>
+                  </div>
+                  <div class="operational-card">
+                    <div class="op-header">
+                      <span class="op-icon">🚗</span>
+                      <span class="op-title">Viajes en Curso</span>
+                    </div>
+                    <div class="op-content">
+                      <div class="op-number" id="empresaEnCurso">0</div>
+                      <div class="op-desc">Actualmente ejecutándose</div>
+                    </div>
+                  </div>
+                  <div class="operational-card">
+                    <div class="op-header">
+                      <span class="op-icon">✅</span>
+                      <span class="op-title">Completados Hoy</span>
+                    </div>
+                    <div class="op-content">
+                      <div class="op-number" id="empresaCompletadosHoy">0</div>
+                      <div class="op-desc">Finalizados exitosamente</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Análisis y Acciones Rápidas -->
+              <div class="dashboard-section">
+                <div class="section-header">
+                  <h3>📈 Análisis y Acciones</h3>
+                  <p class="section-desc">Datos detallados y acceso rápido a funciones</p>
+                </div>
+                <div class="analysis-grid">
+                  <div class="analysis-card">
+                    <div class="card-header">
+                      <h4>🕒 Actividad Reciente</h4>
+                      <span class="card-badge">Últimas 24h</span>
+                    </div>
+                    <div id="empresaRecentActivity" class="analysis-content"></div>
+                  </div>
+                  <div class="analysis-card">
+                    <div class="card-header">
+                      <h4>🗺️ Rutas Más Populares</h4>
+                      <span class="card-badge">Top 5</span>
+                    </div>
+                    <div id="empresaTopRutas" class="analysis-content"></div>
+                  </div>
+                  <div class="analysis-card">
+                    <div class="card-header">
+                      <h4>🚛 Utilización de Flota</h4>
+                      <span class="card-badge">Estado actual</span>
+                    </div>
+                    <div id="empresaFleetStats" class="analysis-content"></div>
+                  </div>
+                  <div class="analysis-card">
+                    <div class="card-header">
+                      <h4>⚡ Acciones Rápidas</h4>
+                      <span class="card-badge">Funciones principales</span>
+                    </div>
+                    <div id="empresaQuickActions" class="analysis-content">
+                      <div class="quick-actions">
+                        <button class="quick-action-btn" onclick="switchEmpresaTab('reservas')">
+                          <span class="action-icon">📋</span>
+                          <span class="action-text">Ver Reservas</span>
+                        </button>
+                        <button class="quick-action-btn" onclick="switchEmpresaTab('rutas')">
+                          <span class="action-icon">🛣️</span>
+                          <span class="action-text">Gestionar Rutas</span>
+                        </button>
+                        <button class="quick-action-btn" onclick="switchEmpresaTab('flota')">
+                          <span class="action-icon">🚙</span>
+                          <span class="action-text">Ver Flota</span>
+                        </button>
+                        <button class="quick-action-btn" onclick="switchEmpresaTab('clientes')">
+                          <span class="action-icon">👥</span>
+                          <span class="action-text">Clientes</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="tab-panel" id="tab-reservas-empresa">
+            <div class="panel">
+              <h3>Gestión de Reservas</h3>
+              <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+                <button class="empresa-res-filter-btn active" data-filter="pendiente">Pendientes</button>
+                <button class="empresa-res-filter-btn" data-filter="confirmada">Confirmadas</button>
+                <button class="empresa-res-filter-btn" data-filter="en-curso">En curso</button>
+                <button class="empresa-res-filter-btn" data-filter="recogido">Finalizadas</button>
+              </div>
+              <div id="empresaReservas" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-rutas-empresa">
+            <div class="panel">
+              <h3>Gestión de rutas</h3>
+              <div id="empresaRutas" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-flota-empresa">
+            <div class="panel">
+              <h3>Flota</h3>
+              <div id="empresaFlota" class="list"></div>
+            </div>
+          </div>
+          <div class="tab-panel" id="tab-clientes-empresa">
+            <div class="panel">
+              <h3>Clientes</h3>
+              <div id="empresaClientes" class="list"></div>
+            </div>
+          </div>
+
+          <!-- Ver Cliente Modal (reutiliza estilos de admin) -->
+          <div id="verClienteModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>👤 Detalles del Cliente</h3>
+                <button class="close-btn" onclick="cerrarVerClienteModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <div id="verClienteContent" class="view-content"></div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn secondary" onclick="cerrarVerClienteModal()">Cerrar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Editar Cliente Modal -->
+          <div id="editarClienteModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>✏️ Editar Cliente</h3>
+                <button class="close-btn" onclick="cerrarEditarClienteModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <form id="editarClienteForm">
+                  <div class="form-group">
+                    <label for="ecNombre">Nombre Completo:</label>
+                    <input type="text" id="ecNombre" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="ecCedula">Cédula:</label>
+                    <input type="text" id="ecCedula" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="ecEmail">Email:</label>
+                    <input type="email" id="ecEmail">
+                  </div>
+                  <div class="form-group">
+                    <label for="ecTelefono">Teléfono:</label>
+                    <input type="tel" id="ecTelefono">
+                  </div>
+                  <div class="form-group">
+                    <label for="ecDireccion">Dirección:</label>
+                    <input type="text" id="ecDireccion">
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button class="btn secondary" onclick="cerrarEditarClienteModal()">Cancelar</button>
+                <button class="btn primary" id="confirmarEditarCliente">Guardar Cambios</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ver Vehículo Modal -->
+          <div id="verVehiculoModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>🚗 Detalles del Vehículo</h3>
+                <button class="close-btn" onclick="cerrarVerVehiculoModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <div id="verVehiculoContent" class="view-content"></div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn secondary" onclick="cerrarVerVehiculoModal()">Cerrar</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="tab-panel" id="tab-gps-empresa">
+            <div class="panel">
+              <h3>GPS en tiempo real</h3>
+              <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 8px; gap:8px;">
+                <input id="empresaGpsFilter" type="text" placeholder="Buscar conductor por nombre..." style="flex:1; max-width: 360px;" />
+                <span class="text-muted" id="empresaGpsCount">0 activos</span>
+              </div>
+              <div class="two-col">
+                <div>
+                  <div id="empresaGpsMap" style="height: 420px; border-radius: 8px; overflow: hidden; background: #eee;"></div>
+                </div>
+                <div>
+                  <div id="empresaGpsList" class="list"></div>
+                </div>
+              </div>
+              <div class="text-muted" style="margin-top: 8px;">
+                El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".
+              </div>
+            </div>
+          </div>
+          
+          <!-- Ver Ruta Modal -->
+          <div id="verRutaModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>🛣️ Detalles de la Ruta</h3>
+                <button class="close-btn" onclick="cerrarVerRutaModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <div id="verRutaContent" class="view-content"></div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn secondary" onclick="cerrarVerRutaModal()">Cerrar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Editar Ruta Modal (solo Tarifa) -->
+          <div id="editarRutaModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>✏️ Editar Ruta (Tarifa adicional)</h3>
+                <button class="close-btn" onclick="cerrarEditarRutaModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <form id="editarRutaForm">
+                  <div class="form-group">
+                    <label for="erTarifa">Tarifa adicional ($):</label>
+                    <input type="number" id="erTarifa" min="0" step="0.01" required />
+                    <small class="text-muted">Se suma al precio base de la ruta.</small>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button class="btn secondary" onclick="cerrarEditarRutaModal()">Cancelar</button>
+                <button class="btn primary" id="confirmarEditarRuta">Guardar</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../../app.js"></script>
+  <script>
+    try { applyRoleStyles('empresa'); } catch {}
+    try { renderEmpresa(); } catch {}
+    try { showView('empresa'); } catch {}
+  </script>
+</body>
+</html>
+
+

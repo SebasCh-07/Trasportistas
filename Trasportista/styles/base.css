@@ -1318,6 +1318,17 @@ textarea:focus {
   .cliente-tabs { position: static; grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
 
+/* Empresa tabs layout (igual a cliente) */
+#view-empresa .cliente-layout { display: grid; grid-template-columns: 200px 1fr; gap: 20px; }
+#view-empresa .cliente-tabs { display: grid; gap: 8px; position: sticky; top: 72px; align-self: start; }
+#view-empresa .cliente-content { display: grid; }
+#view-empresa .tab-panel { display: none; }
+#view-empresa .tab-panel.active { display: block; }
+@media (max-width: 1024px) {
+  #view-empresa .cliente-layout { grid-template-columns: 1fr; }
+  #view-empresa .cliente-tabs { position: static; grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+
 /* Cliente two-column layout dentro de servicios */
 #cliente-tab-servicios { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; }
 .cliente-left { grid-column: 1; }
@@ -2019,8 +2030,15 @@ html {
   .form.inline { grid-template-columns: 1fr 1fr; }
 }
 
-#mapModal .row:last-child { flex-wrap: nowrap; align-items: center; }
-#mapAddress { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#mapModal .row:last-child { flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+#mapAddress { 
+  flex: 1; 
+  min-width: 200px; 
+  word-wrap: break-word; 
+  white-space: normal; 
+  line-height: 1.4;
+  max-width: 100%;
+}
 
 .detail-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
 .detail-section { 
@@ -2162,6 +2180,12 @@ html {
   #mapModal, #assignModal, #driverDetailModal, #clientConfirmModal, #clientSharedModal { max-width: 95vw !important; max-height: 90vh !important; }
   #map { height: 50vh !important; }
   #adminGpsMap { height: 45vh !important; }
+  
+  /* Map modal responsive improvements */
+  #mapModal .row:last-child { flex-direction: column; gap: 12px; }
+  #mapModal .row:last-child > div:first-child { min-width: auto; }
+  #mapModal .row:last-child > div:last-child { align-self: stretch; }
+  #mapModal .row:last-child button { width: 100%; }
 
   /* Payment view */
   #view-payment .two-col { grid-template-columns: 1fr; }

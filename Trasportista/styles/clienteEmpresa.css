@@ -1,0 +1,71 @@
+:root {
+  --bg: linear-gradient(135deg, #0a161d 0%, #0b1f29 50%, #0c2430 100%);
+  --panel: #0b1f29;
+  --text: #e6f4f1;
+  --muted: #9ad1c8;
+  --accent: #22c55e; /* green */
+  --primary: #0ea5e9; /* sky */
+  --secondary: #22d3ee; /* cyan */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --border: #193743;
+  --badge-bg: #113945;
+  --badge-text: #d1faf5;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+/* Paleta contrastada y elegante para ClienteEmpresa */
+html[data-theme="contrast"] {
+  --bg: linear-gradient(135deg, #0b0f1a 0%, #0d1324 50%, #0e1428 100%);
+  --panel: #0f1a2b;
+  --text: #eefdf9;
+  --muted: #a9d7ce;
+  --accent: #06b6d4; /* cian brillante */
+  --primary: #059669; /* verde profundo */
+  --secondary: #f59e0b; /* ámbar para detalles */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --border: #173043;
+  --badge-bg: #0f2633;
+  --badge-text: #d1faf5;
+  --shadow: 0 6px 28px rgba(2, 6, 23, 0.55);
+  --shadow-hover: 0 10px 36px rgba(2, 6, 23, 0.65);
+  --glow: 0 0 24px rgba(6, 182, 212, 0.28);
+}
+
+.topbar { border-bottom-color: rgba(6, 182, 212, 0.35); background: rgba(11, 31, 41, 0.92); }
+
+html[data-theme="contrast"] .topbar { border-bottom-color: rgba(5, 150, 105, 0.35); background: rgba(13, 19, 40, 0.92); }
+
+.brand {
+  background: linear-gradient(135deg, var(--accent), var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+body::before {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(14, 165, 233, 0.12) 0%, transparent 50%);
+}
+
+html[data-theme="contrast"] body::before {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(5, 150, 105, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(245, 158, 11, 0.12) 0%, transparent 50%);
+}
+
+.kpi-card::before { background: var(--accent); }
+.btn.ghost { color: var(--accent); border-color: rgba(6, 182, 212, 0.35); }
+
+html[data-theme="contrast"] .btn.ghost { color: var(--primary); border-color: rgba(5, 150, 105, 0.35); }
+
+
