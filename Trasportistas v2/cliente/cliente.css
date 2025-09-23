@@ -1,0 +1,120 @@
+.catalog .tour-card .tour-body .actions { display: flex; align-items: center; justify-content: space-between; }
+
+.booking-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.booking-card { display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); overflow: hidden; }
+.booking-media { width: 120px; height: 100%; min-height: 96px; background: #e5e7eb center/cover no-repeat; }
+.booking-content { padding: 12px; display: grid; gap: 8px; }
+.booking-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.booking-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; color: var(--text-secondary); font-size: 14px; }
+.booking-aside { display: grid; align-content: center; padding: 12px; }
+
+@media (max-width: 700px) {
+  .booking-card { grid-template-columns: 1fr; }
+  .booking-media { width: 100%; height: 140px; }
+  .booking-aside { justify-items: start; }
+}
+
+
+
+/* Decoración adicional para la sección de Reservas */
+.reservas-card {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(1200px 200px at -10% -20%, rgba(14,165,233,0.06), transparent 60%),
+              radial-gradient(900px 220px at 110% 120%, rgba(99,102,241,0.06), transparent 60%),
+              var(--panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.reservas-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(14,165,233,0.06), transparent 30%, transparent 70%, rgba(99,102,241,0.06));
+  pointer-events: none;
+}
+
+/* Tabs internas pegajosas dentro de la tarjeta */
+.reservas-card #innerTabs {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Listas con scroll suave dentro de la tarjeta */
+.reservas-card .booking-list {
+  max-height: 340px;
+  overflow: auto;
+  padding-right: 4px;
+  scroll-behavior: smooth;
+}
+
+/* Tarjetas de reserva más vistosas */
+.reservas-card .booking-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.9));
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.reservas-card .booking-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.reservas-card .booking-media {
+  border-radius: 10px;
+  outline: 1px solid var(--border);
+}
+
+.reservas-card .booking-header h4 {
+  font-weight: 800;
+}
+
+.reservas-card .booking-aside .price {
+  font-size: 1.1rem;
+}
+
+/* Estado vacío estilizado y centrado */
+#panel-pendiente > .booking-empty,
+#panel-confirmado > .booking-empty,
+#panel-en-curso > .booking-empty {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 240px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background:
+    radial-gradient(400px 120px at 10% 0%, rgba(14,165,233,0.08), transparent 60%),
+    radial-gradient(380px 120px at 90% 100%, rgba(99,102,241,0.08), transparent 60%),
+    rgba(148, 163, 184, 0.06);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Marca de agua */
+#panel-pendiente > .booking-empty::before,
+#panel-confirmado > .booking-empty::before,
+#panel-en-curso > .booking-empty::before {
+  content: 'Sin reservas';
+  position: absolute;
+  font-size: 84px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: rgba(148, 163, 184, 0.15);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/* Contenido interno del vacío */
+.booking-empty .empty-inner { display: grid; gap: 8px; place-items: center; z-index: 1; }
+.booking-empty .empty-icon { font-size: 40px; opacity: 0.6; }
+.booking-empty .empty-text { font-size: 22px; font-weight: 800; color: #0ea5e9; letter-spacing: .3px; }

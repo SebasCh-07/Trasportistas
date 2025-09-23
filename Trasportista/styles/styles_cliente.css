@@ -1,2 +1,134 @@
 .cliente-layout {}
 
+/* Estilos para el mapa de tracking */
+#trackingClienteMap {
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+#trackingClienteMap:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Marcadores personalizados */
+.conductor-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.conductor-icon {
+  background: #3b82f6;
+  border: 3px solid white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.location-icon {
+  background: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Animación de pulso para el conductor */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* Estilos para popups del mapa */
+.popup-content {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.4;
+}
+
+.popup-content strong {
+  color: var(--primary);
+}
+
+/* Mensajes de estado del tracking */
+.msg.warning {
+  background: rgba(251, 191, 36, 0.1);
+  border-left: 4px solid #fbbf24;
+  color: #92400e;
+}
+
+.msg.success {
+  background: rgba(16, 185, 129, 0.1);
+  border-left: 4px solid #10b981;
+  color: #065f46;
+}
+
+.msg.info {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 4px solid #3b82f6;
+  color: #1e40af;
+}
+
+/* Mejoras para el panel de tracking */
+#trackingClientePanel {
+  margin-top: 16px;
+}
+
+#trackingClientePanel h3 {
+  color: var(--primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#trackingClientePanel h3::before {
+  content: "🗺️";
+  font-size: 1.2em;
+}
+
+/* Responsive para el mapa */
+@media (max-width: 768px) {
+  #trackingClienteMap {
+    height: 200px !important;
+  }
+  
+  .conductor-icon {
+    width: 25px;
+    height: 25px;
+    font-size: 14px;
+  }
+  
+  .location-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+}
+

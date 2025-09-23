@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Empresa | TeLlevo</title>
+  <link rel="stylesheet" href="../shared/assets/styles.css" />
+  <link rel="stylesheet" href="./empresa.css" />
+</head>
+<body class="page empresa-theme">
+  <div id="navbar"></div>
+  <main class="container">
+    <h2>Panel Empresa</h2>
+    <div class="card">
+      <div class="section-header">
+        <h3>Servicios Base</h3>
+        <div>
+          <span class="badge">Markup actual: <strong id="markupVal">0%</strong></span>
+          <input id="markupInput" type="number" min="0" max="100" style="width:100px;margin-left:8px;" />
+          <button id="saveMarkup" class="btn primary">Guardar</button>
+        </div>
+      </div>
+      <div id="services" class="catalog"></div>
+    </div>
+  </main>
+  <div class="modal-backdrop" id="routeBackdrop"></div>
+  <div class="modal" id="routeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="routeTitle"></strong>
+        <button id="closeRoute" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body" id="routeBody"></div>
+      <div class="modal-footer">
+        <button class="btn primary" id="routeCloseBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script type="module" src="./empresa.js"></script>
+</body>
+</html>
+
+

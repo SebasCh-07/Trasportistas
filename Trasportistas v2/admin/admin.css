@@ -1,0 +1,10 @@
+.muted { color: var(--text-secondary); }
+.kpi { font-size: 28px; font-weight: 700; margin-top: 6px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.admin-sections .card { min-height: 200px; }
+.table-actions { display: flex; gap: 6px; }
+
+.inline-form { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 8px; margin-bottom: 10px; }
+.inline-form input { width: 100%; }
+
+

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cliente Empresa | TeLlevo</title>
+  <link rel="stylesheet" href="../shared/assets/styles.css" />
+  <link rel="stylesheet" href="./clienteEmpresa.css" />
+</head>
+<body class="page cliente-empresa-theme">
+  <div id="navbar"></div>
+  <main class="container">
+      <h2>Explora y Reserva - Empresa</h2>
+      <div class="tabs" id="outerTabs">
+        <div class="tab active" data-tab="catalogo">Catálogo / Rutas</div>
+        <div class="tab" data-tab="reservas">Reservas</div>
+        <div class="tab" data-tab="historial">Historial de Reservas</div>
+      </div>
+
+      <section id="tab-catalogo">
+        <div class="card">
+          <div class="section-header"><h3>Catálogo</h3></div>
+          <div class="tabs" id="catalogTabs">
+            <div class="tab active" data-cat="rutas">Rutas</div>
+            <div class="tab" data-cat="encomienda">Encomienda</div>
+            <div class="tab" data-cat="p2p">Traslado Punto a Punto</div>
+            <div class="tab" data-cat="aeropuerto">Transfer Aeropuerto</div>
+          </div>
+
+          <div id="catalog-panel-rutas">
+            <div class="grid cols-3" style="align-items:end">
+              <div class="form-row">
+                <label>Modalidad</label>
+                <div class="tabs" id="routeModeTabs">
+                  <div class="tab active" data-mode="privada">Privada</div>
+                  <div class="tab" data-mode="compartida">Compartida</div>
+                </div>
+              </div>
+            </div>
+            <div id="catalog" class="catalog" style="margin-top:12px"></div>
+          </div>
+
+          <div id="catalog-panel-encomienda" class="hidden">
+            <form id="formEncomienda" class="grid cols-3">
+              <div class="form-row"><label>Remitente</label><input id="encRemitente" required /></div>
+              <div class="form-row"><label>Destinatario</label><input id="encDestinatario" required /></div>
+              <div class="form-row"><label>Teléfono contacto</label><input id="encTelefono" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><label>Descripción del paquete</label><input id="encDescripcion" required /></div>
+              <div class="form-row"><label>Origen</label><input id="encOrigen" placeholder="Dirección de recogida" required /></div>
+              <div class="form-row"><label>Destino</label><input id="encDestino" placeholder="Dirección de entrega" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Encomienda</button></div>
+            </form>
+          </div>
+
+          <div id="catalog-panel-p2p" class="hidden">
+            <form id="formP2P" class="grid cols-3">
+              <div class="form-row"><label>Origen</label><input id="p2pOrigen" required /></div>
+              <div class="form-row"><label>Destino</label><input id="p2pDestino" required /></div>
+              <div class="form-row"><label>Fecha y hora</label><input id="p2pFecha" type="datetime-local" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><label>Notas</label><input id="p2pNotas" /></div>
+              <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Traslado</button></div>
+            </form>
+          </div>
+
+          <div id="catalog-panel-aeropuerto" class="hidden">
+            <form id="formAeropuerto" class="grid cols-3">
+              <div class="form-row"><label>Tipo</label>
+                <select id="airTipo" required>
+                  <option value="llegada">Llegada → Ciudad</option>
+                  <option value="salida">Ciudad → Aeropuerto</option>
+                </select>
+              </div>
+              <div class="form-row"><label>Vuelo</label><input id="airVuelo" placeholder="Ej: AV123" required /></div>
+              <div class="form-row"><label>Fecha y hora</label><input id="airFecha" type="datetime-local" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><label>Dirección</label><input id="airDireccion" placeholder="Hotel o dirección" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Transfer</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-reservas" class="hidden">
+        <div class="card reservas-card">
+          <div class="section-header"><h3>Mis Reservas</h3></div>
+          <div class="tabs" id="innerTabs">
+            <div class="tab active" data-subtab="pendiente">Pendiente</div>
+            <div class="tab" data-subtab="confirmado">Confirmado</div>
+            <div class="tab" data-subtab="en-curso">En Curso</div>
+          </div>
+          <div id="panel-pendiente">
+            <div id="myBookingsPending"></div>
+          </div>
+          <div id="panel-confirmado" class="hidden">
+            <div id="myBookingsConfirmed"></div>
+          </div>
+          <div id="panel-en-curso" class="hidden">
+            <div id="myBookingsInProgress"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="section-header"><h3>Tracking</h3></div>
+          <div class="map" id="trackingMap"></div>
+        </div>
+      </section>
+
+      <section id="tab-historial" class="hidden">
+        <div class="card">
+          <div class="section-header"><h3>Historial de Reservas</h3></div>
+          <div id="bookingHistory"></div>
+        </div>
+      </section>
+  </main>
+  <div class="modal-backdrop" id="routeBackdrop"></div>
+  <div class="modal" id="routeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="routeTitle"></strong>
+        <button id="closeRoute" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body" id="routeBody"></div>
+      <div class="modal-footer">
+        <button class="btn primary" id="routeCloseBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script type="module" src="./clienteEmpresa.js"></script>
+</body>
+</html>
+
+

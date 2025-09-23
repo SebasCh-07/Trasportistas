@@ -53,6 +53,15 @@ const SEED = {
     { type: "cupon", code: "CUPON10", discountPct: 10 },
     { type: "voucher", code: "VOC-001", balance: 100 },
   ],
+  tracking: [
+    {
+      conductorId: 2,
+      reservaId: 1,
+      lat: -0.1807,
+      lng: -78.4678,
+      updatedAt: Date.now() - 300000 // 5 minutos atrás
+    }
+  ],
   mockClients: [
     { id: 10001, nombre: "María González", cedula: "1102233445", email: "maria@example.com", telefono: "+593987654321", empresa: "Ecuador Travel Tours" },
     { id: 10002, nombre: "Luis Andrade", cedula: "1719988776", email: "luis@example.com", telefono: "+593987650000", empresa: "Ecuador Travel Tours" },
@@ -313,6 +322,8 @@ function renderCliente() {
   
   renderHistorial();
   renderTrackingForCliente();
+  // Iniciar simulación de tracking en tiempo real
+  startTrackingSimulation();
   // preparar opciones de origen
   populateOrigenOptions();
   wireOrigenPicker();
@@ -1541,15 +1552,92 @@ function verTrackingViaje(reservaId) {
   }
 }
 
+// Función para agregar marcadores de puntos de interés en el mapa de tracking
+function addTrackingMarkers() {
+  if (!window.__clienteTrackingMap) return;
+  
+  // Marcadores de ubicaciones comunes en Ecuador
+  const locations = [
+    {
+      name: "Quito Centro",
+      coords: [-0.1807, -78.4678],
+      type: "city",
+      icon: "🏛️"
+    },
+    {
+      name: "Aeropuerto Mariscal Sucre",
+      coords: [-0.1411, -78.4882],
+      type: "airport",
+      icon: "✈️"
+    },
+    {
+      name: "Terminal Terrestre Quitumbe",
+      coords: [-0.3247, -78.5665],
+      type: "terminal",
+      icon: "🚌"
+    }
+  ];
+  
+  locations.forEach(location => {
+    const icon = L.divIcon({
+      className: 'location-marker',
+      html: `<div class="location-icon">${location.icon}</div>`,
+      iconSize: [25, 25],
+      iconAnchor: [12, 12]
+    });
+    
+    L.marker(location.coords, { icon })
+      .addTo(window.__clienteTrackingMap)
+      .bindPopup(`<strong>${location.icon} ${location.name}</strong><br/>${location.type}`);
+  });
+}
+
 function renderTrackingCliente() {
   const session = getSession();
   const panel = document.getElementById("trackingClienteInfo");
   if (!panel) return;
+  const msgEl = document.getElementById('trackingClienteMsg');
+  const mapEl = document.getElementById('trackingClienteMap');
+
+  // Inicializar el mapa siempre que exista el contenedor
+  if (mapEl && !window.__clienteTrackingMap && typeof L !== 'undefined') {
+    try {
+      window.__clienteTrackingMap = L.map('trackingClienteMap', {
+        zoomControl: true,
+        attributionControl: true
+      }).setView([-0.1807, -78.4678], 12);
+      
+      // Usar un tile layer más moderno y con mejor rendimiento
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(window.__clienteTrackingMap);
+      
+      // Agregar marcadores de ejemplo para puntos de interés
+      addTrackingMarkers();
+      
+      setTimeout(() => { 
+        try { 
+          window.__clienteTrackingMap.invalidateSize(); 
+        } catch {} 
+      }, 100);
+    } catch (e) {
+      console.warn('Error inicializando mapa de tracking:', e);
+    }
+  }
   
   if (!session || session.role !== "cliente") {
     panel.innerHTML = "<div class='text-muted'>Inicie sesión para ver el tracking</div>";
     return;
   }
+  
+  // Agregar botón de demostración para crear una reserva de ejemplo
+  const demoBtn = document.createElement('button');
+  demoBtn.className = 'btn secondary';
+  demoBtn.innerHTML = '🚀 Crear viaje de demostración';
+  demoBtn.style.marginBottom = '12px';
+  demoBtn.addEventListener('click', createDemoReservation);
+  panel.appendChild(demoBtn);
 
   const myActive = storage.get("reservas", []).filter(r => 
     r.clienteId === session.id && 
@@ -1558,6 +1646,9 @@ function renderTrackingCliente() {
   
   if (myActive.length === 0) {
     panel.innerHTML = "<div class='text-muted'>No hay viajes activos para rastrear</div>";
+    if (msgEl) msgEl.textContent = 'Cuando un conductor sea asignado podrás ver su ubicación en este mapa.';
+    // invalida tamaño por si la pestaña se acaba de activar
+    if (window.__clienteTrackingMap) setTimeout(() => { try { window.__clienteTrackingMap.invalidateSize(); } catch {} }, 80);
     return;
   }
 
@@ -1591,6 +1682,184 @@ function renderTrackingCliente() {
     }
     panel.appendChild(div);
   });
+
+  // Mensaje contextual y mapa
+  const anyAssigned = myActive.some(r => !!r.conductorId);
+  const anyTracking = myActive.some(r => tracking.find(t => t.reservaId === r.id));
+  
+  if (msgEl) {
+    if (!anyAssigned) {
+      msgEl.textContent = 'Aún no hay conductor asignado a tus viajes.';
+      msgEl.className = 'msg warning';
+    } else if (anyTracking) {
+      msgEl.textContent = 'El conductor está en camino. Visualizando posición en el mapa.';
+      msgEl.className = 'msg success';
+    } else {
+      msgEl.textContent = 'Conductor asignado. Esperando señal GPS...';
+      msgEl.className = 'msg info';
+    }
+  }
+
+  // Actualizar el mapa con información de tracking
+  if (mapEl && window.__clienteTrackingMap) {
+    try {
+      // Limpiar marcadores anteriores
+      if (window.__clienteTrackingMarkers) {
+        window.__clienteTrackingMarkers.forEach(marker => {
+          window.__clienteTrackingMap.removeLayer(marker);
+        });
+      }
+      window.__clienteTrackingMarkers = [];
+
+      const withT = myActive.map(r => ({ r, t: tracking.find(t => t.reservaId === r.id) })).filter(x => !!x.t);
+      
+      if (withT.length > 0) {
+        // Mostrar tracking de viajes activos
+        withT.forEach(({ r, t }) => {
+          // Marcador del conductor
+          const conductorIcon = L.divIcon({
+            className: 'conductor-marker',
+            html: '<div class="conductor-icon">🚗</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+          });
+          
+          const conductorMarker = L.marker([t.lat, t.lng], { icon: conductorIcon })
+            .addTo(window.__clienteTrackingMap)
+            .bindPopup(`
+              <div class="popup-content">
+                <strong>🚗 Conductor en camino</strong><br/>
+                <strong>Ruta:</strong> ${r.origen} → ${r.destino}<br/>
+                <strong>Estado:</strong> ${r.estado}<br/>
+                <strong>Última actualización:</strong> ${new Date(t.updatedAt).toLocaleTimeString()}
+              </div>
+            `);
+          
+          window.__clienteTrackingMarkers.push(conductorMarker);
+        });
+
+        // Centrar el mapa en el primer marcador
+        const firstMarker = withT[0];
+        window.__clienteTrackingMap.setView([firstMarker.t.lat, firstMarker.t.lng], 14);
+      } else {
+        // Si no hay tracking activo, mostrar ubicación por defecto de Quito
+        window.__clienteTrackingMap.setView([-0.1807, -78.4678], 12);
+      }
+      
+      setTimeout(() => { try { window.__clienteTrackingMap.invalidateSize(); } catch {} }, 100);
+    } catch (e) {
+      console.warn('Error actualizando mapa de tracking:', e);
+    }
+  }
+}
+
+// Función para simular actualizaciones de tracking en tiempo real
+function simulateTrackingUpdates() {
+  const tracking = storage.get("tracking", []);
+  const reservas = storage.get("reservas", []);
+  const session = getSession();
+  
+  if (!session || session.role !== "cliente") return;
+  
+  // Solo simular si hay viajes activos del cliente
+  const myActive = reservas.filter(r => 
+    r.clienteId === session.id && 
+    (r.estado === "en-curso" || (r.estado === "pendiente" && r.enCurso))
+  );
+  
+  if (myActive.length === 0) return;
+  
+  // Simular movimiento del conductor para cada viaje activo
+  myActive.forEach(reserva => {
+    let trackingData = tracking.find(t => t.reservaId === reserva.id);
+    
+    if (!trackingData) {
+      // Crear nuevo tracking si no existe
+      trackingData = {
+        conductorId: reserva.conductorId,
+        reservaId: reserva.id,
+        lat: -0.1807 + (Math.random() - 0.5) * 0.01, // Variación pequeña
+        lng: -78.4678 + (Math.random() - 0.5) * 0.01,
+        updatedAt: Date.now()
+      };
+      tracking.push(trackingData);
+    } else {
+      // Actualizar posición existente con movimiento simulado
+      const movement = 0.001; // Movimiento pequeño
+      trackingData.lat += (Math.random() - 0.5) * movement;
+      trackingData.lng += (Math.random() - 0.5) * movement;
+      trackingData.updatedAt = Date.now();
+    }
+  });
+  
+  // Guardar tracking actualizado
+  storage.set("tracking", tracking);
+  
+  // Re-renderizar el tracking
+  renderTrackingCliente();
+}
+
+// Iniciar simulación de tracking cada 10 segundos
+let trackingInterval = null;
+
+function startTrackingSimulation() {
+  if (trackingInterval) return;
+  
+  trackingInterval = setInterval(() => {
+    simulateTrackingUpdates();
+  }, 10000); // Cada 10 segundos
+}
+
+function stopTrackingSimulation() {
+  if (trackingInterval) {
+    clearInterval(trackingInterval);
+    trackingInterval = null;
+  }
+}
+
+// Función para crear una reserva de demostración con tracking
+function createDemoReservation() {
+  const session = getSession();
+  if (!session || session.role !== "cliente") return;
+  
+  const reservas = storage.get("reservas", []);
+  const tracking = storage.get("tracking", []);
+  
+  // Crear una nueva reserva de demostración
+  const demoReservation = {
+    id: Date.now(),
+    clienteId: session.id,
+    conductorId: 2, // Carlos Ruiz
+    origen: "Quito Centro",
+    destino: "Aeropuerto Mariscal Sucre",
+    estado: "en-curso",
+    enCurso: true,
+    fecha: new Date().toISOString(),
+    precio: 15,
+    metodoPago: "efectivo"
+  };
+  
+  // Agregar la reserva
+  reservas.push(demoReservation);
+  storage.set("reservas", reservas);
+  
+  // Crear datos de tracking iniciales
+  const demoTracking = {
+    conductorId: 2,
+    reservaId: demoReservation.id,
+    lat: -0.1807,
+    lng: -78.4678,
+    updatedAt: Date.now()
+  };
+  
+  tracking.push(demoTracking);
+  storage.set("tracking", tracking);
+  
+  // Re-renderizar todo
+  renderMisViajes();
+  renderTrackingCliente();
+  
+  toast("¡Viaje de demostración creado! Observa el mapa para ver el tracking en tiempo real.", "success");
 }
 
 // Conductor
@@ -5362,25 +5631,91 @@ function stopGpsMock() {
 
 function renderTrackingForCliente() {
   const session = getSession();
-  const panel = document.getElementById("trackingPanel");
-  if (!panel) return;
+  // Soporte para dos ubicaciones previas y nueva en Mis Viajes
+  const legacyPanel = document.getElementById("trackingPanel");
+  const legacyInfo = document.getElementById("trackingInfo");
+  const newPanel = document.getElementById("trackingClientePanel");
+  const infoNew = document.getElementById("trackingClienteInfo");
+  const msgNew = document.getElementById("trackingClienteMsg");
+  const mapEl = document.getElementById("trackingClienteMap");
+
   const myActive = storage.get("reservas", []).filter(r => r.clienteId === session?.id && r.estado !== "recogido");
-  const info = document.getElementById("trackingInfo");
-  if (myActive.length === 0) { panel.hidden = true; return; }
   const tracking = storage.get("tracking", []);
-  info.innerHTML = "";
-  myActive.forEach(r => {
-    const t = tracking.find(t => t.reservaId === r.id);
-    const div = document.createElement("div");
-    div.className = "list-item";
-    if (t) {
-      div.textContent = `${r.origen} → ${r.destino} • Posición: ${t.lat.toFixed(5)}, ${t.lng.toFixed(5)}`;
+
+  // Inicializar mapa si existe el contenedor
+  if (mapEl && !window.__clienteTrackingMap) {
+    try {
+      window.__clienteTrackingMap = L.map('trackingClienteMap').setView([-0.1807, -78.4678], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(window.__clienteTrackingMap);
+      setTimeout(() => { try { window.__clienteTrackingMap.invalidateSize(); } catch {} }, 100);
+    } catch {}
+  }
+
+  // Render mensajes y marcador
+  function renderLists(targetEl) {
+    if (!targetEl) return;
+    targetEl.innerHTML = "";
+    if (myActive.length === 0) return;
+    myActive.forEach(r => {
+      const t = tracking.find(t => t.reservaId === r.id);
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      if (r.estado === 'pendiente' && !r.conductorId) {
+        div.textContent = `${r.origen} → ${r.destino} • Aún no hay conductor asignado.`;
+      } else if (r.conductorId && (r.estado === 'pendiente' || r.estado === 'confirmada') && !t) {
+        div.textContent = `${r.origen} → ${r.destino} • Conductor asignado. Esperando señal GPS...`;
+      } else if (t) {
+        div.textContent = `${r.origen} → ${r.destino} • Conductor en camino: ${t.lat.toFixed(5)}, ${t.lng.toFixed(5)}`;
+      } else {
+        div.textContent = `${r.origen} → ${r.destino} • Actualización pendiente.`;
+      }
+      targetEl.appendChild(div);
+    });
+  }
+
+  // Control visibilidad de paneles
+  if (legacyPanel && legacyInfo) {
+    if (myActive.length === 0) {
+      legacyPanel.hidden = true;
     } else {
-      div.textContent = `${r.origen} → ${r.destino} • A la espera de GPS del conductor`;
+      legacyPanel.hidden = false;
+      renderLists(legacyInfo);
     }
-    info.appendChild(div);
-  });
-  panel.hidden = false;
+  }
+
+  if (newPanel) {
+    // Mensaje contextual superior
+    if (msgNew) {
+      if (myActive.length === 0) {
+        msgNew.textContent = 'No tienes viajes activos. Cuando un conductor sea asignado verás su ubicación aquí.';
+      } else {
+        const anyAssigned = myActive.some(r => !!r.conductorId);
+        const anyTracking = myActive.some(r => tracking.find(t => t.reservaId === r.id));
+        msgNew.textContent = !anyAssigned
+          ? 'Aún no hay conductor asignado a tus viajes activos.'
+          : (anyTracking ? 'El conductor está en camino. Visualiza su posición en el mapa.' : 'Conductor asignado. Esperando señal GPS...');
+      }
+    }
+
+    renderLists(infoNew);
+
+    // Actualizar marcador en el mapa con la primera reserva que tenga tracking
+    if (window.__clienteTrackingMap && mapEl) {
+      try {
+        const withT = myActive.map(r => ({ r, t: tracking.find(t => t.reservaId === r.id) })).filter(x => !!x.t);
+        if (withT.length) {
+          const { r, t } = withT[0];
+          if (!window.__clienteTrackingMarker) {
+            window.__clienteTrackingMarker = L.marker([t.lat, t.lng]).addTo(window.__clienteTrackingMap).bindPopup(`${r.origen} → ${r.destino}`);
+          } else {
+            window.__clienteTrackingMarker.setLatLng([t.lat, t.lng]);
+          }
+          window.__clienteTrackingMap.setView([t.lat, t.lng], 14);
+        }
+      } catch {}
+      setTimeout(() => { try { window.__clienteTrackingMap.invalidateSize(); } catch {} }, 50);
+    }
+  }
 }
 
 // poll for client tracking updates

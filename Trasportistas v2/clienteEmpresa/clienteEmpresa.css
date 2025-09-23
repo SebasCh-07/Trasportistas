@@ -1,0 +1,103 @@
+.catalog .tour-card .tour-body .actions { display: flex; align-items: center; justify-content: space-between; }
+
+.booking-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.booking-card { display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); overflow: hidden; }
+.booking-media { width: 120px; height: 100%; min-height: 96px; background: #e5e7eb center/cover no-repeat; }
+.booking-content { padding: 12px; display: grid; gap: 8px; }
+.booking-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.booking-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; color: var(--text-secondary); font-size: 14px; }
+.booking-aside { display: grid; align-content: center; padding: 12px; }
+
+@media (max-width: 700px) {
+  .booking-card { grid-template-columns: 1fr; }
+  .booking-media { width: 100%; height: 140px; }
+  .booking-aside { justify-items: start; }
+}
+
+/* Tema ClienteEmpresa (acentos naranja/azul para diferenciar) */
+.cliente-empresa-theme {
+  /* Paleta naranja (difiere del global) */
+  --primary: #f97316; /* orange-500 */
+  --primary-600: #ea580c;
+  --primary-700: #c2410c;
+  --primary-50: #fff7ed;
+  --primary-100: #ffedd5;
+  --bg: #fff7ed;
+  --panel: #ffffff;
+  --card: #ffffff;
+  --border: #ffedd5;
+  --text: #0f172a;
+  --text-secondary: #334155;
+  --muted: #475569;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+.cliente-empresa-theme { background: radial-gradient(1200px 800px at 80% 0%, rgba(249,115,22,.10), transparent 60%), radial-gradient(1000px 600px at 0% 100%, rgba(14,165,233,.06), transparent 60%), var(--bg); }
+.cliente-empresa-theme .logo-circle { background: linear-gradient(135deg, var(--primary), #06b6d4); }
+.cliente-empresa-theme .tour-card:hover { border-color: rgba(249,115,22,.35); }
+.cliente-empresa-theme .btn.primary { background: linear-gradient(135deg, var(--primary), #06b6d4); }
+.cliente-empresa-theme .navbar { background: rgba(255,255,255,.85); border-bottom-color: rgba(249,115,22,.25); }
+.cliente-empresa-theme .footer { background: rgba(255,255,255,.85); border-top-color: rgba(249,115,22,.25); }
+.cliente-empresa-theme .badge { border-color: rgba(249,115,22,.35); color: #7c2d12; background: #fff7ed; }
+.cliente-empresa-theme .muted { color: var(--text-secondary); }
+
+/* Mejoras de contraste específicas para tema cliente empresa */
+.cliente-empresa-theme .navbar {
+  background: rgba(255,255,255,.98);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.cliente-empresa-theme .footer {
+  background: rgba(255,255,255,.98);
+  border-top: 1px solid var(--border);
+}
+
+.cliente-empresa-theme .nav-brand span {
+  color: var(--text);
+}
+
+.cliente-empresa-theme .role-label {
+  color: var(--text-secondary);
+}
+
+.cliente-empresa-theme .banner {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.cliente-empresa-theme .alert {
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+}
+
+.cliente-empresa-theme .alert.error {
+  background: #fef2f2;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.cliente-empresa-theme .alert.success {
+  background: #f0fdf4;
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.cliente-empresa-theme .alert.info {
+  background: #eff6ff;
+  color: var(--primary-700);
+  border-color: var(--primary);
+}
+
+/* Estilos específicos para las tarjetas de reserva con tema empresa */
+.cliente-empresa-theme .booking-card:hover { border-color: rgba(249,115,22,.35); box-shadow: 0 4px 12px rgba(249,115,22,.15); }
+.cliente-empresa-theme .booking-card .price { color: var(--primary); font-weight: 600; }
+.cliente-empresa-theme .status.pending { background: #fef3c7; color: #92400e; border-color: rgba(249,115,22,.3); }
+.cliente-empresa-theme .status.confirmado { background: #d1fae5; color: #065f46; }
+.cliente-empresa-theme .status.en-curso { background: #dbeafe; color: #1e40af; }
+.cliente-empresa-theme .status.finalizado { background: #e5e7eb; color: #374151; }
+
+

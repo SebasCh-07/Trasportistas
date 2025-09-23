@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plataforma Tours & Traslados - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shared/assets/styles.css" />
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="brand">
+            <div class="logo-circle">TL</div>
+            <h1>TeLlevo</h1>
+            <p class="subtitle">Accede para continuar</p>
+        </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabLogin">Ingresar</button>
+      <button class="tab" id="tabRegister">Registrarse</button>
+    </div>
+    <form id="loginForm" class="card" style="display:block;">
+            <div class="form-row">
+                <label for="email">Email</label>
+                <input id="email" type="email" placeholder="tu@correo.com" required />
+            </div>
+            <div class="form-row">
+                <label for="password">Contraseña</label>
+                <input id="password" type="password" placeholder="••••••••" required />
+            </div>
+            <button type="submit" class="btn primary w-100">Ingresar</button>
+            <div id="loginError" class="alert error" style="display:none;">Credenciales inválidas o rol incorrecto</div>
+        </form>
+
+        <form id="registerForm" class="card" style="display:none; margin-top:12px;">
+            <div class="grid cols-2">
+                <div class="form-row">
+                    <label for="regNombres">Nombres</label>
+                    <input id="regNombres" required />
+                </div>
+                <div class="form-row">
+                    <label for="regApellidos">Apellidos</label>
+                    <input id="regApellidos" required />
+                </div>
+                <div class="form-row">
+                    <label for="regCI">CI</label>
+                    <input id="regCI" required />
+                </div>
+                <div class="form-row">
+                    <label for="regTelefono">Teléfono</label>
+                    <input id="regTelefono" required />
+                </div>
+                <div class="form-row" style="grid-column:1/-1;">
+                    <label for="regDireccion">Dirección</label>
+                    <div style="display:flex; gap:8px;">
+                        <input id="regDireccion" class="w-100" placeholder="Calle, número, referencia" required />
+                        <button type="button" id="openMap" class="btn ghost" title="Elegir en mapa">📍</button>
+                    </div>
+                    <small class="muted" id="coordPreview"></small>
+                </div>
+                <div class="form-row">
+                    <label for="regEmail">Correo</label>
+                    <input id="regEmail" type="email" required />
+                </div>
+                <div class="form-row">
+                    <label for="regRole">Rol</label>
+                    <select id="regRole" required>
+                        <option value="cliente" selected>Cliente</option>
+                        <option value="clienteEmpresa">ClienteEmpresa</option>
+                    </select>
+                </div>
+                <div class="form-row" style="grid-column:1/-1; display:flex; align-items:center; gap:12px;">
+                    <div>
+                        <div class="avatar-preview" id="avatarPreview"></div>
+                    </div>
+                    <div>
+                        <label for="regFoto">Foto</label>
+                        <input id="regFoto" type="file" accept="image/*" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="regPass">Contraseña</label>
+                    <input id="regPass" type="password" required />
+                </div>
+                <div class="form-row">
+                    <label for="regPass2">Confirmar Contraseña</label>
+                    <input id="regPass2" type="password" required />
+                </div>
+            </div>
+            <button type="submit" class="btn primary w-100">Crear cuenta</button>
+            <div id="registerMsg" class="alert info" style="display:none;"></div>
+        </form>
+
+        <footer class="mini-footer">© <span id="year"></span> Tours & Traslados. Todos los derechos reservados.</footer>
+    </div>
+
+    <div class="modal-backdrop" id="mapBackdrop"></div>
+    <div class="modal" id="mapModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <strong>Selecciona tu ubicación</strong>
+          <button id="closeMap" class="btn ghost" title="Cerrar">✖</button>
+        </div>
+        <div class="modal-body">
+          <div class="map map-picker" id="mapPicker"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn ghost" id="cancelMap">Cancelar</button>
+          <button class="btn primary" id="usePoint">Usar punto</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="shared/assets/scripts.js"></script>
+    <script type="module">
+        import { Auth, registerUser } from './shared/assets/scripts.js';
+
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Tabs
+        const tabLogin = document.getElementById('tabLogin');
+        const tabRegister = document.getElementById('tabRegister');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        function setTab(tab) {
+          if (tab === 'login') {
+            tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+            loginForm.style.display = 'block'; registerForm.style.display = 'none';
+          } else {
+            tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+            registerForm.style.display = 'block'; loginForm.style.display = 'none';
+          }
+        }
+        tabLogin.addEventListener('click', (e)=>{ e.preventDefault(); setTab('login'); });
+        tabRegister.addEventListener('click', (e)=>{ e.preventDefault(); setTab('register'); });
+
+        // Login
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            const result = Auth.login({ email, password });
+            if (!result.success) {
+                const el = document.getElementById('loginError');
+                el.style.display = 'block';
+                el.textContent = result.message || 'Error de autenticación';
+                return;
+            }
+
+            const mapRoleToPath = {
+                admin: 'admin/index.html',
+                empresa: 'empresa/index.html',
+                cliente: 'cliente/index.html',
+                clienteEmpresa: 'clienteEmpresa/index.html',
+                conductor: 'conductor/index.html',
+            };
+            window.location.href = mapRoleToPath[result.user.role];
+        });
+
+        // Registro
+        let pickedPoint = null;
+        const openMapBtn = document.getElementById('openMap');
+        const mapModal = document.getElementById('mapModal');
+        const mapBackdrop = document.getElementById('mapBackdrop');
+        const mapPicker = document.getElementById('mapPicker');
+        function openMap() { mapModal.classList.add('show'); mapBackdrop.classList.add('show'); }
+        function closeMap() { mapModal.classList.remove('show'); mapBackdrop.classList.remove('show'); }
+        document.getElementById('closeMap').onclick = closeMap;
+        document.getElementById('cancelMap').onclick = closeMap;
+        openMapBtn.onclick = openMap;
+        let mapPickerInstance = null; let mapPickerMarker = null;
+        document.getElementById('openMap').addEventListener('click', async () => {
+          openMap();
+          const { initLeafletMap, ensureLeaflet } = await import('./shared/assets/scripts.js');
+          await ensureLeaflet();
+          mapPicker.innerHTML = '';
+          mapPickerInstance = await initLeafletMap(mapPicker, { center: [-0.1807, -78.4678], zoom: 12 });
+          mapPickerInstance.on('click', (e) => {
+            pickedPoint = { lat: e.latlng.lat, lng: e.latlng.lng };
+            if (!mapPickerMarker) { mapPickerMarker = L.marker([pickedPoint.lat, pickedPoint.lng]).addTo(mapPickerInstance); }
+            else { mapPickerMarker.setLatLng([pickedPoint.lat, pickedPoint.lng]); }
+            document.getElementById('coordPreview').textContent = `Coordenadas seleccionadas: ${pickedPoint.lat.toFixed(5)}, ${pickedPoint.lng.toFixed(5)}`;
+          });
+        });
+        document.getElementById('usePoint').onclick = () => { closeMap(); };
+
+        // Foto preview
+        const regFoto = document.getElementById('regFoto');
+        const avatarPreview = document.getElementById('avatarPreview');
+        let fotoDataUrl = null;
+        regFoto.addEventListener('change', () => {
+          const file = regFoto.files?.[0]; if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => { fotoDataUrl = reader.result; avatarPreview.style.backgroundImage = `url('${fotoDataUrl}')`; };
+          reader.readAsDataURL(file);
+        });
+
+        registerForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const payload = {
+            nombres: document.getElementById('regNombres').value.trim(),
+            apellidos: document.getElementById('regApellidos').value.trim(),
+            ci: document.getElementById('regCI').value.trim(),
+            telefono: document.getElementById('regTelefono').value.trim(),
+            direccion: document.getElementById('regDireccion').value.trim(),
+            email: document.getElementById('regEmail').value.trim(),
+            role: document.getElementById('regRole').value,
+            password: document.getElementById('regPass').value,
+            password2: document.getElementById('regPass2').value,
+            location: pickedPoint,
+            fotoDataUrl,
+          };
+          const msg = document.getElementById('registerMsg');
+          msg.style.display = 'none';
+          if (!payload.nombres || !payload.apellidos || !payload.ci || !payload.telefono || !payload.direccion || !payload.email || !payload.password || !payload.password2) {
+            msg.style.display = 'block'; msg.className = 'alert error'; msg.textContent = 'Completa todos los campos'; return;
+          }
+          if (payload.password !== payload.password2) { msg.style.display = 'block'; msg.className = 'alert error'; msg.textContent = 'Las contraseñas no coinciden'; return; }
+          if (!payload.location) { msg.style.display = 'block'; msg.className = 'alert error'; msg.textContent = 'Selecciona tu ubicación en el mapa'; return; }
+          const res = registerUser(payload);
+          if (!res.success) { msg.style.display = 'block'; msg.className = 'alert error'; msg.textContent = res.message || 'Error en registro'; return; }
+          msg.style.display = 'block'; msg.className = 'alert success'; msg.textContent = 'Cuenta creada. Ya puedes iniciar sesión.';
+          setTab('login');
+        });
+    </script>
+</body>
+</html>
+
+
