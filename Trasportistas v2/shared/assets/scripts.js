@@ -22,9 +22,18 @@ export const db = {
     { id: 'r2', type: 'transfer', name: 'Aeropuerto Mariscal Sucre → Centro Quito', basePrice: 30, image: 'https://images.unsplash.com/photo-1542144582-1ba00456b5d5?q=80&w=1200&auto=format&fit=crop', description: 'Traslado privado desde el Aeropuerto de Quito hacia tu hotel en el Centro de la ciudad.' },
     { id: 'r3', type: 'tour', name: 'Mitad del Mundo', basePrice: 35, image: 'https://images.unsplash.com/photo-1599426821372-1d4e76f9f2e7?q=80&w=1200&auto=format&fit=crop', description: 'Visita la Ciudad Mitad del Mundo y experimenta la línea ecuatorial con actividades únicas.' },
     { id: 'r4', type: 'tour', name: 'Baños Aventura y Cascadas', basePrice: 75, image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop', description: 'Explora Baños de Agua Santa: Pailón del Diablo, columpio del fin del mundo y rutas de cascadas.' },
+    { id: 'r5', type: 'transfer', name: 'Centro Quito → Terminal Terrestre', basePrice: 15, image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=1200&auto=format&fit=crop', description: 'Traslado directo desde el Centro Histórico hacia la Terminal Terrestre de Quitumbe.' },
+    { id: 'r6', type: 'tour', name: 'Otavalo y Mercado Artesanal', basePrice: 65, image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=1200&auto=format&fit=crop', description: 'Visita el famoso mercado indígena de Otavalo y sus artesanías tradicionales.' },
+    { id: 'r7', type: 'transfer', name: 'Hotel → Aeropuerto (Regreso)', basePrice: 25, image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1200&auto=format&fit=crop', description: 'Traslado de regreso desde tu hotel hacia el Aeropuerto Mariscal Sucre.' },
+    { id: 'r8', type: 'tour', name: 'Cotopaxi y Laguna Quilotoa', basePrice: 120, image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=1200&auto=format&fit=crop', description: 'Aventura de día completo: volcán Cotopaxi y la impresionante laguna de Quilotoa.' },
   ],
   coupons: [
-    { id: 'c1', code: 'WELCOME10', percent: 10 },
+    { id: 'c1', code: 'WELCOME10', percent: 10, description: 'Descuento de bienvenida para nuevos usuarios' },
+    { id: 'c2', code: 'SUMMER20', percent: 20, description: 'Promoción de verano - 20% de descuento' },
+    { id: 'c3', code: 'FAMILY15', percent: 15, description: 'Descuento familiar para grupos de 4+ personas' },
+    { id: 'c4', code: 'EARLYBIRD', percent: 25, description: 'Reserva anticipada - 25% de descuento' },
+    { id: 'c5', code: 'LOYALTY5', percent: 5, description: 'Descuento por fidelidad para clientes frecuentes' },
+    { id: 'c6', code: 'WEEKEND30', percent: 30, description: 'Promoción especial de fin de semana' },
   ],
   bookings: [
     // { id, userId, routeId, status, driverId, empresaId? }

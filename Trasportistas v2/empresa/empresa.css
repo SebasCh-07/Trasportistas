@@ -9,13 +9,13 @@
   --primary-700: #15803d;
   --primary-50: #f0fdf4;
   --primary-100: #dcfce7;
-  --bg: #f3fbf6;
+  --bg: #f8fafc;
   --panel: #ffffff;
   --card: #ffffff;
   --border: #dcfce7;
   --text: #0f172a;
-  --text-secondary: #334155;
-  --muted: #475569;
+  --text-secondary: #1e293b;
+  --muted: #334155;
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
@@ -76,6 +76,67 @@
 .empresa-theme .alert.info {
   background: #eff6ff;
   color: var(--primary-700);
+  border-color: var(--primary);
+}
+
+/* Mejoras específicas para listas en tema empresa */
+.empresa-theme .list-container {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
+}
+
+.empresa-theme .list-container::before {
+  background: linear-gradient(90deg, var(--primary), #0ea5e9);
+}
+
+.empresa-theme .list-item:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(14, 165, 233, 0.05));
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+
+.empresa-theme .booking-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
+}
+
+.empresa-theme .booking-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 12px 30px rgba(34, 197, 94, 0.15);
+  background: linear-gradient(135deg, rgba(255,255,255,1), rgba(248,250,252,0.9));
+}
+
+.empresa-theme .booking-card::before {
+  background: linear-gradient(90deg, var(--primary), #0ea5e9);
+}
+
+.empresa-theme .booking-media::after {
+  background: linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(14, 165, 233, 0.05));
+}
+
+.empresa-theme .booking-aside .price {
+  background: linear-gradient(135deg, var(--primary), #0ea5e9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.empresa-theme .action-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.empresa-theme .action-btn.edit:hover {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.empresa-theme .list-status.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--primary);
   border-color: var(--primary);
 }
 

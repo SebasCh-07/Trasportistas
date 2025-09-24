@@ -12,14 +12,13 @@
 <body class="auth-page">
     <div class="auth-container">
         <div class="brand">
-            <div class="logo-circle">TL</div>
-            <h1>TeLlevo</h1>
-            <p class="subtitle">Accede para continuar</p>
+            <h1 id="brandTitle">Login</h1>
+            <p class="subtitle" id="brandSubtitle">Accede para continuar</p>
         </div>
 
     <div class="tabs">
-      <button class="tab active" id="tabLogin">Ingresar</button>
-      <button class="tab" id="tabRegister">Registrarse</button>
+      <button class="tab active" id="tabLogin">Login</button>
+      <button class="tab" id="tabRegister">Register</button>
     </div>
     <form id="loginForm" class="card" style="display:block;">
             <div class="form-row">
@@ -34,63 +33,74 @@
             <div id="loginError" class="alert error" style="display:none;">Credenciales inválidas o rol incorrecto</div>
         </form>
 
-        <form id="registerForm" class="card" style="display:none; margin-top:12px;">
-            <div class="grid cols-2">
-                <div class="form-row">
-                    <label for="regNombres">Nombres</label>
-                    <input id="regNombres" required />
-                </div>
-                <div class="form-row">
-                    <label for="regApellidos">Apellidos</label>
-                    <input id="regApellidos" required />
-                </div>
-                <div class="form-row">
-                    <label for="regCI">CI</label>
-                    <input id="regCI" required />
-                </div>
-                <div class="form-row">
-                    <label for="regTelefono">Teléfono</label>
-                    <input id="regTelefono" required />
-                </div>
-                <div class="form-row" style="grid-column:1/-1;">
-                    <label for="regDireccion">Dirección</label>
-                    <div style="display:flex; gap:8px;">
-                        <input id="regDireccion" class="w-100" placeholder="Calle, número, referencia" required />
-                        <button type="button" id="openMap" class="btn ghost" title="Elegir en mapa">📍</button>
+        <form id="registerForm" class="card register-form" style="display:none; margin-top:12px;">
+            <div class="register-layout">
+                <div class="register-fields">
+                    <div class="register-row">
+                        <div class="form-row">
+                            <label for="regNombres">NOMBRES</label>
+                            <input id="regNombres" required />
+                        </div>
+                        <div class="form-row">
+                            <label for="regApellidos">APELLIDOS</label>
+                            <input id="regApellidos" required />
+                        </div>
                     </div>
-                    <small class="muted" id="coordPreview"></small>
-                </div>
-                <div class="form-row">
-                    <label for="regEmail">Correo</label>
-                    <input id="regEmail" type="email" required />
-                </div>
-                <div class="form-row">
-                    <label for="regRole">Rol</label>
-                    <select id="regRole" required>
-                        <option value="cliente" selected>Cliente</option>
-                        <option value="clienteEmpresa">ClienteEmpresa</option>
-                    </select>
-                </div>
-                <div class="form-row" style="grid-column:1/-1; display:flex; align-items:center; gap:12px;">
-                    <div>
-                        <div class="avatar-preview" id="avatarPreview"></div>
+                    
+                    <div class="register-row">
+                        <div class="form-row">
+                            <label for="regCI">CI</label>
+                            <input id="regCI" required />
+                        </div>
+                        <div class="form-row">
+                            <label for="regTelefono">TELEFONO</label>
+                            <input id="regTelefono" required />
+                        </div>
                     </div>
-                    <div>
-                        <label for="regFoto">Foto</label>
-                        <input id="regFoto" type="file" accept="image/*" />
+                    
+                    <div class="register-row">
+                        <div class="form-row address-field">
+                            <label for="regDireccion">DIRECCION</label>
+                            <input id="regDireccion" placeholder="Calle, número, referencia" required />
+                        </div>
+                        <div class="form-row map-button">
+                            <button type="button" id="openMap" class="btn map-btn">UBICAR EN MAPA</button>
+                        </div>
                     </div>
+                    
+                    <div class="register-row">
+                        <div class="form-row">
+                            <label for="regEmail">CORREO</label>
+                            <input id="regEmail" type="email" required />
+                        </div>
+                        <div class="form-row">
+                            <label for="regPass">CONTRASEÑA</label>
+                            <input id="regPass" type="password" required />
+                        </div>
+                        <div class="form-row">
+                            <label for="regPass2">CONFIRMAR CONTRASEÑA</label>
+                            <input id="regPass2" type="password" required />
+                        </div>
+                    </div>
+                    
                 </div>
-                <div class="form-row">
-                    <label for="regPass">Contraseña</label>
-                    <input id="regPass" type="password" required />
-                </div>
-                <div class="form-row">
-                    <label for="regPass2">Confirmar Contraseña</label>
-                    <input id="regPass2" type="password" required />
+                
+                <div class="register-photo">
+                    <div class="photo-container">
+                        <div class="avatar-preview" id="avatarPreview">
+                            <div class="photo-icon">👤</div>
+                        </div>
+                        <label for="regFoto" class="photo-label">SUBIR FOTO</label>
+                        <input id="regFoto" type="file" accept="image/*" style="display: none;" />
+                    </div>
                 </div>
             </div>
-            <button type="submit" class="btn primary w-100">Crear cuenta</button>
-            <div id="registerMsg" class="alert info" style="display:none;"></div>
+            
+            <div class="register-actions">
+                <button type="submit" class="btn primary w-100">Crear cuenta</button>
+                <div id="registerMsg" class="alert info" style="display:none;"></div>
+                <small class="muted" id="coordPreview"></small>
+            </div>
         </form>
 
         <footer class="mini-footer">© <span id="year"></span> Tours & Traslados. Todos los derechos reservados.</footer>
@@ -125,12 +135,19 @@
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
         function setTab(tab) {
+          const authContainer = document.querySelector('.auth-container');
           if (tab === 'login') {
             tabLogin.classList.add('active'); tabRegister.classList.remove('active');
             loginForm.style.display = 'block'; registerForm.style.display = 'none';
+            authContainer.classList.remove('register-active');
+            document.getElementById('brandTitle').textContent = 'Login';
+            document.getElementById('brandSubtitle').textContent = 'Accede para continuar';
           } else {
             tabRegister.classList.add('active'); tabLogin.classList.remove('active');
             registerForm.style.display = 'block'; loginForm.style.display = 'none';
+            authContainer.classList.add('register-active');
+            document.getElementById('brandTitle').textContent = 'Register';
+            document.getElementById('brandSubtitle').textContent = 'Crea tu cuenta';
           }
         }
         tabLogin.addEventListener('click', (e)=>{ e.preventDefault(); setTab('login'); });

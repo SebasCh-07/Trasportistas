@@ -10,60 +10,923 @@
 <body class="page">
   <div id="navbar"></div>
 
-  <main class="container">
-    <h2>Panel de Administración</h2>
+  <main class="admin-layout">
+    <!-- Sidebar de Navegación -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-header">
+        <h2>Panel de Administración</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-tab="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </button>
+        <button class="nav-btn" data-tab="usuarios">
+          <span class="nav-icon">👥</span>
+          <span class="nav-text">Usuarios</span>
+        </button>
+        <button class="nav-btn" data-tab="clientes">
+          <span class="nav-icon">👤</span>
+          <span class="nav-text">Clientes</span>
+        </button>
+        <button class="nav-btn" data-tab="flota">
+          <span class="nav-icon">🚗</span>
+          <span class="nav-text">Flota</span>
+        </button>
+        <button class="nav-btn" data-tab="conductores">
+          <span class="nav-icon">👨‍💼</span>
+          <span class="nav-text">Conductores</span>
+        </button>
+        <button class="nav-btn" data-tab="rutas">
+          <span class="nav-icon">🛣️</span>
+          <span class="nav-text">Rutas</span>
+        </button>
+        <button class="nav-btn" data-tab="asignacion">
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Asignación</span>
+        </button>
+        <button class="nav-btn" data-tab="cupones">
+          <span class="nav-icon">🎫</span>
+          <span class="nav-text">Cupones</span>
+        </button>
+        <button class="nav-btn" data-tab="gps">
+          <span class="nav-icon">📍</span>
+          <span class="nav-text">GPS</span>
+        </button>
+      </nav>
+    </aside>
 
-    <section class="grid cols-3" id="stats">
-      <div class="card"><div class="muted">Reservas Hoy</div><div class="kpi" id="kpiBookings">0</div></div>
-      <div class="card"><div class="muted">Conductores Activos</div><div class="kpi" id="kpiDrivers">0</div></div>
-      <div class="card"><div class="muted">Ingresos Est.</div><div class="kpi" id="kpiRevenue">$0</div></div>
-    </section>
+    <!-- Contenido Principal -->
+    <div class="admin-content">
+      <!-- Contenido de las Pestañas -->
+      <div class="tab-content">
+        <!-- Dashboard -->
+        <div id="dashboard" class="tab-pane active">
+          <section class="grid cols-3" id="stats">
+            <div class="card"><div class="muted">Reservas Hoy</div><div class="kpi" id="kpiBookings">0</div></div>
+            <div class="card"><div class="muted">Conductores Activos</div><div class="kpi" id="kpiDrivers">0</div></div>
+            <div class="card"><div class="muted">Ingresos Est.</div><div class="kpi" id="kpiRevenue">$0</div></div>
+          </section>
+          
+          <section class="grid cols-2">
+            <div class="card">
+              <h3>Reservas Recientes</h3>
+              <div id="recentBookings"></div>
+            </div>
+            <div class="card">
+              <h3>Estado del Sistema</h3>
+              <div id="systemStatus"></div>
+            </div>
+          </section>
+        </div>
 
-    <section class="grid cols-2 admin-sections">
-      <div class="card">
-        <div class="section-header">
-          <h3>Flota</h3>
-          <button id="addVehicle" class="btn primary">Añadir Vehículo</button>
+        <!-- Usuarios -->
+        <div id="usuarios" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Usuarios</h3>
+              <button id="addUser" class="btn primary">Añadir Usuario</button>
+            </div>
+            <div id="usersTable"></div>
+          </div>
         </div>
-        <div id="fleetTable"></div>
-      </div>
-      <div class="card">
-        <div class="section-header">
-          <h3>Conductores</h3>
-          <button id="addDriver" class="btn primary">Añadir Conductor</button>
-        </div>
-        <div id="driversTable"></div>
-      </div>
 
-      <div class="card">
-        <div class="section-header">
-          <h3>Rutas</h3>
-          <button id="addRoute" class="btn primary">Añadir Ruta</button>
+        <!-- Modal para ver usuario -->
+        <div id="viewUserModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información del Usuario</h3>
+              <span class="modal-close" id="closeViewModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewUserContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
         </div>
-        <div id="routesTable"></div>
-      </div>
-      <div class="card">
-        <div class="section-header">
-          <h3>Cupones</h3>
-          <button id="addCoupon" class="btn primary">Añadir Cupón</button>
-        </div>
-        <div id="couponsTable"></div>
-      </div>
 
-      <div class="card" style="grid-column: 1 / -1;">
-        <div class="section-header">
-          <h3>Asignación de Reservas</h3>
+        <!-- Modal para editar usuario -->
+        <div id="editUserModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Usuario</h3>
+              <span class="modal-close" id="closeEditModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editUserForm">
+                <div class="form-group">
+                  <label for="editUserName">Nombre:</label>
+                  <input type="text" id="editUserName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="editUserEmail">Email:</label>
+                  <input type="email" id="editUserEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="editUserRole">Rol:</label>
+                  <select id="editUserRole" name="role" required>
+                    <option value="">Seleccionar Rol</option>
+                    <option value="admin">Admin</option>
+                    <option value="conductor">Conductor</option>
+                    <option value="empresa">Empresa</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editUserStatus">Estado:</label>
+                  <select id="editUserStatus" name="status" required>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEdit">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-        <div id="assignments"></div>
-      </div>
 
-      <div class="card" style="grid-column: 1 / -1;">
-        <div class="section-header">
-          <h3>Mapa de Conductores (simulado)</h3>
+        <!-- Modal para añadir usuario -->
+        <div id="addUserModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nuevo Usuario</h3>
+              <span class="modal-close" id="closeAddModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="addUserForm">
+                <div class="form-group">
+                  <label for="addUserName">Nombre:</label>
+                  <input type="text" id="addUserName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="addUserEmail">Email:</label>
+                  <input type="email" id="addUserEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="addUserPassword">Contraseña:</label>
+                  <input type="password" id="addUserPassword" name="password" required>
+                </div>
+                <div class="form-group">
+                  <label for="addUserRole">Rol:</label>
+                  <select id="addUserRole" name="role" required>
+                    <option value="">Seleccionar Rol</option>
+                    <option value="admin">Admin</option>
+                    <option value="conductor">Conductor</option>
+                    <option value="empresa">Empresa</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addUserStatus">Estado:</label>
+                  <select id="addUserStatus" name="status" required>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAdd">Cancelar</button>
+                  <button type="submit" class="btn primary">Crear Usuario</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-        <div class="map" id="driversMap"></div>
+
+        <!-- Modal para ver cliente -->
+        <div id="viewClientModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información del Cliente</h3>
+              <span class="modal-close" id="closeViewClientModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewClientContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para editar cliente -->
+        <div id="editClientModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Cliente</h3>
+              <span class="modal-close" id="closeEditClientModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editClientForm">
+                <div class="form-group">
+                  <label for="editClientName">Nombre:</label>
+                  <input type="text" id="editClientName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="editClientEmail">Email:</label>
+                  <input type="email" id="editClientEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="editClientPhone">Teléfono:</label>
+                  <input type="tel" id="editClientPhone" name="phone" required>
+                </div>
+                <div class="form-group">
+                  <label for="editClientRole">Tipo:</label>
+                  <select id="editClientRole" name="role" required>
+                    <option value="">Seleccionar Tipo</option>
+                    <option value="cliente">Cliente Individual</option>
+                    <option value="clienteEmpresa">Cliente Empresa</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editClientStatus">Estado:</label>
+                  <select id="editClientStatus" name="status" required>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEditClient">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para ver vehículo -->
+        <div id="viewVehicleModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información del Vehículo</h3>
+              <span class="modal-close" id="closeViewVehicleModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewVehicleContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para añadir vehículo -->
+        <div id="addVehicleModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nuevo Vehículo</h3>
+              <span class="modal-close" id="closeAddVehicleModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="addVehicleForm">
+                <div class="form-group">
+                  <label for="addVehicleBrand">Marca:</label>
+                  <input type="text" id="addVehicleBrand" name="brand" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleModel">Modelo:</label>
+                  <input type="text" id="addVehicleModel" name="model" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehiclePlate">Placa:</label>
+                  <input type="text" id="addVehiclePlate" name="plate" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleYear">Año:</label>
+                  <input type="number" id="addVehicleYear" name="year" min="1900" max="2024" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleCapacity">Capacidad de Pasajeros:</label>
+                  <input type="number" id="addVehicleCapacity" name="capacity" min="1" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleType">Tipo de Vehículo:</label>
+                  <select id="addVehicleType" name="type" required>
+                    <option value="">Seleccionar Tipo</option>
+                    <option value="sedan">Sedán</option>
+                    <option value="suv">SUV</option>
+                    <option value="van">Van</option>
+                    <option value="bus">Bus</option>
+                    <option value="pickup">Pickup</option>
+                    <option value="hatchback">Hatchback</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleFuel">Tipo de Combustible:</label>
+                  <select id="addVehicleFuel" name="fuel" required>
+                    <option value="">Seleccionar Combustible</option>
+                    <option value="gasolina">Gasolina</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="hibrido">Híbrido</option>
+                    <option value="electrico">Eléctrico</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleTransmission">Transmisión:</label>
+                  <select id="addVehicleTransmission" name="transmission" required>
+                    <option value="">Seleccionar Transmisión</option>
+                    <option value="manual">Manual</option>
+                    <option value="automatica">Automática</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleColor">Color:</label>
+                  <input type="text" id="addVehicleColor" name="color" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleMileage">Kilometraje:</label>
+                  <input type="number" id="addVehicleMileage" name="mileage" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleStatus">Estado del Vehículo:</label>
+                  <select id="addVehicleStatus" name="status" required>
+                    <option value="disponible">Disponible</option>
+                    <option value="en-uso">En Uso</option>
+                    <option value="mantenimiento">En Mantenimiento</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleInsurance">Número de Seguro:</label>
+                  <input type="text" id="addVehicleInsurance" name="insurance">
+                </div>
+                <div class="form-group">
+                  <label for="addVehicleNotes">Notas Adicionales:</label>
+                  <textarea id="addVehicleNotes" name="notes" rows="3" placeholder="Observaciones, características especiales, etc."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAddVehicle">Cancelar</button>
+                  <button type="submit" class="btn primary">Añadir Vehículo</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para editar vehículo -->
+        <div id="editVehicleModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Vehículo</h3>
+              <span class="modal-close" id="closeEditVehicleModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editVehicleForm">
+                <div class="form-group">
+                  <label for="editVehicleBrand">Marca:</label>
+                  <input type="text" id="editVehicleBrand" name="brand" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleModel">Modelo:</label>
+                  <input type="text" id="editVehicleModel" name="model" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehiclePlate">Placa:</label>
+                  <input type="text" id="editVehiclePlate" name="plate" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleYear">Año:</label>
+                  <input type="number" id="editVehicleYear" name="year" min="1900" max="2024" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleCapacity">Capacidad de Pasajeros:</label>
+                  <input type="number" id="editVehicleCapacity" name="capacity" min="1" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleType">Tipo de Vehículo:</label>
+                  <select id="editVehicleType" name="type" required>
+                    <option value="">Seleccionar Tipo</option>
+                    <option value="sedan">Sedán</option>
+                    <option value="suv">SUV</option>
+                    <option value="van">Van</option>
+                    <option value="bus">Bus</option>
+                    <option value="pickup">Pickup</option>
+                    <option value="hatchback">Hatchback</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleFuel">Tipo de Combustible:</label>
+                  <select id="editVehicleFuel" name="fuel" required>
+                    <option value="">Seleccionar Combustible</option>
+                    <option value="gasolina">Gasolina</option>
+                    <option value="diesel">Diesel</option>
+                    <option value="hibrido">Híbrido</option>
+                    <option value="electrico">Eléctrico</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleTransmission">Transmisión:</label>
+                  <select id="editVehicleTransmission" name="transmission" required>
+                    <option value="">Seleccionar Transmisión</option>
+                    <option value="manual">Manual</option>
+                    <option value="automatica">Automática</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleColor">Color:</label>
+                  <input type="text" id="editVehicleColor" name="color" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleMileage">Kilometraje:</label>
+                  <input type="number" id="editVehicleMileage" name="mileage" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleStatus">Estado del Vehículo:</label>
+                  <select id="editVehicleStatus" name="status" required>
+                    <option value="disponible">Disponible</option>
+                    <option value="en-uso">En Uso</option>
+                    <option value="mantenimiento">En Mantenimiento</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleInsurance">Número de Seguro:</label>
+                  <input type="text" id="editVehicleInsurance" name="insurance">
+                </div>
+                <div class="form-group">
+                  <label for="editVehicleNotes">Notas Adicionales:</label>
+                  <textarea id="editVehicleNotes" name="notes" rows="3" placeholder="Observaciones, características especiales, etc."></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEditVehicle">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clientes -->
+        <div id="clientes" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Clientes</h3>
+            </div>
+            <div id="clientsTable"></div>
+          </div>
+        </div>
+
+        <!-- Flota -->
+        <div id="flota" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Flota</h3>
+              <button id="addVehicle" class="btn primary">Añadir Vehículo</button>
+            </div>
+            <div id="fleetTable"></div>
+          </div>
+        </div>
+
+        <!-- Conductores -->
+        <div id="conductores" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Conductores</h3>
+              <button id="addDriver" class="btn primary">Añadir Conductor</button>
+            </div>
+            <div id="driversTable"></div>
+          </div>
+        </div>
+
+        <!-- Modal para ver conductor -->
+        <div id="viewDriverModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información del Conductor</h3>
+              <span class="modal-close" id="closeViewDriverModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewDriverContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para editar conductor -->
+        <div id="editDriverModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Conductor</h3>
+              <span class="modal-close" id="closeEditDriverModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editDriverForm">
+                <div class="form-group">
+                  <label for="editDriverName">Nombre Completo:</label>
+                  <input type="text" id="editDriverName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverPhone">Teléfono:</label>
+                  <input type="tel" id="editDriverPhone" name="phone" required>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverEmail">Email:</label>
+                  <input type="email" id="editDriverEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverLicense">Número de Licencia:</label>
+                  <input type="text" id="editDriverLicense" name="license" required>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverStatus">Estado:</label>
+                  <select id="editDriverStatus" name="status" required>
+                    <option value="Libre">Libre</option>
+                    <option value="Ocupado">Ocupado</option>
+                    <option value="En Ruta">En Ruta</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverExperience">Años de Experiencia:</label>
+                  <input type="number" id="editDriverExperience" name="experience" min="0" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="editDriverNotes">Notas Adicionales:</label>
+                  <textarea id="editDriverNotes" name="notes" rows="3" placeholder="Observaciones sobre el conductor"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEditDriver">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para añadir conductor -->
+        <div id="addDriverModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nuevo Conductor</h3>
+              <span class="modal-close" id="closeAddDriverModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="addDriverForm">
+                <div class="form-group">
+                  <label for="addDriverName">Nombre Completo:</label>
+                  <input type="text" id="addDriverName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverPhone">Teléfono:</label>
+                  <input type="tel" id="addDriverPhone" name="phone" required>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverEmail">Email:</label>
+                  <input type="email" id="addDriverEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverLicense">Número de Licencia:</label>
+                  <input type="text" id="addDriverLicense" name="license" required>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverStatus">Estado:</label>
+                  <select id="addDriverStatus" name="status" required>
+                    <option value="Libre">Libre</option>
+                    <option value="Ocupado">Ocupado</option>
+                    <option value="En Ruta">En Ruta</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverExperience">Años de Experiencia:</label>
+                  <input type="number" id="addDriverExperience" name="experience" min="0" max="50" required>
+                </div>
+                <div class="form-group">
+                  <label for="addDriverNotes">Notas Adicionales:</label>
+                  <textarea id="addDriverNotes" name="notes" rows="3" placeholder="Observaciones sobre el conductor"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAddDriver">Cancelar</button>
+                  <button type="submit" class="btn primary">Crear Conductor</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rutas -->
+        <div id="rutas" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Rutas</h3>
+              <div style="display: flex; gap: 8px;">
+                <button id="loadSampleRoutes" class="btn secondary">Cargar Rutas de Ejemplo</button>
+                <button id="addRoute" class="btn primary">Añadir Ruta</button>
+              </div>
+            </div>
+            <div id="routesTable"></div>
+          </div>
+        </div>
+
+        <!-- Modal para ver ruta -->
+        <div id="viewRouteModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información de la Ruta</h3>
+              <span class="modal-close" id="closeViewRouteModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewRouteContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para editar ruta -->
+        <div id="editRouteModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Ruta</h3>
+              <span class="modal-close" id="closeEditRouteModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editRouteForm">
+                <div class="form-group">
+                  <label for="editRouteType">Tipo de Ruta:</label>
+                  <select id="editRouteType" name="type" required>
+                    <option value="">Seleccionar Tipo</option>
+                    <option value="tour">Tour</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="aeropuerto">Aeropuerto</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editRouteName">Nombre de la Ruta:</label>
+                  <input type="text" id="editRouteName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="editRoutePrice">Precio Base ($):</label>
+                  <input type="number" id="editRoutePrice" name="basePrice" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                  <label for="editRouteDescription">Descripción:</label>
+                  <textarea id="editRouteDescription" name="description" rows="3" placeholder="Descripción detallada de la ruta"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="editRouteImage">URL de Imagen:</label>
+                  <input type="url" id="editRouteImage" name="image" placeholder="https://ejemplo.com/imagen.jpg">
+                </div>
+                <div class="form-group">
+                  <label for="editRouteStatus">Estado:</label>
+                  <select id="editRouteStatus" name="status" required>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEditRoute">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para añadir ruta -->
+        <div id="addRouteModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nueva Ruta</h3>
+              <span class="modal-close" id="closeAddRouteModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="addRouteForm">
+                <div class="form-group">
+                  <label for="addRouteType">Tipo de Ruta:</label>
+                  <select id="addRouteType" name="type" required>
+                    <option value="">Seleccionar Tipo</option>
+                    <option value="tour">Tour</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="aeropuerto">Aeropuerto</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addRouteName">Nombre de la Ruta:</label>
+                  <input type="text" id="addRouteName" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="addRoutePrice">Precio Base ($):</label>
+                  <input type="number" id="addRoutePrice" name="basePrice" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                  <label for="addRouteDescription">Descripción:</label>
+                  <textarea id="addRouteDescription" name="description" rows="3" placeholder="Descripción detallada de la ruta"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="addRouteImage">URL de Imagen:</label>
+                  <input type="url" id="addRouteImage" name="image" placeholder="https://ejemplo.com/imagen.jpg">
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAddRoute">Cancelar</button>
+                  <button type="submit" class="btn primary">Crear Ruta</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asignación de Reservas -->
+        <div id="asignacion" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Asignación de Reservas</h3>
+            </div>
+            
+            <!-- Pestañas de Estados -->
+            <div class="assignment-tabs">
+              <div class="tab-buttons">
+                <button class="tab-btn active" data-assignment-tab="pendiente">
+                  <span class="tab-icon">⏳</span>
+                  <span class="tab-text">Pendientes</span>
+                  <span class="tab-count" id="pendiente-count">0</span>
+                </button>
+                <button class="tab-btn" data-assignment-tab="asignadas">
+                  <span class="tab-icon">👤</span>
+                  <span class="tab-text">Asignadas</span>
+                  <span class="tab-count" id="asignadas-count">0</span>
+                </button>
+                <button class="tab-btn" data-assignment-tab="en-curso">
+                  <span class="tab-icon">🚗</span>
+                  <span class="tab-text">En Curso</span>
+                  <span class="tab-count" id="en-curso-count">0</span>
+                </button>
+                <button class="tab-btn" data-assignment-tab="completadas">
+                  <span class="tab-icon">✅</span>
+                  <span class="tab-text">Completadas</span>
+                  <span class="tab-count" id="completadas-count">0</span>
+                </button>
+              </div>
+              
+              <!-- Contenido de las Pestañas -->
+              <div class="assignment-tab-content">
+                <div id="pendiente" class="assignment-tab-pane active">
+                  <div id="assignments-pendiente"></div>
+                </div>
+                <div id="asignadas" class="assignment-tab-pane">
+                  <div id="assignments-asignadas"></div>
+                </div>
+                <div id="en-curso" class="assignment-tab-pane">
+                  <div id="assignments-en-curso"></div>
+                </div>
+                <div id="completadas" class="assignment-tab-pane">
+                  <div id="assignments-completadas"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cupones -->
+        <div id="cupones" class="tab-pane">
+          <div class="card">
+            <div class="section-header">
+              <h3>Gestión de Cupones</h3>
+              <button id="addCoupon" class="btn primary">Añadir Cupón</button>
+            </div>
+            <div id="couponsTable"></div>
+          </div>
+        </div>
+
+        <!-- Modal para ver cupón -->
+        <div id="viewCouponModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Información del Cupón</h3>
+              <span class="modal-close" id="closeViewCouponModal">&times;</span>
+            </div>
+            <div class="modal-body" id="viewCouponContent">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para editar cupón -->
+        <div id="editCouponModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Editar Cupón</h3>
+              <span class="modal-close" id="closeEditCouponModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="editCouponForm">
+                <div class="form-group">
+                  <label for="editCouponCode">Código del Cupón:</label>
+                  <input type="text" id="editCouponCode" name="code" required>
+                </div>
+                <div class="form-group">
+                  <label for="editCouponPercent">Porcentaje de Descuento:</label>
+                  <input type="number" id="editCouponPercent" name="percent" min="1" max="100" required>
+                </div>
+                <div class="form-group">
+                  <label for="editCouponDescription">Descripción:</label>
+                  <textarea id="editCouponDescription" name="description" rows="3" placeholder="Descripción del cupón"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="editCouponStatus">Estado:</label>
+                  <select id="editCouponStatus" name="status" required>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="expirado">Expirado</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="editCouponExpiry">Fecha de Expiración:</label>
+                  <input type="date" id="editCouponExpiry" name="expiry">
+                </div>
+                <div class="form-group">
+                  <label for="editCouponUsageLimit">Límite de Uso:</label>
+                  <input type="number" id="editCouponUsageLimit" name="usageLimit" min="1" placeholder="Número máximo de usos">
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelEditCoupon">Cancelar</button>
+                  <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para añadir cupón -->
+        <div id="addCouponModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nuevo Cupón</h3>
+              <span class="modal-close" id="closeAddCouponModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="addCouponForm">
+                <div class="form-group">
+                  <label for="addCouponCode">Código del Cupón:</label>
+                  <input type="text" id="addCouponCode" name="code" required placeholder="Ej: DESCUENTO20">
+                </div>
+                <div class="form-group">
+                  <label for="addCouponPercent">Porcentaje de Descuento:</label>
+                  <input type="number" id="addCouponPercent" name="percent" min="1" max="100" required placeholder="Ej: 20">
+                </div>
+                <div class="form-group">
+                  <label for="addCouponDescription">Descripción:</label>
+                  <textarea id="addCouponDescription" name="description" rows="3" placeholder="Descripción del cupón"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="addCouponStatus">Estado:</label>
+                  <select id="addCouponStatus" name="status" required>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="addCouponExpiry">Fecha de Expiración:</label>
+                  <input type="date" id="addCouponExpiry" name="expiry">
+                </div>
+                <div class="form-group">
+                  <label for="addCouponUsageLimit">Límite de Uso:</label>
+                  <input type="number" id="addCouponUsageLimit" name="usageLimit" min="1" placeholder="Número máximo de usos">
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAddCoupon">Cancelar</button>
+                  <button type="submit" class="btn primary">Crear Cupón</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div id="gps" class="tab-pane">
+          <div class="gps-container">
+            <div class="gps-header">
+              <h2>GPS en tiempo real</h2>
+              <div class="gps-controls">
+                <div class="search-container">
+                  <input type="text" id="driverSearch" placeholder="Buscar conductor por nombre..." class="search-input">
+                </div>
+                <div class="active-drivers">
+                  <span id="activeCount">0 activos</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="gps-content">
+              <div class="map-section">
+                <div class="map" id="driversMap"></div>
+              </div>
+              
+              <div class="driver-info-section">
+                <div class="driver-card" id="driverCard">
+                  <div class="driver-header">
+                    <h3 id="driverName">Selecciona un conductor</h3>
+                    <span id="driverStatus" class="status-badge">INACTIVO</span>
+                  </div>
+                  <div class="driver-details" id="driverDetails">
+                    <p>El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".</p>
+                  </div>
+                </div>
+                
+                <!-- Lista de conductores -->
+                <div id="driversListContainer" class="drivers-list-container">
+                  <!-- Se llenará dinámicamente -->
+                </div>
+              </div>
+            </div>
+            
+            <div class="gps-footer">
+              <p>El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   </main>
 
   <div id="footer"></div>

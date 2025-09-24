@@ -1,12 +1,26 @@
 <nav class="navbar">
   <div class="navbar-inner container">
     <div class="nav-brand">
-      <div class="logo-circle" style="width:32px;height:32px;font-size:14px;">TL</div>
-      <span>TeLlevo</span>
+      <div class="logo-circle">
+        <span class="logo-text">TL</span>
+      </div>
+      <div class="brand-info">
+        <span class="brand-name">TeLlevo</span>
+        <span class="brand-tagline">Transporte Inteligente</span>
+      </div>
     </div>
     <div class="nav-actions">
-      <span id="roleLabel" class="role-label"></span>
-      <button id="logoutBtn" class="btn ghost" title="Salir">Salir</button>
+      <div class="user-info">
+        <span id="roleLabel" class="role-label"></span>
+        <div class="user-status">
+          <div class="status-dot"></div>
+          <span class="status-text">En línea</span>
+        </div>
+      </div>
+      <button id="logoutBtn" class="btn ghost logout-btn" title="Cerrar sesión">
+        <span class="btn-icon">🚪</span>
+        <span class="btn-text">Salir</span>
+      </button>
     </div>
   </div>
 </nav>
