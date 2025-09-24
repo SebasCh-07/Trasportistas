@@ -1,4 +1,4 @@
-import { db, Storage, mountSharedChrome, requireRole, Session, notify, startLeafletTracking, initLeafletMap } from '../shared/assets/scripts.js';
+import { db, Storage, mountSharedChrome, requireRole, Session, notify, startLeafletTracking, initLeafletMap, ensureLeaflet } from '../shared/assets/scripts.js';
 
 const state = {
   routes: Storage.load('data:routes', db.routes),
@@ -11,6 +11,23 @@ const state = {
 
 let lastSnapshot = null;
 let trackingInterval = null;
+// Selecciones de mapa para Encomienda
+let encPickup = { origen: null, destino: null };
+// Registro de mapas por contenedor para evitar re-inicialización
+const containerIdToLeafletMap = new WeakMap();
+function getOrResetLeafletMap(container, center, zoom) {
+  // Si ya hay un mapa en este contenedor, elimínalo antes de crear otro
+  const existing = containerIdToLeafletMap.get(container);
+  if (existing && existing.remove) {
+    try { existing.remove(); } catch {}
+    containerIdToLeafletMap.delete(container);
+  }
+  container.innerHTML = '';
+  return initLeafletMap(container, { center, zoom }).then(map => {
+    containerIdToLeafletMap.set(container, map);
+    return map;
+  });
+}
 
 function renderCatalog() {
   const list = document.getElementById('catalog');
@@ -80,6 +97,7 @@ function createBooking(routeId) {
 
 // Modal de reserva con campos por modalidad
 let bookingRouteId = null;
+let pickupPoint = null;
 function openBookingModal(routeId) {
   bookingRouteId = routeId;
   const modal = document.getElementById('bookingModal');
@@ -92,14 +110,112 @@ function openBookingModal(routeId) {
   const isPrivada = (state.routeMode || 'privada') === 'privada';
   const elPrivada = document.getElementById('bkPrivadaOnly');
   const elCompartida = document.getElementById('bkCompartidaOnly');
-  const elPunto = document.getElementById('bkPuntoEncuentroRow');
   if (elPrivada) elPrivada.classList.toggle('hidden', !isPrivada);
   if (elCompartida) elCompartida.classList.toggle('hidden', isPrivada);
-  if (elPunto) elPunto.classList.toggle('hidden', isPrivada);
+  // Fecha/Hora fijas en compartida
+  const fNote = document.getElementById('bkFechaFijaNote');
+  const hNote = document.getElementById('bkHoraFijaNote');
+  const fInput = document.getElementById('bkFechaDate');
+  const hInput = document.getElementById('bkHora');
+  if (!isPrivada) {
+    if (fNote) fNote.classList.remove('hidden');
+    if (hNote) hNote.classList.remove('hidden');
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    const dd = String(now.getDate()+1).padStart(2,'0');
+    if (fInput) { fInput.value = `${yyyy}-${mm}-${dd}`; fInput.disabled = true; }
+    if (hInput) { hInput.value = '10:00'; hInput.disabled = true; }
+    const disp = document.getElementById('bkDisponibles');
+    if (disp) disp.textContent = 'Asientos disponibles: 8';
+  } else {
+    if (fNote) fNote.classList.add('hidden');
+    if (hNote) hNote.classList.add('hidden');
+    if (fInput) { fInput.disabled = false; fInput.value = ''; }
+    if (hInput) { hInput.disabled = false; hInput.value = ''; }
+    const disp = document.getElementById('bkDisponibles');
+    if (disp) disp.textContent = '';
+  }
   hint.textContent = isPrivada ? 'Modalidad: Privada (se reserva el vehículo completo)' : 'Modalidad: Compartida (elige asientos y punto de encuentro)';
 
   modal.classList.add('show');
   backdrop.classList.add('show');
+
+  // Bind mapa para ubicación
+  const openMapBtn = document.getElementById('bkOpenMap');
+  const mapModal = document.getElementById('bkMapModal');
+  const mapBackdrop = document.getElementById('bkMapBackdrop');
+  const mapContainer = document.getElementById('bkMap');
+  const closeMap = () => { mapModal.classList.remove('show'); mapBackdrop.classList.remove('show'); };
+  if (openMapBtn) openMapBtn.onclick = async () => {
+    mapModal.classList.add('show'); mapBackdrop.classList.add('show');
+    await ensureLeaflet();
+    const map = await getOrResetLeafletMap(mapContainer, [-0.1807, -78.4678], 12);
+    let marker = null;
+    map.on('click', (e) => {
+      pickupPoint = { lat: e.latlng.lat, lng: e.latlng.lng };
+      if (!marker) marker = L.marker([pickupPoint.lat, pickupPoint.lng]).addTo(map);
+      else marker.setLatLng([pickupPoint.lat, pickupPoint.lng]);
+      const prev = document.getElementById('bkPickPreview');
+      if (prev) prev.textContent = `Coordenadas: ${pickupPoint.lat.toFixed(5)}, ${pickupPoint.lng.toFixed(5)}`;
+    });
+    setTimeout(()=>{ try { map.invalidateSize(); } catch {} }, 50);
+    document.getElementById('bkUseMap').onclick = () => { closeMap(); };
+    document.getElementById('bkCloseMap').onclick = closeMap;
+    document.getElementById('bkCancelMap').onclick = closeMap;
+  };
+}
+
+// Mapa para Encomienda: origen/destino
+let encMapCurrentKind = null; // 'origen' | 'destino'
+async function openEncMap(kind) {
+  encMapCurrentKind = kind;
+  const modal = document.getElementById('encMapModal');
+  const backdrop = document.getElementById('encMapBackdrop');
+  const title = document.getElementById('encMapTitle');
+  const mapContainer = document.getElementById('encMap');
+  if (!modal || !backdrop || !mapContainer) return;
+  title.textContent = kind === 'origen' ? 'Selecciona punto de Origen' : 'Selecciona punto de Destino';
+  modal.classList.add('show');
+  backdrop.classList.add('show');
+  await ensureLeaflet();
+  const map = await getOrResetLeafletMap(mapContainer, [-0.1807, -78.4678], 12);
+  let marker = null;
+  map.on('click', (e) => {
+    const point = { lat: e.latlng.lat, lng: e.latlng.lng };
+    if (!marker) marker = L.marker([point.lat, point.lng]).addTo(map);
+    else marker.setLatLng([point.lat, point.lng]);
+    if (kind === 'origen') encPickup.origen = point; else encPickup.destino = point;
+  });
+  setTimeout(() => { try { map.invalidateSize(); } catch {} }, 50);
+  const close = () => { modal.classList.remove('show'); backdrop.classList.remove('show'); };
+  const applyPoint = () => {
+    if (kind === 'origen' && encPickup.origen) {
+      const { lat, lng } = encPickup.origen;
+      const prev = document.getElementById('encOrigenPreview');
+      const latEl = document.getElementById('encOrigenLat');
+      const lngEl = document.getElementById('encOrigenLng');
+      if (prev) prev.textContent = `Coordenadas origen: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (latEl) latEl.value = String(lat);
+      if (lngEl) lngEl.value = String(lng);
+    }
+    if (kind === 'destino' && encPickup.destino) {
+      const { lat, lng } = encPickup.destino;
+      const prev = document.getElementById('encDestinoPreview');
+      const latEl = document.getElementById('encDestinoLat');
+      const lngEl = document.getElementById('encDestinoLng');
+      if (prev) prev.textContent = `Coordenadas destino: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (latEl) latEl.value = String(lat);
+      if (lngEl) lngEl.value = String(lng);
+    }
+    close();
+  };
+  const btnUse = document.getElementById('encUseMap');
+  const btnClose = document.getElementById('encCloseMap');
+  const btnCancel = document.getElementById('encCancelMap');
+  if (btnUse) btnUse.onclick = applyPoint;
+  if (btnClose) btnClose.onclick = close;
+  if (btnCancel) btnCancel.onclick = close;
 }
 
 function closeBookingModal() {
@@ -356,6 +472,11 @@ function bindTabs() {
 
   // Formularios de Catálogo: Encomienda, P2P y Aeropuerto
   const formEncomienda = document.getElementById('formEncomienda');
+  // Botones mapa Encomienda
+  const btnMapOrigen = document.getElementById('encOpenMapOrigen');
+  const btnMapDestino = document.getElementById('encOpenMapDestino');
+  if (btnMapOrigen) btnMapOrigen.addEventListener('click', () => openEncMap('origen'));
+  if (btnMapDestino) btnMapDestino.addEventListener('click', () => openEncMap('destino'));
   if (formEncomienda) formEncomienda.addEventListener('submit', (e) => {
     e.preventDefault();
     const user = Session.getUser();
@@ -374,8 +495,23 @@ function bindTabs() {
         destinatario: document.getElementById('encDestinatario')?.value,
         telefono: document.getElementById('encTelefono')?.value,
         descripcion: document.getElementById('encDescripcion')?.value,
+        pesoKg: parseFloat(document.getElementById('encPeso')?.value || '0') || 0,
         origen: document.getElementById('encOrigen')?.value,
         destino: document.getElementById('encDestino')?.value,
+        origenCoords: encPickup.origen || (
+          (() => {
+            const lat = parseFloat(document.getElementById('encOrigenLat')?.value || '');
+            const lng = parseFloat(document.getElementById('encOrigenLng')?.value || '');
+            return isFinite(lat) && isFinite(lng) ? { lat, lng } : null;
+          })()
+        ),
+        destinoCoords: encPickup.destino || (
+          (() => {
+            const lat = parseFloat(document.getElementById('encDestinoLat')?.value || '');
+            const lng = parseFloat(document.getElementById('encDestinoLng')?.value || '');
+            return isFinite(lat) && isFinite(lng) ? { lat, lng } : null;
+          })()
+        ),
       }
     };
     state.bookings.push(payload);
@@ -383,10 +519,177 @@ function bindTabs() {
     notify('Solicitud de encomienda creada. Esperando asignación.', 'success');
     // Reset y cambiar a Reservas
     formEncomienda.reset();
+    encPickup = { origen: null, destino: null };
+    const p1 = document.getElementById('encOrigenPreview'); if (p1) p1.textContent = '';
+    const p2 = document.getElementById('encDestinoPreview'); if (p2) p2.textContent = '';
     switchToReservations();
   });
 
   const formP2P = document.getElementById('formP2P');
+  // P2P: carga de provincias/ciudades y mapa
+  const provO = document.getElementById('p2pProvOrigen');
+  const cityO = document.getElementById('p2pCiudadOrigen');
+  const provD = document.getElementById('p2pProvDestino');
+  const cityD = document.getElementById('p2pCiudadDestino');
+  const priceEl = document.getElementById('p2pPrecio');
+  const p2pPersonasEl = document.getElementById('p2pPersonas');
+  const btnMapP2POrigen = document.getElementById('p2pOpenMapOrigen');
+  if (btnMapP2POrigen) btnMapP2POrigen.addEventListener('click', () => openP2PMapOrigen());
+
+  // Datos de provincias/ciudades (placeholder si no existe fuente externa)
+  let jsonProvincias = Storage.load('data:jsonProvincias', null);
+  async function ensureJsonProvincias() {
+    if (jsonProvincias) return jsonProvincias;
+    // 1) Intentar desde script embebido en el HTML
+    try {
+      const inline = document.getElementById('jsonProvinciasData');
+      if (inline && inline.textContent && inline.textContent.trim().length > 0) {
+        const raw = JSON.parse(inline.textContent);
+        const provincias = Array.isArray(raw?.provincias) ? raw.provincias : [];
+        jsonProvincias = provincias.map(p => ({
+          nombre: p.nombre,
+          ciudades: (p.ciudades || []).map(c => (typeof c === 'string' ? { nombre: c } : { nombre: c?.nombre || String(c || '') }))
+        }));
+        Storage.save('data:jsonProvincias', jsonProvincias);
+        return jsonProvincias;
+      }
+    } catch {}
+    try {
+      // Intenta cargar el archivo en varias rutas y parsear como texto si es necesario
+      const candidates = ['../jsonProvincias', '../jsonProvincias.json', '../../jsonProvincias', '../../jsonProvincias.json'];
+      for (const path of candidates) {
+        try {
+          const resp = await fetch(path, { cache: 'no-store' });
+          if (!resp.ok) continue;
+          let raw;
+          try { raw = await resp.json(); }
+          catch {
+            const txt = await resp.text();
+            raw = JSON.parse(txt);
+          }
+          const provincias = Array.isArray(raw?.provincias) ? raw.provincias : [];
+          if (!Array.isArray(provincias) || provincias.length === 0) continue;
+          jsonProvincias = provincias.map(p => ({
+            nombre: p.nombre,
+            ciudades: (p.ciudades || []).map(c => (typeof c === 'string' ? { nombre: c } : { nombre: c?.nombre || String(c || '') }))
+          }));
+          Storage.save('data:jsonProvincias', jsonProvincias);
+          return jsonProvincias;
+        } catch {}
+      }
+    } catch {}
+    // Fallback mínimo si no existe el archivo
+    jsonProvincias = [
+      { nombre: 'Pichincha', ciudades: [
+        { nombre: 'Quito', centro: { lat: -0.22985, lng: -78.52495 }, factor: 1.0 },
+      ]},
+    ];
+    Storage.save('data:jsonProvincias', jsonProvincias);
+    notify('No se pudo cargar jsonProvincias. Usando datos mínimos.', 'info');
+    return jsonProvincias;
+  }
+
+  function fillProvinces(select, provincias) {
+    if (!select) return;
+    select.innerHTML = provincias.map((p, i) => `<option value="${i}">${p.nombre}</option>`).join('');
+  }
+  function fillCities(select, provinciaIdx) {
+    if (!select) return;
+    const p = jsonProvincias[provinciaIdx];
+    select.innerHTML = (p?.ciudades || []).map((c, i) => `<option value="${i}">${c.nombre || c}</option>`).join('');
+  }
+  async function initP2PSelects() {
+    const data = await ensureJsonProvincias();
+    if (provO && provD) {
+      fillProvinces(provO, data);
+      fillProvinces(provD, data);
+      fillCities(cityO, provO.value || 0);
+      fillCities(cityD, provD.value || 0);
+      provO.addEventListener('change', () => { fillCities(cityO, provO.value); });
+      provD.addEventListener('change', () => { fillCities(cityD, provD.value); updateP2PPrice(); });
+      cityD.addEventListener('change', updateP2PPrice);
+      updateP2PPrice();
+    }
+  }
+  function getSelectedDestinoFactor() {
+    if (!provD || !cityD) return 1;
+    const provIndex = parseInt(provD.value || '0', 10);
+    const cityIndex = parseInt(cityD.value || '0', 10);
+    const p = jsonProvincias[provIndex];
+    const c = p?.ciudades?.[cityIndex];
+    // Si no hay factor en datos, generar uno simple según índices para variar precio
+    const inferred = 1 + (provIndex * 0.03) + (cityIndex * 0.01);
+    return (c && typeof c.factor === 'number') ? c.factor : inferred;
+  }
+  function updateP2PPrice() {
+    const base = 12; // tarifa base referencia
+    const factor = getSelectedDestinoFactor();
+    const personas = Math.max(1, parseInt(p2pPersonasEl?.value || '1', 10));
+    const price = base * factor * Math.min(personas, 4);
+    if (priceEl) priceEl.value = `$${price.toFixed(2)} USD`;
+  }
+  function getSelectedCityCenter(kind) {
+    const provSel = kind === 'origen' ? provO : provD;
+    const citySel = kind === 'origen' ? cityO : cityD;
+    const p = jsonProvincias[parseInt(provSel?.value || '0', 10)];
+    const c = p?.ciudades?.[parseInt(citySel?.value || '0', 10)];
+    return c?.centro || { lat: -0.1807, lng: -78.4678 };
+  }
+  // Mapa P2P Origen
+  async function openP2PMapOrigen() {
+    const modal = document.getElementById('bkMapModal');
+    const backdrop = document.getElementById('bkMapBackdrop');
+    const title = document.querySelector('#bkMapModal .modal-header strong');
+    const mapContainer = document.getElementById('bkMap');
+    if (!modal || !backdrop || !mapContainer) return;
+    if (title) title.textContent = 'Selecciona punto de origen';
+    modal.classList.add('show');
+    backdrop.classList.add('show');
+    await ensureLeaflet();
+    const center = getSelectedCityCenter('origen');
+    const map = await getOrResetLeafletMap(mapContainer, [center.lat, center.lng], 13);
+    let marker = null;
+    map.on('click', (e) => {
+      const point = { lat: e.latlng.lat, lng: e.latlng.lng };
+      if (!marker) marker = L.marker([point.lat, point.lng]).addTo(map);
+      else marker.setLatLng([point.lat, point.lng]);
+      const prev = document.getElementById('p2pOrigenPreview');
+      const latEl = document.getElementById('p2pOrigenLat');
+      const lngEl = document.getElementById('p2pOrigenLng');
+      if (prev) prev.textContent = `Coordenadas origen: ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`;
+      if (latEl) latEl.value = String(point.lat);
+      if (lngEl) lngEl.value = String(point.lng);
+    });
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 50);
+    const close = () => { modal.classList.remove('show'); backdrop.classList.remove('show'); };
+    const useBtn = document.getElementById('bkUseMap');
+    const closeBtn = document.getElementById('bkCloseMap');
+    const cancelBtn = document.getElementById('bkCancelMap');
+    if (useBtn) useBtn.onclick = async () => {
+      // Reverse geocoding para rellenar la caja de texto
+      try {
+        const lat = parseFloat(document.getElementById('p2pOrigenLat')?.value || '');
+        const lng = parseFloat(document.getElementById('p2pOrigenLng')?.value || '');
+        if (isFinite(lat) && isFinite(lng)) {
+          const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+          const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (res.ok) {
+            const data = await res.json();
+            const display = data?.display_name || '';
+            const input = document.getElementById('p2pOrigen');
+            if (input && display) input.value = display;
+          }
+        }
+      } catch {}
+      close();
+    };
+    if (closeBtn) closeBtn.onclick = close;
+    if (cancelBtn) cancelBtn.onclick = close;
+  }
+
+  initP2PSelects();
+  if (p2pPersonasEl) p2pPersonasEl.addEventListener('input', updateP2PPrice);
+
   if (formP2P) formP2P.addEventListener('submit', (e) => {
     e.preventDefault();
     const user = Session.getUser();
@@ -402,7 +705,17 @@ function bindTabs() {
       label: 'Traslado Punto a Punto',
       details: {
         origen: document.getElementById('p2pOrigen')?.value,
-        destino: document.getElementById('p2pDestino')?.value,
+        origenProv: provO?.options?.[provO.selectedIndex]?.text || '',
+        origenCiudad: cityO?.options?.[cityO.selectedIndex]?.text || '',
+        origenCoords: (() => {
+          const lat = parseFloat(document.getElementById('p2pOrigenLat')?.value || '');
+          const lng = parseFloat(document.getElementById('p2pOrigenLng')?.value || '');
+          return isFinite(lat) && isFinite(lng) ? { lat, lng } : null;
+        })(),
+        destinoProv: provD?.options?.[provD.selectedIndex]?.text || '',
+        destinoCiudad: cityD?.options?.[cityD.selectedIndex]?.text || '',
+        personas: Math.max(1, parseInt(p2pPersonasEl?.value || '1', 10)),
+        precio: priceEl?.value || '',
         fecha: document.getElementById('p2pFecha')?.value,
         notas: document.getElementById('p2pNotas')?.value,
       }
@@ -415,6 +728,63 @@ function bindTabs() {
   });
 
   const formAeropuerto = document.getElementById('formAeropuerto');
+  // Transfer Aeropuerto: selects y precio
+  const airTipo = document.getElementById('airTipo');
+  const airAeropuerto = document.getElementById('airAeropuerto');
+  const airProv = document.getElementById('airProv');
+  const airCiudad = document.getElementById('airCiudad');
+  const airPrecio = document.getElementById('airPrecio');
+  const airPersonas = document.getElementById('airPersonas');
+  const airCitySectionTitle = document.getElementById('airCitySectionTitle');
+
+  const aeropuertosAdmin = Storage.load('data:aeropuertos', [
+    { id: 'uio', nombre: 'Quito (UIO)', provincia: 'Pichincha' },
+    { id: 'gye', nombre: 'Guayaquil (GYE)', provincia: 'Guayas' },
+    { id: 'cue', nombre: 'Cuenca (CUE)', provincia: 'Azuay' },
+  ]);
+
+  function fillAeropuertos() {
+    if (!airAeropuerto) return;
+    airAeropuerto.innerHTML = aeropuertosAdmin.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+  }
+
+  function updateAirCityTitle() {
+    if (!airCitySectionTitle || !airTipo) return;
+    airCitySectionTitle.textContent = airTipo.value === 'llegada' ? 'Ciudad de Destino' : 'Ciudad de Origen';
+  }
+
+  function updateAirPrice() {
+    if (!airPrecio) return;
+    // Tarifa base por aeropuerto + factor por ciudad/prov destino/origen y cantidad de personas
+    const baseMap = { uio: 18, gye: 16, cue: 14 };
+    const aeropuertoId = airAeropuerto?.value || 'uio';
+    const base = baseMap[aeropuertoId] || 15;
+    const provIndex = parseInt(airProv?.value || '0', 10);
+    const cityIndex = parseInt(airCiudad?.value || '0', 10);
+    const factor = 1 + (provIndex * 0.03) + (cityIndex * 0.01);
+    const personas = Math.max(1, parseInt(airPersonas?.value || '1', 10));
+    const price = base * factor * Math.min(personas, 4); // supongamos hasta 4 sin recargo por vehículo
+    airPrecio.value = `$${price.toFixed(2)} USD`;
+  }
+
+  async function initAirSelects() {
+    fillAeropuertos();
+    const data = await ensureJsonProvincias();
+    if (airProv && airCiudad) {
+      fillProvinces(airProv, data);
+      fillCities(airCiudad, airProv.value || 0);
+      airProv.addEventListener('change', () => { fillCities(airCiudad, airProv.value); updateAirPrice(); });
+      airCiudad.addEventListener('change', updateAirPrice);
+    }
+    if (airTipo) airTipo.addEventListener('change', updateAirCityTitle);
+    if (airPersonas) airPersonas.addEventListener('input', updateAirPrice);
+    if (airAeropuerto) airAeropuerto.addEventListener('change', updateAirPrice);
+    updateAirCityTitle();
+    updateAirPrice();
+  }
+
+  initAirSelects();
+
   if (formAeropuerto) formAeropuerto.addEventListener('submit', (e) => {
     e.preventDefault();
     const user = Session.getUser();
@@ -429,10 +799,14 @@ function bindTabs() {
       serviceType: 'aeropuerto',
       label: 'Transfer Aeropuerto',
       details: {
-        tipo: document.getElementById('airTipo')?.value,
-        vuelo: document.getElementById('airVuelo')?.value,
+        tipo: airTipo?.value || 'salida',
+        aeropuertoId: airAeropuerto?.value,
+        aeropuerto: airAeropuerto?.options?.[airAeropuerto.selectedIndex]?.text || '',
+        provincia: airProv?.options?.[airProv.selectedIndex]?.text || '',
+        ciudad: airCiudad?.options?.[airCiudad.selectedIndex]?.text || '',
+        personas: Math.max(1, parseInt(airPersonas?.value || '1', 10)),
         fecha: document.getElementById('airFecha')?.value,
-        direccion: document.getElementById('airDireccion')?.value,
+        precio: airPrecio?.value || '',
       }
     };
     state.bookings.push(payload);
@@ -512,9 +886,13 @@ function main() {
     const infantes = parseInt(document.getElementById('bkInfantes')?.value || '0', 10);
     const pasajeros = Math.max(0, adultos) + Math.max(0, ninos) + Math.max(0, infantes);
     const asientos = parseInt(document.getElementById('bkAsientos')?.value || '1', 10);
-    const punto = document.getElementById('bkPuntoEncuentro')?.value || '';
+    const ubicacionTxt = document.getElementById('bkUbicacion')?.value || '';
     if (!fecha) { notify('Selecciona fecha y hora', 'error'); return; }
     if (pasajeros <= 0) { notify('Indica al menos 1 pasajero', 'error'); return; }
+    if (!isPrivada) {
+      const max = 8; // ejemplo de cupo; en real se lee por ruta/salida
+      if (pasajeros > max) { notify(`Cupo insuficiente. Disponibles ${max} asientos.`, 'error'); return; }
+    }
     const user = Session.getUser();
     const id = `b${Date.now()}`;
     const payload = {
@@ -527,8 +905,8 @@ function main() {
       mode: state.routeMode,
       serviceType: 'tour',
       details: isPrivada 
-        ? { adultos, ninos, infantes, pasajeros, fecha, notas }
-        : { adultos, ninos, infantes, pasajeros, asientos, puntoEncuentro: punto, fecha, notas }
+        ? { adultos, ninos, infantes, pasajeros, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
+        : { adultos, ninos, infantes, pasajeros, asientos, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
     };
     // No guardamos aún, abrimos checkout con un borrador
     closeBookingModal();

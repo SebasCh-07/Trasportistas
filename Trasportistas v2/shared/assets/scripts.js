@@ -143,11 +143,43 @@ export async function ensureLeaflet() {
 
 export async function initLeafletMap(container, { center = [-0.1807, -78.4678], zoom = 12 } = {}) {
   const L = await ensureLeaflet();
+  
+  // Verificar que el contenedor existe y es válido
+  if (!container) {
+    throw new Error('Contenedor del mapa no encontrado');
+  }
+  
+  // Limpiar completamente el contenedor
+  container.innerHTML = '';
+  
+  // Verificar si ya hay un mapa en este contenedor y removerlo
+  if (container._leaflet_id) {
+    try {
+      const existingMap = L.map(container);
+      existingMap.remove();
+    } catch (e) {
+      console.warn('Error al remover mapa existente:', e);
+    }
+    // Limpiar la referencia
+    delete container._leaflet_id;
+  }
+  
+  // Crear el mapa
   const map = L.map(container).setView(center, zoom);
+  
+  // Agregar la capa de tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
   }).addTo(map);
+  
+  // Forzar el redimensionamiento del mapa para asegurar que se renderice correctamente
+  setTimeout(() => {
+    if (map && map.invalidateSize) {
+      map.invalidateSize();
+    }
+  }, 50);
+  
   return map;
 }
 

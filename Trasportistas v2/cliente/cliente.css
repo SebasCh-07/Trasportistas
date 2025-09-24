@@ -1,3 +1,4 @@
+.booking-form #bkOpenMap { align-self: end; }
 /* Estilos oscuros específicos para la pantalla de pago */
 .payment-dark { 
   background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9));
@@ -29,6 +30,21 @@
 .payment-dark .btn.ghost { color: #e2e8f0; border-color: rgba(148,163,184,0.35); }
 .payment-dark .btn.ghost:hover { color: #0ea5e9; border-color: #0ea5e9; background: rgba(14,165,233,0.1); }
 .catalog .tour-card .tour-body .actions { display: flex; align-items: center; justify-content: space-between; }
+
+/* Estilos específicos para modales de mapa (Booking y Encomienda) */
+#bkMapModal .modal-header,
+#encMapModal .modal-header {
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+  color: #ffffff;
+}
+#bkMapModal .modal-header strong,
+#encMapModal .modal-header strong {
+  color: #ffffff;
+}
+#bkMapModal #bkCancelMap,
+#encMapModal #encCancelMap {
+  color: #000000;
+}
 
 .booking-list { 
   display: grid; 

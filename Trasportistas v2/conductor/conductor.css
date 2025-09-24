@@ -1,3 +1,103 @@
 .actions { display: flex; gap: 8px; }
 
+/* Layout lateral con pestañas */
+.layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+.sidebar { position: sticky; top: 16px; align-self: start; }
+.tabs { display: flex; flex-direction: column; gap: 8px; }
+.tab { text-align: left; padding: 10px 12px; border: 1px solid var(--border-color); background: var(--surface); border-radius: 8px; cursor: pointer; }
+.tab.active { background: var(--primary-50); border-color: var(--primary-300); color: var(--primary-900); }
+.content { min-height: 300px; }
+.tab-panel.hidden { display: none; }
+
+/* Métricas del dashboard */
+.metric { font-size: 32px; font-weight: 700; padding: 8px 0 12px; }
+
+/* Subtabs Mis Asignaciones */
+.subtabs { display: flex; gap: 8px; margin: 8px 0 12px; flex-wrap: wrap; }
+/* Fondo visible estilo cliente para barra de estados */
+.subtabs { 
+  background: linear-gradient(135deg, rgba(30,41,59,0.65), rgba(51,65,85,0.5)); 
+  border: 1px solid rgba(14,165,233,0.25); 
+  border-radius: 16px; 
+  padding: 10px; 
+  box-shadow: 0 6px 20px rgba(14,165,233,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(6px);
+}
+.subtab { 
+  padding: 9px 14px; 
+  border: 1px solid rgba(148,163,184,0.35); 
+  background: rgba(14,165,233,0.06); 
+  border-radius: 999px; 
+  cursor: pointer; 
+  transition: background .2s ease, border-color .2s ease, color .2s ease, transform .08s ease, box-shadow .2s ease; 
+  display: inline-flex; align-items: center; gap: 8px; 
+  color: #e2e8f0;
+}
+.subtab:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.subtab:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 2px; }
+.subtab.active { background: linear-gradient(135deg, #0ea5e9, #3b82f6); border-color: #3b82f6; color: #ffffff; box-shadow: 0 6px 20px rgba(14,165,233,0.25); }
+.subtab::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #9aa0a6; box-shadow: 0 0 0 2px rgba(0,0,0,0.03); }
+.subtab[data-status="Asignado"]::before { background: #f59e0b; }
+.subtab[data-status="Confirmado"]::before { background: #3b82f6; }
+.subtab[data-status="En Curso"]::before { background: #10b981; }
+.subtab[data-status="Finalizado"]::before { background: #6b7280; }
+/* Colores por estado en la subtab activa */
+.subtab.active[data-status="Asignado"] { box-shadow: 0 0 0 1px #f59e0b inset, 0 8px 24px rgba(245,158,11,0.25); }
+.subtab.active[data-status="Confirmado"] { box-shadow: 0 0 0 1px #3b82f6 inset, 0 8px 24px rgba(59,130,246,0.25); }
+.subtab.active[data-status="En Curso"] { box-shadow: 0 0 0 1px #10b981 inset, 0 8px 24px rgba(16,185,129,0.25); }
+.subtab.active[data-status="Finalizado"] { box-shadow: 0 0 0 1px #6b7280 inset, 0 8px 24px rgba(107,114,128,0.25); }
+
+/* Panel asignaciones */
+.panel { padding: 0; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.04)); box-shadow: 0 1px 1px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06); border: 1px solid var(--border-color); border-radius: 12px; }
+.panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: var(--surface-2, var(--surface)); }
+.panel-toolbar { padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.05)); }
+.panel-body { padding: 12px 16px; }
+/* Altura mínima mayor para la lista de Mis Asignaciones */
+#panel-assignments .panel-body { min-height: 420px; }
+#assignments { width: 100%; }
+
+/* Ítems de asignaciones más grandes y con más info */
+.booking-item { 
+  display: grid; grid-template-columns: 120px 1fr auto; gap: 16px; align-items: center; 
+  padding: 16px; border: 1px solid rgba(14,165,233,0.25); border-radius: 16px; 
+  background: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(51,65,85,0.65)); 
+  margin-bottom: 16px; 
+  box-shadow: 0 6px 18px rgba(14,165,233,0.12); 
+  transition: box-shadow .2s ease, transform .06s ease, border-color .2s ease, background .2s ease; 
+  color: #e2e8f0;
+}
+ .booking-item:hover { box-shadow: 0 12px 36px rgba(14,165,233,0.22); transform: translateY(-2px); background: linear-gradient(135deg, rgba(30,41,59,0.95), rgba(51,65,85,0.75)); border-color: #0ea5e9; }
+.booking-item .thumb { width: 120px; height: 90px; border-radius: 12px; background-size: cover; background-position: center; background-color: #212121; }
+.booking-item .body { display: grid; gap: 6px; }
+.booking-item .row1 { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.booking-item .title { margin: 0; font-size: 17px; letter-spacing: .2px; }
+.booking-item .desc { margin: 0; color: #cbd5e1; font-size: 13px; }
+.booking-item .meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #cbd5e1; }
+.booking-item .actions-col { display: flex; align-items: center; }
+
+/* Badges por estado */
+.status { padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+.badge-assigned { background: rgba(245,158,11,0.15); color: #fde68a; border-color: rgba(245,158,11,0.35); }
+.badge-confirmed { background: rgba(59,130,246,0.15); color: #bfdbfe; border-color: rgba(59,130,246,0.35); }
+.badge-inprogress { background: rgba(16,185,129,0.15); color: #a7f3d0; border-color: rgba(16,185,129,0.35); }
+.badge-done { background: rgba(107,114,128,0.18); color: #e5e7eb; border-color: rgba(107,114,128,0.35); }
+
+/* Borde/acento por estado en la tarjeta */
+.status-assigned { border-left: 4px solid #f59e0b; padding-left: 12px; }
+.status-confirmed { border-left: 4px solid #3b82f6; padding-left: 12px; }
+.status-inprogress { border-left: 4px solid #10b981; padding-left: 12px; }
+.status-done { border-left: 4px solid #6b7280; padding-left: 12px; }
+
+/* Fondos con tinte por estado en el ítem */
+.booking-item.status-assigned { background-image: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(51,65,85,0.65)), linear-gradient(90deg, rgba(245,158,11,0.18), transparent 60%); border-color: rgba(245,158,11,0.45); }
+.booking-item.status-confirmed { background-image: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(51,65,85,0.65)), linear-gradient(90deg, rgba(59,130,246,0.18), transparent 60%); border-color: rgba(59,130,246,0.45); }
+.booking-item.status-inprogress { background-image: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(51,65,85,0.65)), linear-gradient(90deg, rgba(16,185,129,0.18), transparent 60%); border-color: rgba(16,185,129,0.45); }
+.booking-item.status-done { background-image: linear-gradient(135deg, rgba(30,41,59,0.85), rgba(51,65,85,0.65)), linear-gradient(90deg, rgba(107,114,128,0.2), transparent 60%); border-color: rgba(107,114,128,0.45); }
+
+@media (max-width: 720px) {
+  .booking-item { grid-template-columns: 1fr; }
+  .booking-item .thumb { width: 100%; height: 140px; }
+  .booking-item .actions-col { justify-content: flex-start; }
+}
+
 

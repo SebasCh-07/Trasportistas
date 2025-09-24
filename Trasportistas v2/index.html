@@ -184,23 +184,59 @@
         const mapBackdrop = document.getElementById('mapBackdrop');
         const mapPicker = document.getElementById('mapPicker');
         function openMap() { mapModal.classList.add('show'); mapBackdrop.classList.add('show'); }
-        function closeMap() { mapModal.classList.remove('show'); mapBackdrop.classList.remove('show'); }
+        function closeMap() { 
+          mapModal.classList.remove('show'); 
+          mapBackdrop.classList.remove('show'); 
+          
+          // Limpiar el mapa cuando se cierre el modal
+          if (mapPickerInstance) {
+            try {
+              mapPickerInstance.remove();
+              mapPickerInstance = null;
+              mapPickerMarker = null;
+              mapPicker.innerHTML = ''; // Limpiar completamente el contenedor
+            } catch (error) {
+              console.warn('Error al limpiar el mapa:', error);
+              mapPickerInstance = null;
+              mapPickerMarker = null;
+              mapPicker.innerHTML = '';
+            }
+          }
+        }
         document.getElementById('closeMap').onclick = closeMap;
         document.getElementById('cancelMap').onclick = closeMap;
         openMapBtn.onclick = openMap;
         let mapPickerInstance = null; let mapPickerMarker = null;
         document.getElementById('openMap').addEventListener('click', async () => {
           openMap();
-          const { initLeafletMap, ensureLeaflet } = await import('./shared/assets/scripts.js');
-          await ensureLeaflet();
-          mapPicker.innerHTML = '';
-          mapPickerInstance = await initLeafletMap(mapPicker, { center: [-0.1807, -78.4678], zoom: 12 });
-          mapPickerInstance.on('click', (e) => {
-            pickedPoint = { lat: e.latlng.lat, lng: e.latlng.lng };
-            if (!mapPickerMarker) { mapPickerMarker = L.marker([pickedPoint.lat, pickedPoint.lng]).addTo(mapPickerInstance); }
-            else { mapPickerMarker.setLatLng([pickedPoint.lat, pickedPoint.lng]); }
-            document.getElementById('coordPreview').textContent = `Coordenadas seleccionadas: ${pickedPoint.lat.toFixed(5)}, ${pickedPoint.lng.toFixed(5)}`;
-          });
+          
+          // Esperar a que el modal se renderice completamente
+          setTimeout(async () => {
+            try {
+              const { initLeafletMap, ensureLeaflet } = await import('./shared/assets/scripts.js');
+              await ensureLeaflet();
+              
+              // Limpiar completamente el contenedor
+              mapPicker.innerHTML = '';
+              
+              // Crear nueva instancia del mapa
+              mapPickerInstance = await initLeafletMap(mapPicker, { center: [-0.1807, -78.4678], zoom: 12 });
+              
+              // Agregar evento de clic al mapa
+              mapPickerInstance.on('click', (e) => {
+                pickedPoint = { lat: e.latlng.lat, lng: e.latlng.lng };
+                if (!mapPickerMarker) { 
+                  mapPickerMarker = L.marker([pickedPoint.lat, pickedPoint.lng]).addTo(mapPickerInstance); 
+                } else { 
+                  mapPickerMarker.setLatLng([pickedPoint.lat, pickedPoint.lng]); 
+                }
+                document.getElementById('coordPreview').textContent = `Coordenadas seleccionadas: ${pickedPoint.lat.toFixed(5)}, ${pickedPoint.lng.toFixed(5)}`;
+              });
+            } catch (error) {
+              console.error('Error al inicializar el mapa:', error);
+              notify('Error al cargar el mapa. Inténtalo de nuevo.', 'error');
+            }
+          }, 150); // Aumentar el tiempo para asegurar que el modal esté completamente visible
         });
         document.getElementById('usePoint').onclick = () => { closeMap(); };
 

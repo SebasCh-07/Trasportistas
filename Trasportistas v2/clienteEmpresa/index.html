@@ -10,12 +10,16 @@
 <body class="page cliente-empresa-theme">
   <div id="navbar"></div>
   <main class="container">
-      <h2>Explora y Reserva - Empresa</h2>
-      <div class="tabs" id="outerTabs">
-        <div class="tab active" data-tab="catalogo">Catálogo / Rutas</div>
-        <div class="tab" data-tab="reservas">Reservas</div>
-        <div class="tab" data-tab="historial">Historial de Reservas</div>
-      </div>
+      <div class="client-layout">
+        <aside class="sidebar">
+          <div class="side-tabs" id="outerTabs">
+            <div class="tab active" data-tab="catalogo">Catálogo / Rutas</div>
+            <div class="tab" data-tab="reservas">Reservas</div>
+            <div class="tab" data-tab="historial">Historial de Reservas</div>
+          </div>
+        </aside>
+        <div class="content-area">
+          <h2>Explora y Reserva</h2>
 
       <section id="tab-catalogo">
         <div class="card">
@@ -31,10 +35,10 @@
             <div class="grid cols-3" style="align-items:end">
               <div class="form-row">
                 <label>Modalidad</label>
-                <div class="tabs" id="routeModeTabs">
-                  <div class="tab active" data-mode="privada">Privada</div>
-                  <div class="tab" data-mode="compartida">Compartida</div>
-                </div>
+                <select id="routeModeSelect">
+                  <option value="privada" selected>Privada</option>
+                  <option value="compartida">Compartida</option>
+                </select>
               </div>
             </div>
             <div id="catalog" class="catalog" style="margin-top:12px"></div>
@@ -45,34 +49,114 @@
               <div class="form-row"><label>Remitente</label><input id="encRemitente" required /></div>
               <div class="form-row"><label>Destinatario</label><input id="encDestinatario" required /></div>
               <div class="form-row"><label>Teléfono contacto</label><input id="encTelefono" required /></div>
+              <div class="form-row"><label>Peso (kg)</label><input id="encPeso" type="number" min="0" step="0.1" placeholder="Ej: 2.5" required /></div>
               <div class="form-row" style="grid-column:1/-1"><label>Descripción del paquete</label><input id="encDescripcion" required /></div>
-              <div class="form-row"><label>Origen</label><input id="encOrigen" placeholder="Dirección de recogida" required /></div>
-              <div class="form-row"><label>Destino</label><input id="encDestino" placeholder="Dirección de entrega" required /></div>
+              <div class="form-row" style="grid-column:1/-1">
+                <label>Origen</label>
+                <div class="grid cols-2">
+                  <input id="encOrigen" placeholder="Dirección de recogida" required />
+                  <button class="btn primary" id="encOpenMapOrigen" type="button">Mapa (Origen)</button>
+                </div>
+                <small class="muted" id="encOrigenPreview"></small>
+                <input type="hidden" id="encOrigenLat" />
+                <input type="hidden" id="encOrigenLng" />
+              </div>
+              <div class="form-row" style="grid-column:1/-1">
+                <label>Destino</label>
+                <div class="grid cols-2">
+                  <input id="encDestino" placeholder="Dirección de entrega" required />
+                  <button class="btn primary" id="encOpenMapDestino" type="button">Mapa (Destino)</button>
+                </div>
+                <small class="muted" id="encDestinoPreview"></small>
+                <input type="hidden" id="encDestinoLat" />
+                <input type="hidden" id="encDestinoLng" />
+              </div>
               <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Encomienda</button></div>
             </form>
           </div>
 
           <div id="catalog-panel-p2p" class="hidden">
             <form id="formP2P" class="grid cols-3">
-              <div class="form-row"><label>Origen</label><input id="p2pOrigen" required /></div>
-              <div class="form-row"><label>Destino</label><input id="p2pDestino" required /></div>
-              <div class="form-row"><label>Fecha y hora</label><input id="p2pFecha" type="datetime-local" required /></div>
-              <div class="form-row" style="grid-column:1/-1"><label>Notas</label><input id="p2pNotas" /></div>
-              <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Traslado</button></div>
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Origen</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Provincia</label><select id="p2pProvOrigen" required></select></div>
+                  <div class="form-row"><label>Ciudad</label><select id="p2pCiudadOrigen" required></select></div>
+                  <div class="form-row"></div>
+                  <div class="form-row" style="grid-column:1/-1">
+                    <label>Referencia / Dirección</label>
+                    <div class="grid cols-2">
+                      <input id="p2pOrigen" placeholder="Referencia de recogida" />
+                      <button class="btn primary" id="p2pOpenMapOrigen" type="button">Mapa (Origen)</button>
+                    </div>
+                    <small class="muted" id="p2pOrigenPreview"></small>
+                    <input type="hidden" id="p2pOrigenLat" />
+                    <input type="hidden" id="p2pOrigenLng" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Destino</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Provincia</label><select id="p2pProvDestino" required></select></div>
+                  <div class="form-row"><label>Ciudad</label><select id="p2pCiudadDestino" required></select></div>
+                </div>
+              </div>
+
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Fecha, hora y precio</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Fecha y hora</label><input id="p2pFecha" type="datetime-local" required /></div>
+                  <div class="form-row"><label>Personas</label><input id="p2pPersonas" type="number" min="1" value="1" required /></div>
+                  <div class="form-row"><label>Precio estimado</label><input id="p2pPrecio" placeholder="$0.00" readonly /></div>
+                </div>
+              </div>
+
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Notas y confirmación</div>
+                <div class="grid cols-2">
+                  <div class="form-row" style="grid-column:1/-1"><label>Notas</label><input id="p2pNotas" placeholder="Indicaciones adicionales" /></div>
+                  <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Traslado</button></div>
+                </div>
+              </div>
             </form>
           </div>
 
           <div id="catalog-panel-aeropuerto" class="hidden">
             <form id="formAeropuerto" class="grid cols-3">
-              <div class="form-row"><label>Tipo</label>
-                <select id="airTipo" required>
-                  <option value="llegada">Llegada → Ciudad</option>
-                  <option value="salida">Ciudad → Aeropuerto</option>
-                </select>
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Tipo de Transfer</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Tipo</label>
+                    <select id="airTipo" required>
+                      <option value="llegada">Llegada → Ciudad</option>
+                      <option value="salida">Ciudad → Aeropuerto</option>
+                    </select>
+                  </div>
+                  <div class="form-row"><label>Aeropuerto</label>
+                    <select id="airAeropuerto" required></select>
+                  </div>
+                </div>
               </div>
-              <div class="form-row"><label>Vuelo</label><input id="airVuelo" placeholder="Ej: AV123" required /></div>
-              <div class="form-row"><label>Fecha y hora</label><input id="airFecha" type="datetime-local" required /></div>
-              <div class="form-row" style="grid-column:1/-1"><label>Dirección</label><input id="airDireccion" placeholder="Hotel o dirección" required /></div>
+
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title" id="airCitySectionTitle">Ciudad</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Provincia</label><select id="airProv" required></select></div>
+                  <div class="form-row"><label>Ciudad</label><select id="airCiudad" required></select></div>
+                </div>
+              </div>
+
+              <div class="section-box" style="grid-column:1/-1">
+                <div class="section-title">Fecha, hora y precio</div>
+                <div class="grid cols-3">
+                  <div class="form-row"><label>Fecha y hora</label><input id="airFecha" type="datetime-local" required /></div>
+                  <div class="form-row"><label>Personas</label><input id="airPersonas" type="number" min="1" value="1" required /></div>
+                  <div class="form-row"><label>Precio estimado</label><input id="airPrecio" placeholder="$0.00" readonly /></div>
+                </div>
+              </div>
+
               <div class="form-row" style="grid-column:1/-1"><button class="btn primary" type="submit">Solicitar Transfer</button></div>
             </form>
           </div>
@@ -109,6 +193,8 @@
           <div id="bookingHistory"></div>
         </div>
       </section>
+        </div>
+      </div>
   </main>
   <div class="modal-backdrop" id="routeBackdrop"></div>
   <div class="modal" id="routeModal">
@@ -123,7 +209,289 @@
       </div>
     </div>
   </div>
+  <!-- Modal de Reserva -->
+  <div class="modal-backdrop" id="bookingBackdrop"></div>
+  <div class="modal" id="bookingModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="bookingTitle">Nueva reserva</strong>
+        <button id="closeBooking" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body">
+        <form id="bookingForm" class="booking-form">
+          <div class="section-box">
+            <div class="section-title">Consulta disponibilidad</div>
+            <div class="grid cols-2">
+              <div class="form-row" style="grid-column:1/-1"><small class="muted" id="bookingModeHint"></small></div>
+              <div class="form-row">
+                <label for="bkAdultos">Adultos</label>
+                <select id="bkAdultos">
+                  <option value="0">0</option>
+                  <option value="1" selected>1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="bkNinos">Niños (5-12)</label>
+                <select id="bkNinos">
+                  <option value="0" selected>0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="bkInfantes">Infantes</label>
+                <select id="bkInfantes">
+                  <option value="0" selected>0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </div>
+              <div class="form-row"></div>
+              <div class="form-row">
+                <label for="bkFechaDate">Fecha</label>
+                <input id="bkFechaDate" type="date" required />
+                <small class="muted hidden" id="bkFechaFijaNote">Fecha fijada para ruta compartida</small>
+              </div>
+              <div class="form-row">
+                <label for="bkHora">Hora</label>
+                <input id="bkHora" type="time" required />
+                <small class="muted hidden" id="bkHoraFijaNote">Hora fijada para ruta compartida</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid cols-2" style="margin-top:12px;">
+            <div class="form-row hidden" id="bkCompartidaOnly">
+              <label for="bkAsientos">Asientos</label>
+              <input id="bkAsientos" type="number" min="1" value="1" />
+              <small class="muted" id="bkDisponibles"></small>
+            </div>
+            <div class="form-row" style="grid-column:1/-1">
+              <label for="bkUbicacion">Ubicación</label>
+              <div class="grid cols-2">
+                <input id="bkUbicacion" placeholder="Dirección o referencia" />
+                <button class="btn primary" id="bkOpenMap" type="button">Seleccionar en mapa</button>
+              </div>
+              <small class="muted" id="bkPickPreview"></small>
+            </div>
+            <div class="form-row" style="grid-column:1/-1">
+              <label for="bkNotas">Notas</label>
+              <input id="bkNotas" placeholder="Preferencias, referencias, etc." />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="cancelBooking">Cancelar</button>
+        <button class="btn primary" id="submitBooking">Continuar</button>
+      </div>
+    </div>
+  </div>
+  <!-- Picker de mapa para ubicación -->
+  <div class="modal-backdrop" id="bkMapBackdrop"></div>
+  <div class="modal" id="bkMapModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong>Selecciona tu ubicación</strong>
+        <button id="bkCloseMap" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body">
+        <div id="bkMap" class="map" style="height:360px"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="bkCancelMap">Cancelar</button>
+        <button class="btn primary" id="bkUseMap">Usar punto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Mapa para Encomienda (Origen/Destino) -->
+  <div class="modal-backdrop" id="encMapBackdrop"></div>
+  <div class="modal" id="encMapModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="encMapTitle">Selecciona el punto</strong>
+        <button id="encCloseMap" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body">
+        <div id="encMap" class="map" style="height:360px"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="encCancelMap">Cancelar</button>
+        <button class="btn primary" id="encUseMap">Usar punto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Checkout / Resumen y Pago -->
+  <div class="modal-backdrop" id="checkoutBackdrop"></div>
+  <div class="modal" id="checkoutModal">
+    <div class="modal-content checkout-content">
+      <div class="modal-header">
+        <strong>Realiza tu reserva</strong>
+        <button id="closeCheckout" class="btn ghost" title="Cerrar">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkout-grid">
+          <form id="checkoutForm" class="checkout-form">
+            <div class="grid cols-2">
+              <div class="form-row"><label for="ckNombre">Nombres*</label><input id="ckNombre" required /></div>
+              <div class="form-row"><label for="ckApellido">Apellidos*</label><input id="ckApellido" required /></div>
+              <div class="form-row"><label for="ckEmail">Correo*</label><input id="ckEmail" type="email" required /></div>
+              <div class="form-row"><label for="ckTelefono">Teléfono*</label><input id="ckTelefono" required /></div>
+              <div class="form-row" style="grid-column:1/-1"><label for="ckNotas">Requerimientos especiales</label><input id="ckNotas" /></div>
+            </div>
+            <div class="coupon-row">
+              <label for="ckCupon">¿Tienes un cupón?</label>
+              <div class="coupon-actions">
+                <input id="ckCupon" placeholder="Código" />
+                <button id="applyCoupon" class="btn ghost" type="button">Aplicar</button>
+              </div>
+            </div>
+            <div class="payment-row">
+              <label for="ckPago">Selecciona método de pago</label>
+              <select id="ckPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="voucher">Voucher</option>
+              </select>
+              <small class="muted" id="payInstruction"></small>
+            </div>
+          </form>
+
+          <aside class="checkout-summary">
+            <div class="summary-card">
+              <div class="summary-row"><div class="s-label">Tours</div><div class="s-value" id="sumTour">-</div></div>
+              <div class="summary-row"><div class="s-label">Tarifa</div><div class="s-value">General</div></div>
+              <div class="summary-row"><div class="s-label">Fecha</div><div class="s-value" id="sumFecha">-</div></div>
+              <div class="summary-row"><div class="s-label">Horario</div><div class="s-value" id="sumHora">-</div></div>
+              <div class="summary-row"><div class="s-label">Personas</div><div class="s-value" id="sumPersonas">-</div></div>
+              <div class="summary-total"><div class="s-label">Subtotal:</div><div class="s-value" id="sumSubtotal">$0.00 USD</div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="cancelCheckout">Cancelar</button>
+        <button class="btn primary" id="confirmCheckout">Confirmar y reservar</button>
+      </div>
+    </div>
+  </div>
   <div id="footer"></div>
+  <!-- Datos embebidos de provincias/ciudades para P2P -->
+  <script type="application/json" id="jsonProvinciasData">
+{
+  "provincias": [
+    {
+      "nombre": "Azuay",
+      "ciudades": ["Cuenca", "Gualaceo", "Paute", "Sígsig", "Chordeleg", "Nabón", "Oña", "Guachapala", "Sevilla de Oro", "Camilo Ponce Enríquez"]
+    },
+    {
+      "nombre": "Bolívar",
+      "ciudades": ["Guaranda", "Chillanes", "Chimbo", "Echeandía", "San Miguel", "Caluma", "Las Naves"]
+    },
+    {
+      "nombre": "Cañar",
+      "ciudades": ["Azogues", "Biblián", "Cañar", "La Troncal", "El Tambo", "Suscal", "Deleg"]
+    },
+    {
+      "nombre": "Carchi",
+      "ciudades": ["Tulcán", "Bolívar", "Espejo", "Mira", "Montúfar", "San Pedro de Huaca"]
+    },
+    {
+      "nombre": "Chimborazo",
+      "ciudades": ["Riobamba", "Alausí", "Colta", "Chambo", "Chunchi", "Guamote", "Guano", "Pallatanga", "Penipe"]
+    },
+    {
+      "nombre": "Cotopaxi",
+      "ciudades": ["Latacunga", "La Maná", "Pangua", "Pujilí", "Salcedo", "Saquisilí", "Sigchos"]
+    },
+    {
+      "nombre": "El Oro",
+      "ciudades": ["Machala", "Arenillas", "Atahualpa", "Balsas", "Chilla", "El Guabo", "Huaquillas", "Las Lajas", "Marcabelí", "Pasaje", "Piñas", "Portovelo", "Santa Rosa", "Zaruma"]
+    },
+    {
+      "nombre": "Esmeraldas",
+      "ciudades": ["Esmeraldas", "Atacames", "Eloy Alfaro", "Muisne", "Quinindé", "Rioverde", "San Lorenzo"]
+    },
+    {
+      "nombre": "Galápagos",
+      "ciudades": ["Puerto Ayora", "Puerto Baquerizo Moreno", "Puerto Villamil"]
+    },
+    {
+      "nombre": "Guayas",
+      "ciudades": ["Guayaquil", "Alfredo Baquerizo Moreno", "Balao", "Balzar", "Colimes", "Daule", "Durán", "El Empalme", "El Triunfo", "General Antonio Elizalde", "Isidro Ayora", "Lomas de Sargentillo", "Marcelino Maridueña", "Milagro", "Naranjal", "Naranjito", "Nobol", "Palestina", "Pedro Carbo", "Playas", "Salitre", "Samborondón", "Santa Lucía", "Simón Bolívar", "Yaguachi"]
+    },
+    {
+      "nombre": "Imbabura",
+      "ciudades": ["Ibarra", "Antonio Ante", "Cotacachi", "Otavalo", "Pimampiro", "San Miguel de Urcuquí"]
+    },
+    {
+      "nombre": "Loja",
+      "ciudades": ["Loja", "Calvas", "Catamayo", "Celica", "Chaguarpamba", "Espíndola", "Gonzanamá", "Macará", "Olmedo", "Paltas", "Pindal", "Puyango", "Quilanga", "Saraguro", "Sozoranga", "Zapotillo"]
+    },
+    {
+      "nombre": "Los Ríos",
+      "ciudades": ["Babahoyo", "Baba", "Buena Fe", "Mocache", "Montalvo", "Palenque", "Puebloviejo", "Quevedo", "Quinsaloma", "Urdaneta", "Valencia", "Ventanas", "Vinces"]
+    },
+    {
+      "nombre": "Manabí",
+      "ciudades": ["Portoviejo", "Bolívar", "Chone", "El Carmen", "Flavio Alfaro", "Jama", "Jaramijó", "Jipijapa", "Junín", "Manta", "Montecristi", "Olmedo", "Paján", "Pedernales", "Pichincha", "Puerto López", "Rocafuerte", "San Vicente", "Santa Ana", "Sucre", "Tosagua", "24 de Mayo"]
+    },
+    {
+      "nombre": "Morona Santiago",
+      "ciudades": ["Macas", "Gualaquiza", "Huamboya", "Limón Indanza", "Logroño", "Morona", "Pablo Sexto", "Palora", "San Juan Bosco", "Santiago de Méndez", "Sucúa", "Taisha", "Tiwintza"]
+    },
+    {
+      "nombre": "Napo",
+      "ciudades": ["Tena", "Archidona", "Carlos Julio Arosemena Tola", "El Chaco", "Quijos"]
+    },
+    {
+      "nombre": "Orellana",
+      "ciudades": ["Francisco de Orellana (Coca)", "Aguarico", "La Joya de los Sachas", "Loreto"]
+    },
+    {
+      "nombre": "Pastaza",
+      "ciudades": ["Puyo", "Arajuno", "Mera", "Santa Clara"]
+    },
+    {
+      "nombre": "Pichincha",
+      "ciudades": ["Quito", "Cayambe", "Mejía", "Pedro Moncayo", "Pedro Vicente Maldonado", "Puerto Quito", "Rumiñahui", "San Miguel de los Bancos"]
+    },
+    {
+      "nombre": "Santa Elena",
+      "ciudades": ["Santa Elena", "La Libertad", "Salinas"]
+    },
+    {
+      "nombre": "Santo Domingo de los Tsáchilas",
+      "ciudades": ["Santo Domingo", "La Concordia"]
+    },
+    {
+      "nombre": "Sucumbíos",
+      "ciudades": ["Nueva Loja (Lago Agrio)", "Cascales", "Cuyabeno", "Gonzalo Pizarro", "Putumayo", "Shushufindi", "Sucumbíos"]
+    },
+    {
+      "nombre": "Tungurahua",
+      "ciudades": ["Ambato", "Baños de Agua Santa", "Cevallos", "Mocha", "Patate", "Quero", "San Pedro de Pelileo", "Santiago de Píllaro", "Tisaleo"]
+    },
+    {
+      "nombre": "Zamora Chinchipe",
+      "ciudades": ["Zamora", "Chinchipe", "Yacuambi", "Yantzaza", "El Pangui", "Centinela del Cóndor", "Palanda", "Paquisha", "Nangaritza"]
+    }
+  ]
+}
+  </script>
   <script type="module" src="./clienteEmpresa.js"></script>
 </body>
 </html>

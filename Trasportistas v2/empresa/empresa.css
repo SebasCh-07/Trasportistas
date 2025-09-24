@@ -30,6 +30,106 @@
 .empresa-theme .badge { border-color: rgba(34,197,94,.35); color: #14532d; background: #ecfdf5; }
 .empresa-theme .muted { color: var(--text-secondary); }
 
+/* Mejorar contraste en las tarjetas del catálogo - FONDO OSCURO */
+.empresa-theme .tour-card {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.empresa-theme .tour-card h4,
+.empresa-theme .tour-card h3,
+.empresa-theme .tour-card h4 *,
+.empresa-theme .tour-card h3 * {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.empresa-theme .tour-card .price-title,
+.empresa-theme .tour-card .price-title * {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.empresa-theme .tour-card .price-label,
+.empresa-theme .tour-card .price-label * {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+.empresa-theme .tour-card .price-value,
+.empresa-theme .tour-card .price-value * {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.empresa-theme .tour-card .badge,
+.empresa-theme .tour-card .badge * {
+  color: #14532d !important;
+  background: #ecfdf5 !important;
+  border: 1px solid rgba(34,197,94,.35) !important;
+}
+
+.empresa-theme .tour-card .btn {
+  color: inherit !important;
+}
+
+.empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+  border-color: #0ea5e9 !important;
+}
+
+.empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--primary), #0ea5e9) !important;
+}
+
+/* Forzar todos los textos en tour-card a ser oscuros */
+.empresa-theme .tour-card * {
+  color: #0f172a !important;
+}
+
+.empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+}
+
+.empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+}
+
+.empresa-theme .tour-card .badge {
+  color: #14532d !important;
+}
+
+/* Ajustar fondo de la sección de precios */
+.empresa-theme .tour-card .price-section {
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* SOBRESCRIBIR reglas generales con máxima especificidad */
+body.empresa-theme .tour-card {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.empresa-theme .tour-card * {
+  color: #0f172a !important;
+}
+
+body.empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+}
+
+body.empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+}
+
+body.empresa-theme .tour-card .badge {
+  color: #14532d !important;
+  background: #ecfdf5 !important;
+}
+
 /* Mejoras de contraste específicas para tema empresa */
 .empresa-theme .navbar {
   background: rgba(255,255,255,.98);
@@ -214,6 +314,82 @@
 /* GPS controls */
 .empresa-theme .active-drivers {
   background: #10b981;
+}
+
+/* ========================= */
+/* Overrides GPS (tema empresa)
+/* Mejora de distribución y contraste */
+.empresa-theme .gps-content { gap: 24px; }
+.empresa-theme .map-section { flex: 3; }
+.empresa-theme .driver-info-section { flex: 1.2; gap: 20px; }
+
+/* Tarjetas laterales claras con alto contraste */
+.empresa-theme .driver-card,
+.empresa-theme .drivers-list {
+  background: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.10);
+}
+
+.empresa-theme .driver-header {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.empresa-theme .driver-header h3 { color: #065f46; }
+.empresa-theme #driverStatus.status-badge { background: #a7f3d0; color: #065f46; }
+
+.empresa-theme .driver-details p { color: #0f172a; }
+
+.empresa-theme .drivers-list .list-header {
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+}
+
+/* Caja de búsqueda de conductores (mejor contraste tema Empresa) */
+.empresa-theme .search-input {
+  background: #ffffff;
+  border: 2px solid rgba(16, 185, 129, 0.35);
+  color: #065f46;
+}
+.empresa-theme .search-input::placeholder {
+  color: #0f766e;
+  opacity: 0.7;
+}
+.empresa-theme .search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.empresa-theme .driver-card-item {
+  background: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.empresa-theme .driver-card-item:hover {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+.empresa-theme .driver-name { color: #065f46; }
+.empresa-theme .driver-status-badge { background: #a7f3d0; color: #065f46; }
+.empresa-theme .driver-status-badge.libre { background: #10b981; color: #ffffff; }
+.empresa-theme .driver-description { color: #0f766e; }
+
+/* Botones y acentos en panel derecho */
+.empresa-theme .action-btn { background: #ffffff; border: 1px solid #a7f3d0; color: #065f46; }
+.empresa-theme .action-btn:hover { background: #10b981; border-color: #10b981; color: #ffffff; }
+
+/* Mapa con acentos verdes */
+.empresa-theme .map { border-color: rgba(16, 185, 129, 0.25); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.10); }
+.empresa-theme .map::before { background: linear-gradient(90deg, #10b981, #0ea5e9); }
+
+/* Responsive tweaks */
+@media (max-width: 1024px) {
+  .empresa-theme .map { height: 420px; }
+  .empresa-theme .driver-info-section { flex: 1; }
+}
+
+@media (max-width: 768px) {
+  .empresa-theme .map { height: 380px; }
+  .empresa-theme .gps-content { gap: 16px; }
 }
 
 /* ========================= */

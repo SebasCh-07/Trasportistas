@@ -156,16 +156,16 @@
 
 /* Tema ClienteEmpresa (acentos naranja/azul para diferenciar) */
 .cliente-empresa-theme {
-  /* Paleta naranja (difiere del global) */
-  --primary: #f97316; /* orange-500 */
-  --primary-600: #ea580c;
-  --primary-700: #c2410c;
-  --primary-50: #fff7ed;
-  --primary-100: #ffedd5;
-  --bg: #fefefe;
+  /* Alinear con tema Empresa (verde/azul) */
+  --primary: #22c55e; /* emerald-500 */
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --bg: #f8fafc;
   --panel: #ffffff;
   --card: #ffffff;
-  --border: #ffedd5;
+  --border: #dcfce7;
   --text: #0f172a;
   --text-secondary: #1e293b;
   --muted: #334155;
@@ -174,14 +174,124 @@
   --danger: #dc2626;
 }
 
-.cliente-empresa-theme { background: radial-gradient(1200px 800px at 80% 0%, rgba(249,115,22,.10), transparent 60%), radial-gradient(1000px 600px at 0% 100%, rgba(14,165,233,.06), transparent 60%), var(--bg); }
-.cliente-empresa-theme .logo-circle { background: linear-gradient(135deg, var(--primary), #06b6d4); }
-.cliente-empresa-theme .tour-card:hover { border-color: rgba(249,115,22,.35); }
-.cliente-empresa-theme .btn.primary { background: linear-gradient(135deg, var(--primary), #06b6d4); }
-.cliente-empresa-theme .navbar { background: rgba(255,255,255,.85); border-bottom-color: rgba(249,115,22,.25); }
-.cliente-empresa-theme .footer { background: rgba(255,255,255,.85); border-top-color: rgba(249,115,22,.25); }
-.cliente-empresa-theme .badge { border-color: rgba(249,115,22,.35); color: #7c2d12; background: #fff7ed; }
+/* Forzar fondo blanco en todo el documento para ClienteEmpresa */
+.cliente-empresa-theme { background: #ffffff !important; }
+body.cliente-empresa-theme { background: #ffffff !important; background-image: none !important; }
+html body.cliente-empresa-theme { background: #ffffff !important; }
+
+/* Fondo completamente blanco en Catálogo/Rutas */
+.cliente-empresa-theme .content-area,
+.cliente-empresa-theme #tab-catalogo,
+.cliente-empresa-theme main.container {
+  background: #ffffff !important;
+}
+.cliente-empresa-theme .logo-circle { background: linear-gradient(135deg, var(--primary), #0ea5e9); }
+.cliente-empresa-theme .tour-card:hover { border-color: rgba(34,197,94,.35); }
+.cliente-empresa-theme .btn.primary { background: linear-gradient(135deg, var(--primary), #0ea5e9); }
+.cliente-empresa-theme .navbar { background: rgba(255,255,255,.85); border-bottom-color: rgba(34,197,94,.25); }
+.cliente-empresa-theme .footer { background: rgba(255,255,255,.85); border-top-color: rgba(34,197,94,.25); }
+.cliente-empresa-theme .badge { border-color: rgba(34,197,94,.35); color: #14532d; background: #ecfdf5; }
 .cliente-empresa-theme .muted { color: var(--text-secondary); }
+
+/* Mejorar contraste en las tarjetas del catálogo - FONDO OSCURO */
+.cliente-empresa-theme .tour-card {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.cliente-empresa-theme .tour-card h4,
+.cliente-empresa-theme .tour-card h3,
+.cliente-empresa-theme .tour-card h4 *,
+.cliente-empresa-theme .tour-card h3 * {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.cliente-empresa-theme .tour-card .price-title,
+.cliente-empresa-theme .tour-card .price-title * {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.cliente-empresa-theme .tour-card .price-label,
+.cliente-empresa-theme .tour-card .price-label * {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+.cliente-empresa-theme .tour-card .price-value,
+.cliente-empresa-theme .tour-card .price-value * {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.cliente-empresa-theme .tour-card .badge,
+.cliente-empresa-theme .tour-card .badge * {
+  color: #14532d !important;
+  background: #ecfdf5 !important;
+  border: 1px solid rgba(34,197,94,.35) !important;
+}
+
+.cliente-empresa-theme .tour-card .btn {
+  color: inherit !important;
+}
+
+.cliente-empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+  border-color: #0ea5e9 !important;
+}
+
+.cliente-empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--primary), #0ea5e9) !important;
+}
+
+/* Forzar todos los textos en tour-card a ser oscuros */
+.cliente-empresa-theme .tour-card * {
+  color: #0f172a !important;
+}
+
+.cliente-empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+}
+
+.cliente-empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+}
+
+.cliente-empresa-theme .tour-card .badge {
+  color: #14532d !important;
+}
+
+/* Ajustar fondo de la sección de precios */
+.cliente-empresa-theme .tour-card .price-section {
+  background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* SOBRESCRIBIR reglas generales con máxima especificidad */
+body.cliente-empresa-theme .tour-card {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.cliente-empresa-theme .tour-card * {
+  color: #0f172a !important;
+}
+
+body.cliente-empresa-theme .tour-card .btn.ghost {
+  color: #0ea5e9 !important;
+}
+
+body.cliente-empresa-theme .tour-card .btn.primary {
+  color: #ffffff !important;
+}
+
+body.cliente-empresa-theme .tour-card .badge {
+  color: #14532d !important;
+  background: #ecfdf5 !important;
+}
 
 /* Mejoras de contraste específicas para tema cliente empresa */
 .cliente-empresa-theme .navbar {
@@ -191,9 +301,24 @@
 }
 
 .cliente-empresa-theme .footer {
-  background: rgba(255,255,255,.98);
+  background: #ffffff;
   border-top: 1px solid var(--border);
 }
+
+/* Quitar franja de color (degradado) en el borde superior del footer para ClienteEmpresa */
+.cliente-empresa-theme .footer::before {
+  background: #ffffff;
+}
+
+/* Asegurar secciones internas del footer en blanco */
+.cliente-empresa-theme .footer-content,
+.cliente-empresa-theme .footer-bottom {
+  background: #ffffff;
+}
+
+/* Navbar completamente blanca (sin franja superior) */
+.cliente-empresa-theme .navbar { background: #ffffff !important; border-bottom: 1px solid var(--border); box-shadow: none; }
+.cliente-empresa-theme .navbar::before { background: #ffffff !important; }
 
 .cliente-empresa-theme .nav-brand span {
   color: var(--text);
@@ -233,7 +358,7 @@
 }
 
 /* Estilos específicos para las tarjetas de reserva con tema empresa */
-.cliente-empresa-theme .booking-card:hover { border-color: rgba(249,115,22,.35); box-shadow: 0 4px 12px rgba(249,115,22,.15); }
+.cliente-empresa-theme .booking-card:hover { border-color: rgba(34,197,94,.35); box-shadow: 0 4px 12px rgba(34,197,94,.15); }
 .cliente-empresa-theme .booking-card .price { color: var(--primary); font-weight: 600; }
 .cliente-empresa-theme .status.pending { background: #fef3c7; color: #92400e; border-color: rgba(249,115,22,.3); }
 .cliente-empresa-theme .status.confirmado { background: #d1fae5; color: #065f46; }
@@ -243,23 +368,23 @@
 /* Mejoras específicas para listas en tema cliente empresa */
 .cliente-empresa-theme .list-container {
   background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
 }
 
 .cliente-empresa-theme .list-container::before {
-  background: linear-gradient(90deg, var(--primary), #06b6d4);
+  background: linear-gradient(90deg, var(--primary), #0ea5e9);
 }
 
 .cliente-empresa-theme .list-item:hover {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(6, 182, 212, 0.05));
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(14,165,233,0.05));
   box-shadow: inset 4px 0 0 var(--primary);
 }
 
 .cliente-empresa-theme .booking-card {
   background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
 }
 
 .cliente-empresa-theme .booking-card:hover {
@@ -269,7 +394,7 @@
 }
 
 .cliente-empresa-theme .booking-card::before {
-  background: linear-gradient(90deg, var(--primary), #06b6d4);
+  background: linear-gradient(90deg, var(--primary), #0ea5e9);
 }
 
 .cliente-empresa-theme .booking-media::after {
@@ -301,4 +426,307 @@
   border-color: var(--primary);
 }
 
+
+/* Layout con barra lateral izquierda para tabs externas */
+.client-layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+.client-layout .sidebar { position: sticky; top: 12px; align-self: start; }
+.client-layout .content-area { min-width: 0; }
+
+.side-tabs { display: grid; gap: 8px; }
+.side-tabs .tab { 
+  display: block; 
+  padding: 10px 12px; 
+  border: 1px solid var(--border); 
+  border-radius: 10px; 
+  cursor: pointer; 
+  background: var(--panel); 
+  transition: var(--transition);
+}
+.side-tabs .tab:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.side-tabs .tab.active { 
+  background: linear-gradient(180deg, rgba(14,165,233,0.08), rgba(99,102,241,0.06)); 
+  border-color: var(--primary); 
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .client-layout { grid-template-columns: 1fr; }
+  .client-layout .sidebar { position: static; }
+  .side-tabs { grid-auto-flow: column; overflow: auto; }
+  .side-tabs .tab { white-space: nowrap; }
+}
+
+/* Overrides de pestañas internas (Catálogo y Modalidad) */
+.content-area .card .tabs { 
+  background: transparent; 
+  padding: 0; 
+  gap: 8px; 
+}
+.content-area .card .tabs .tab { 
+  flex: 0 0 auto; 
+  background: rgba(14,165,233,0.06); 
+  border: 1px solid rgba(14,165,233,0.25); 
+  color: #e2e8f0; 
+  border-radius: 12px; 
+}
+.content-area .card .tabs .tab:hover { 
+  border-color: #0ea5e9; 
+  background: rgba(14,165,233,0.12); 
+  color: #ffffff; 
+}
+.content-area .card .tabs .tab.active { 
+  color: #ffffff; 
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6); 
+  border-color: #3b82f6; 
+  box-shadow: 0 6px 20px rgba(14,165,233,0.3);
+}
+
+/* Afinar grupos concretos */
+#catalogTabs { display: flex; flex-wrap: wrap; }
+#catalogTabs .tab { min-width: 120px; text-align: center; }
+
+/* =============================== */
+/* Sección RESERVAS (mejora visual) */
+/* =============================== */
+.cliente-empresa-theme .reservas-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.cliente-empresa-theme .reservas-card .section-header h3 { color: var(--text); }
+
+/* Tabs internas más legibles */
+.cliente-empresa-theme .reservas-card #innerTabs { background: transparent; border: none; gap: 8px; }
+.cliente-empresa-theme .reservas-card #innerTabs .tab {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  font-weight: 700;
+}
+.cliente-empresa-theme .reservas-card #innerTabs .tab:hover {
+  border-color: var(--primary);
+  background: #ffffff;
+  color: var(--primary-700);
+}
+.cliente-empresa-theme .reservas-card #innerTabs .tab.active {
+  background: linear-gradient(135deg, var(--primary), #0ea5e9);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(14,165,233,0.18);
+}
+.cliente-empresa-theme .reservas-card #innerTabs .tab .tab-count { background: #ffffff; color: var(--primary-700); border: none; }
+
+/* Tarjetas dentro de reservas en claro */
+.cliente-empresa-theme .reservas-card .booking-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.cliente-empresa-theme .reservas-card .booking-card:hover {
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 6px 20px rgba(14,165,233,0.12);
+}
+.cliente-empresa-theme .reservas-card .booking-media { background-color: #f1f5f9; }
+.cliente-empresa-theme .reservas-card .booking-header h4 { color: var(--text); }
+.cliente-empresa-theme .reservas-card .booking-meta { color: var(--text-secondary); }
+.cliente-empresa-theme .reservas-card .booking-aside .price { background: none; -webkit-text-fill-color: unset; color: var(--primary-700); }
+
+/* Altura consistente para el mapa de tracking */
+.cliente-empresa-theme #trackingMap { height: 320px; border: 1px solid var(--border); border-radius: 12px; background: #eef2ff; }
+.cliente-empresa-theme .leaflet-container { border-radius: 12px; }
+
+/* =============================== */
+/* Historial: tablas estilo Empresa*/
+/* =============================== */
+.cliente-empresa-theme #tab-historial .card { background: #ffffff; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.cliente-empresa-theme #tab-historial table { 
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+.cliente-empresa-theme #tab-historial thead th {
+  background: linear-gradient(135deg, var(--primary), #0ea5e9);
+  color: #ffffff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 12px 14px;
+}
+.cliente-empresa-theme #tab-historial tbody td {
+  background: #ffffff;
+  color: var(--text);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cliente-empresa-theme #tab-historial tbody tr:hover td {
+  background: #f8fafc;
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+.cliente-empresa-theme #tab-historial tbody tr:last-child td { border-bottom: none; }
+
+/* =============================== */
+/* CAMBIO DE COLOR EN CAJAS DE TEXTO - TODOS LOS FORMULARIOS */
+/* =============================== */
+
+/* Cambiar color de fondo y texto en TODOS los inputs del rol clienteEmpresa */
+.cliente-empresa-theme input,
+.cliente-empresa-theme input[type="text"],
+.cliente-empresa-theme input[type="email"],
+.cliente-empresa-theme input[type="number"],
+.cliente-empresa-theme input[type="date"],
+.cliente-empresa-theme input[type="time"],
+.cliente-empresa-theme input[type="datetime-local"],
+.cliente-empresa-theme input[type="tel"],
+.cliente-empresa-theme input[type="password"],
+.cliente-empresa-theme select,
+.cliente-empresa-theme textarea {
+  background: #f8fafc !important;
+  color: #000000 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Placeholder text más oscuro para mejor contraste */
+.cliente-empresa-theme input::placeholder,
+.cliente-empresa-theme textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Estados de focus para inputs */
+.cliente-empresa-theme input:focus,
+.cliente-empresa-theme select:focus,
+.cliente-empresa-theme textarea:focus {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+}
+
+/* Estados de hover para inputs */
+.cliente-empresa-theme input:hover,
+.cliente-empresa-theme select:hover,
+.cliente-empresa-theme textarea:hover {
+  border-color: var(--primary) !important;
+  background: #ffffff !important;
+}
+
+/* Opciones en selectores */
+.cliente-empresa-theme select option {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Selector de modalidad específico */
+.cliente-empresa-theme #routeModeSelect {
+  background: #f8fafc !important;
+  color: #000000 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.cliente-empresa-theme #routeModeSelect:focus {
+  background: #ffffff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+}
+
+.cliente-empresa-theme #routeModeSelect option {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Campos específicos de formularios */
+.cliente-empresa-theme #encRemitente,
+.cliente-empresa-theme #encDestinatario,
+.cliente-empresa-theme #encTelefono,
+.cliente-empresa-theme #encPeso,
+.cliente-empresa-theme #encDescripcion,
+.cliente-empresa-theme #encOrigen,
+.cliente-empresa-theme #encDestino,
+.cliente-empresa-theme #p2pProvOrigen,
+.cliente-empresa-theme #p2pCiudadOrigen,
+.cliente-empresa-theme #p2pProvDestino,
+.cliente-empresa-theme #p2pCiudadDestino,
+.cliente-empresa-theme #p2pOrigen,
+.cliente-empresa-theme #p2pFecha,
+.cliente-empresa-theme #p2pPersonas,
+.cliente-empresa-theme #p2pPrecio,
+.cliente-empresa-theme #p2pNotas,
+.cliente-empresa-theme #airTipo,
+.cliente-empresa-theme #airAeropuerto,
+.cliente-empresa-theme #airProv,
+.cliente-empresa-theme #airCiudad,
+.cliente-empresa-theme #airFecha,
+.cliente-empresa-theme #airPersonas,
+.cliente-empresa-theme #airPrecio,
+.cliente-empresa-theme #bkAdultos,
+.cliente-empresa-theme #bkNinos,
+.cliente-empresa-theme #bkInfantes,
+.cliente-empresa-theme #bkFechaDate,
+.cliente-empresa-theme #bkHora,
+.cliente-empresa-theme #bkAsientos,
+.cliente-empresa-theme #bkUbicacion,
+.cliente-empresa-theme #bkNotas,
+.cliente-empresa-theme #ckNombre,
+.cliente-empresa-theme #ckApellido,
+.cliente-empresa-theme #ckEmail,
+.cliente-empresa-theme #ckTelefono,
+.cliente-empresa-theme #ckNotas,
+.cliente-empresa-theme #ckCupon,
+.cliente-empresa-theme #ckPago {
+  background: #f8fafc !important;
+  color: #000000 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Focus en campos específicos */
+.cliente-empresa-theme #encRemitente:focus,
+.cliente-empresa-theme #encDestinatario:focus,
+.cliente-empresa-theme #encTelefono:focus,
+.cliente-empresa-theme #encPeso:focus,
+.cliente-empresa-theme #encDescripcion:focus,
+.cliente-empresa-theme #encOrigen:focus,
+.cliente-empresa-theme #encDestino:focus,
+.cliente-empresa-theme #p2pProvOrigen:focus,
+.cliente-empresa-theme #p2pCiudadOrigen:focus,
+.cliente-empresa-theme #p2pProvDestino:focus,
+.cliente-empresa-theme #p2pCiudadDestino:focus,
+.cliente-empresa-theme #p2pOrigen:focus,
+.cliente-empresa-theme #p2pFecha:focus,
+.cliente-empresa-theme #p2pPersonas:focus,
+.cliente-empresa-theme #p2pPrecio:focus,
+.cliente-empresa-theme #p2pNotas:focus,
+.cliente-empresa-theme #airTipo:focus,
+.cliente-empresa-theme #airAeropuerto:focus,
+.cliente-empresa-theme #airProv:focus,
+.cliente-empresa-theme #airCiudad:focus,
+.cliente-empresa-theme #airFecha:focus,
+.cliente-empresa-theme #airPersonas:focus,
+.cliente-empresa-theme #airPrecio:focus,
+.cliente-empresa-theme #bkAdultos:focus,
+.cliente-empresa-theme #bkNinos:focus,
+.cliente-empresa-theme #bkInfantes:focus,
+.cliente-empresa-theme #bkFechaDate:focus,
+.cliente-empresa-theme #bkHora:focus,
+.cliente-empresa-theme #bkAsientos:focus,
+.cliente-empresa-theme #bkUbicacion:focus,
+.cliente-empresa-theme #bkNotas:focus,
+.cliente-empresa-theme #ckNombre:focus,
+.cliente-empresa-theme #ckApellido:focus,
+.cliente-empresa-theme #ckEmail:focus,
+.cliente-empresa-theme #ckTelefono:focus,
+.cliente-empresa-theme #ckNotas:focus,
+.cliente-empresa-theme #ckCupon:focus,
+.cliente-empresa-theme #ckPago:focus {
+  background: #ffffff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+}
 
