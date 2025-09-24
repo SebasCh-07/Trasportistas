@@ -1,3 +1,33 @@
+/* Estilos oscuros específicos para la pantalla de pago */
+.payment-dark { 
+  background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9));
+  border: 1px solid rgba(14,165,233,0.3);
+  box-shadow: 0 8px 32px rgba(14,165,233,0.15);
+}
+.payment-dark .modal-header { 
+  background: linear-gradient(135deg, rgba(14,165,233,0.15), rgba(99,102,241,0.12));
+  border-bottom-color: rgba(148,163,184,0.35);
+}
+.payment-dark .modal-header strong { color: #e2e8f0; }
+.payment-dark .modal-header .btn.ghost { color: #e2e8f0; border-color: rgba(226,232,240,0.4); background: transparent; }
+.payment-dark .modal-header .btn.ghost:hover { background: rgba(226,232,240,0.12); }
+.payment-dark .modal-body { background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,41,59,0.9)); }
+.payment-dark .checkout-form { background: rgba(2,6,23,0.5); border-color: rgba(148,163,184,0.35); }
+.payment-dark .checkout-form label { color: #e2e8f0; }
+.payment-dark .checkout-form input { 
+  background: rgba(15,23,42,0.9); 
+  color: #f8fafc; 
+  border: 1px solid rgba(148,163,184,0.35); 
+}
+.payment-dark .checkout-form input::placeholder { color: #94a3b8; }
+.payment-dark .checkout-form input:focus { 
+  border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.18);
+}
+.payment-dark .summary-card { background: rgba(2,6,23,0.5); border-color: rgba(148,163,184,0.35); color: #e2e8f0; }
+.payment-dark .summary-card .s-label, .payment-dark .summary-card .s-value { color: #e2e8f0; }
+.payment-dark .modal-footer { background: rgba(2,6,23,0.5); border-top-color: rgba(148,163,184,0.35); }
+.payment-dark .btn.ghost { color: #e2e8f0; border-color: rgba(148,163,184,0.35); }
+.payment-dark .btn.ghost:hover { color: #0ea5e9; border-color: #0ea5e9; background: rgba(14,165,233,0.1); }
 .catalog .tour-card .tour-body .actions { display: flex; align-items: center; justify-content: space-between; }
 
 .booking-list { 
@@ -138,6 +168,12 @@
   background-clip: text;
 }
 
+.booking-aside .btn.danger {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  border-radius: 10px;
+}
+
 .booking-aside .status {
   padding: 4px 12px;
   border-radius: 20px;
@@ -180,10 +216,12 @@
   top: 0;
   z-index: 1;
   margin-top: 8px;
-  background: rgba(255,255,255,0.75);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  display: flex;
+  gap: 8px;
 }
 
 /* Listas con scroll suave dentro de la tarjeta */
@@ -196,31 +234,82 @@
 
 /* Tarjetas de reserva más vistosas */
 .reservas-card .booking-card {
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.9));
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(14,165,233,0.25);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(51, 65, 85, 0.78));
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.15);
   transition: var(--transition);
+  color: #e2e8f0;
+}
+
+/* Pestañas internas de Reservas como píldoras */
+.reservas-card #innerTabs .tab {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(14,165,233,0.06);
+  border: 1px solid rgba(14,165,233,0.25);
+  color: #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.reservas-card #innerTabs .tab:hover {
+  background: rgba(14,165,233,0.12);
+  border-color: #0ea5e9;
+  color: #ffffff;
+}
+.reservas-card #innerTabs .tab.active {
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(14,165,233,0.25);
+}
+.reservas-card #innerTabs .tab .tab-count {
+  margin-left: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+}
+.reservas-card #innerTabs .tab.active .tab-count {
+  background: #ffffff;
+  color: #0ea5e9;
 }
 
 .reservas-card .booking-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.25);
+  border-color: #0ea5e9;
+  background: linear-gradient(135deg, rgba(30,41,59,0.98), rgba(51,65,85,0.86));
 }
 
 .reservas-card .booking-media {
-  border-radius: 10px;
-  outline: 1px solid var(--border);
+  border-radius: 12px;
+  outline: 1px solid rgba(148,163,184,0.35);
+  background-color: #1f2937;
 }
 
 .reservas-card .booking-header h4 {
   font-weight: 800;
+  color: #ffffff;
 }
+.reservas-card .booking-meta { color: #cbd5e1; }
 
 .reservas-card .booking-aside .price {
   font-size: 1.1rem;
 }
+
+/* Map tracking mejor contraste */
+.reservas-card .map {
+  height: 320px;
+  background: #0b1220;
+  border: 1px solid rgba(148,163,184,0.35);
+}
+.reservas-card .leaflet-container { border-radius: 12px; }
 
 /* Estado vacío estilizado y centrado */
 #panel-pendiente > .booking-empty,
@@ -258,3 +347,68 @@
 .booking-empty .empty-inner { display: grid; gap: 8px; place-items: center; z-index: 1; }
 .booking-empty .empty-icon { font-size: 40px; opacity: 0.6; }
 .booking-empty .empty-text { font-size: 22px; font-weight: 800; color: var(--primary); letter-spacing: .3px; }
+
+/* Layout con barra lateral izquierda para tabs externas */
+.client-layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+.client-layout .sidebar { position: sticky; top: 12px; align-self: start; }
+.client-layout .content-area { min-width: 0; }
+
+.side-tabs { display: grid; gap: 8px; }
+.side-tabs .tab { 
+  display: block; 
+  padding: 10px 12px; 
+  border: 1px solid var(--border); 
+  border-radius: 10px; 
+  cursor: pointer; 
+  background: var(--panel); 
+  transition: var(--transition);
+}
+.side-tabs .tab:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.side-tabs .tab.active { 
+  background: linear-gradient(180deg, rgba(14,165,233,0.08), rgba(99,102,241,0.06)); 
+  border-color: var(--primary); 
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .client-layout { grid-template-columns: 1fr; }
+  .client-layout .sidebar { position: static; }
+  .side-tabs { grid-auto-flow: column; overflow: auto; }
+  .side-tabs .tab { white-space: nowrap; }
+}
+
+/* Overrides de pestañas internas (Catálogo y Modalidad) sin fondo gris */
+.content-area .card .tabs { 
+  background: transparent; 
+  padding: 0; 
+  gap: 8px; 
+}
+.content-area .card .tabs .tab { 
+  flex: 0 0 auto; 
+  background: rgba(14,165,233,0.06); 
+  border: 1px solid rgba(14,165,233,0.25); 
+  color: #e2e8f0; 
+  border-radius: 12px; 
+}
+.content-area .card .tabs .tab:hover { 
+  border-color: #0ea5e9; 
+  background: rgba(14,165,233,0.12); 
+  color: #ffffff; 
+}
+.content-area .card .tabs .tab.active { 
+  color: #ffffff; 
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6); 
+  border-color: #3b82f6; 
+  box-shadow: 0 6px 20px rgba(14,165,233,0.3);
+}
+
+/* Afinar grupos concretos */
+#catalogTabs { 
+  display: flex; 
+  flex-wrap: wrap; 
+}
+#catalogTabs .tab { 
+  min-width: 120px; 
+  text-align: center; 
+}

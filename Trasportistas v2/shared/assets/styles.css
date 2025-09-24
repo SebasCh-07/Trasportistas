@@ -987,6 +987,21 @@ h3 {
   text-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
 }
 
+/* Bloque de precios estilo General/Adultos/Niños */
+.price-section { 
+  background: linear-gradient(135deg, rgba(30,41,59,0.9), rgba(51,65,85,0.75)); 
+  border: 1px solid rgba(14,165,233,0.3); 
+  border-radius: 12px; 
+  padding: 10px; 
+  box-shadow: 0 6px 18px rgba(14,165,233,0.15);
+}
+.price-title { text-align: center; font-weight: 800; color: #e2e8f0; position: relative; margin-bottom: 8px; }
+.price-title::after { content: ''; display: block; height: 1px; background: rgba(148,163,184,0.35); margin: 4px 20%; }
+.price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+.price-col { text-align: center; }
+.price-label { font-weight: 600; color: #cbd5e1; }
+.price-value { font-weight: 800; color: #ffffff; }
+
 .tour-card h3 {
   font-weight: 700;
   color: var(--text);
@@ -1360,13 +1375,95 @@ tbody tr:hover td::before {
 }
 
 /* Modal base */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 90; }
-.modal { position: fixed; inset: 0; display: none; place-items: center; z-index: 100; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 90; backdrop-filter: blur(2px); }
+.modal { position: fixed; inset: 0; display: none; place-items: center; z-index: 100; padding: 12px; }
 .modal.show, .modal-backdrop.show { display: grid; }
-.modal-content { width: min(92vw, 720px); background: #ffffff; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
-.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-.modal-body { padding: 12px 14px; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
+.modal-content { width: min(92vw, 720px); background: #ffffff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.25); overflow: hidden; transform: translateY(8px) scale(.98); opacity: .98; animation: modalPop .25s ease-out forwards; }
+#bookingModal .modal-content { width: min(92vw, 560px); }
+#bookingModeHint { color: var(--muted); }
+#checkoutModal .checkout-content { width: min(96vw, 1100px); }
+.checkout-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.checkout-form { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.checkout-form .form-row label { color: #0f172a; font-weight: 700; }
+.checkout-form input, .checkout-form select { 
+  background: #ffffff; 
+  color: #0f172a; 
+  border: 1px solid var(--border); 
+  border-radius: 12px; 
+  padding: 12px 14px; 
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+.checkout-form input::placeholder { color: #64748b; }
+.checkout-form input:focus, .checkout-form select:focus { 
+  border-color: var(--primary); 
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.12), inset 0 1px 2px rgba(0,0,0,0.05);
+}
+.coupon-row { display: grid; gap: 8px; margin-top: 12px; }
+.coupon-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.payment-row { display: grid; gap: 6px; margin-top: 12px; }
+.coupon-row label, .payment-row label { color: #0f172a; font-weight: 800; }
+#checkoutModal #applyCoupon { color: #0f172a; background: #ffffff; border-color: var(--border); }
+#checkoutModal #applyCoupon:hover { color: var(--primary-700); border-color: var(--primary); background: var(--primary-50); }
+.checkout-summary { }
+.summary-card { background: linear-gradient(180deg, #ffffff, #f8fafc); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; color: #0f172a; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.summary-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.summary-row:last-child { border-bottom: none; }
+.summary-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; font-weight: 900; font-size: 1.05rem; }
+#checkoutModal .summary-card .s-label { color: #0f172a; font-weight: 800; font-size: 0.95rem; }
+#checkoutModal .summary-card .s-value { color: #0f172a; font-weight: 800; font-size: 0.95rem; text-align: right; }
+#checkoutModal #sumSubtotal { color: #0f172a; }
+
+@media (max-width: 1000px) {
+  .checkout-grid { grid-template-columns: 1fr; }
+}
+@keyframes modalPop { from { transform: translateY(12px) scale(.96); opacity: .6; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+/* Estilos para formulario de disponibilidad */
+.booking-form .section-box { 
+  border: 1px solid var(--border); 
+  border-radius: 12px; 
+  padding: 12px; 
+  background: linear-gradient(135deg, #ffffff, #f8fafc); 
+}
+.booking-form .section-title { 
+  font-weight: 800; 
+  margin-bottom: 8px; 
+  color: var(--text);
+}
+/* Forzar texto oscuro dentro de modales con fondo blanco */
+#routeModal .modal-content,
+#bookingModal .modal-content,
+#mapModal .modal-content {
+  color: #0f172a;
+}
+#routeModal h1, #routeModal h2, #routeModal h3, #routeModal h4,
+#bookingModal h1, #bookingModal h2, #bookingModal h3, #bookingModal h4,
+#mapModal h1, #mapModal h2, #mapModal h3, #mapModal h4 {
+  color: #0f172a;
+}
+#routeModal label, #bookingModal label, #mapModal label { color: #0f172a; }
+#routeModal .muted, #bookingModal .muted, #mapModal .muted { color: #475569; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(99,102,241,.08)); }
+.modal-body { padding: 14px 16px; background: #f8fafc; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); background: #ffffff; }
+
+#routeModal .modal-header, #bookingModal .modal-header { background: linear-gradient(135deg, #0ea5e9, #3b82f6); border-bottom-color: rgba(255,255,255,0.25); }
+#routeModal .modal-header strong, #bookingModal .modal-header strong { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+#routeModal .btn.ghost, #bookingModal .btn.ghost { border-color: rgba(255,255,255,0.6); color: #ffffff; }
+#routeModal .btn.ghost:hover, #bookingModal .btn.ghost:hover { border-color: #ffffff; background: rgba(255,255,255,0.18); color: #ffffff; }
+#checkoutModal .modal-header { background: linear-gradient(135deg, #eaf2ff, #f4f0ff); border-bottom-color: var(--border); }
+#checkoutModal .modal-header strong { color: #0f172a; font-weight: 800; text-shadow: none; }
+#checkoutModal .modal-header .btn.ghost { color: #0f172a; border-color: var(--border); background: #ffffff; }
+#checkoutModal .modal-header .btn.ghost:hover { color: var(--primary-700); border-color: var(--primary); background: var(--primary-50); }
+#bookingModal .modal-footer .btn.ghost { color: #0f172a; border-color: var(--border); background: #ffffff; }
+#bookingModal .modal-footer .btn.ghost:hover { color: var(--primary-700); border-color: var(--primary); background: var(--primary-50); }
+#checkoutModal .modal-footer .btn.ghost { color: #0f172a; border-color: var(--border); background: #ffffff; }
+#checkoutModal .modal-footer .btn.ghost:hover { color: var(--primary-700); border-color: var(--primary); background: var(--primary-50); }
+#bookingModal input, #bookingModal select { background: #ffffff; color: #0f172a; }
+#bookingModal input[type="date"], #bookingModal input[type="time"] { color: #0f172a; }
+#bookingModal select, #bookingModal option { color: #0f172a; }
+#bookingModal input::placeholder, #bookingModal select::placeholder { color: #475569; }
+#bookingModal .modal-footer .btn.primary { min-width: 180px; }
 
 /* Mapa selector en modal */
 .map-picker { height: 360px; position: relative; cursor: crosshair; }

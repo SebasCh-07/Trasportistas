@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pago con tarjeta | Cliente</title>
+  <link rel="stylesheet" href="../shared/assets/styles.css" />
+  <link rel="stylesheet" href="./cliente.css" />
+</head>
+<body class="page">
+  <div id="navbar"></div>
+  <main class="container">
+    <div class="card payment-dark" style="padding:0; overflow:hidden;">
+      <div class="modal-header" style="border-radius:16px 16px 0 0;">
+        <strong>Pago con tarjeta</strong>
+        <a href="index.html" class="btn ghost">Volver</a>
+      </div>
+      <div class="modal-body">
+        <div class="checkout-grid">
+          <form class="checkout-form" id="cardForm">
+            <div class="grid cols-2">
+              <div class="form-row" style="grid-column:1/-1">
+                <label for="cardNumber">Número de tarjeta</label>
+                <input id="cardNumber" placeholder="1234 5678 9012 3456" required />
+              </div>
+              <div class="form-row">
+                <label for="cardName">Nombre en la tarjeta</label>
+                <input id="cardName" placeholder="Como aparece en la tarjeta" required />
+              </div>
+              <div class="form-row">
+                <label for="cardCvv">CVV</label>
+                <input id="cardCvv" placeholder="123" required />
+              </div>
+              <div class="form-row">
+                <label for="cardExp">Vencimiento</label>
+                <input id="cardExp" placeholder="MM/AA" required />
+              </div>
+            </div>
+          </form>
+          <aside class="checkout-summary">
+            <div class="summary-card">
+              <div class="summary-row"><div class="s-label">Tour</div><div class="s-value" id="pSumTour">-</div></div>
+              <div class="summary-row"><div class="s-label">Fecha</div><div class="s-value" id="pSumFecha">-</div></div>
+              <div class="summary-row"><div class="s-label">Hora</div><div class="s-value" id="pSumHora">-</div></div>
+              <div class="summary-row"><div class="s-label">Personas</div><div class="s-value" id="pSumPersonas">-</div></div>
+              <div class="summary-total"><div class="s-label">Total</div><div class="s-value" id="pSumTotal">$0.00 USD</div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-radius:0 0 16px 16px;">
+        <a href="index.html" class="btn ghost">Cancelar</a>
+        <button class="btn primary" id="confirmCard">Confirmar orden</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+  <script type="module">
+    import { Storage, mountSharedChrome, db, notify } from '../shared/assets/scripts.js';
+    mountSharedChrome();
+    const draft = Storage.load('draft:booking');
+    if (!draft) {
+      notify('No hay reserva en proceso.', 'error');
+      window.location.href = 'index.html';
+    }
+    const route = (Storage.load('data:routes', db.routes) || db.routes).find(r => r.id === draft?.routeId);
+    const fecha = new Date(draft?.details?.fecha || Date.now());
+    const fmt = (n)=> n.toString().padStart(2,'0');
+    const fechaStr = `${fmt(fecha.getDate())}/${fmt(fecha.getMonth()+1)}/${fecha.getFullYear()}`;
+    const horaStr = `${fmt(fecha.getHours())}:${fmt(fecha.getMinutes())}`;
+    const pax = draft?.details?.pasajeros || 1;
+    document.getElementById('pSumTour').textContent = route?.name || '-';
+    document.getElementById('pSumFecha').textContent = fechaStr;
+    document.getElementById('pSumHora').textContent = horaStr;
+    document.getElementById('pSumPersonas').textContent = `${pax} ${pax===1?'Persona':'Personas'}`;
+    document.getElementById('pSumTotal').textContent = `$${(route?.basePrice || 0).toFixed(2)} USD`;
+
+    document.getElementById('confirmCard').addEventListener('click', (e)=>{
+      e.preventDefault();
+      // Validación mínima de campos
+      const n = document.getElementById('cardNumber').value.trim();
+      const nm = document.getElementById('cardName').value.trim();
+      const cvv = document.getElementById('cardCvv').value.trim();
+      const exp = document.getElementById('cardExp').value.trim();
+      if (!n || !nm || !cvv || !exp) { notify('Completa los datos de la tarjeta.', 'error'); return; }
+      // Guardar en reservas y limpiar borrador
+      const bookings = Storage.load('data:bookings', []);
+      bookings.push(draft);
+      Storage.save('data:bookings', bookings);
+      Storage.remove('draft:booking');
+      notify('Pago procesado. Reserva creada.', 'success');
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

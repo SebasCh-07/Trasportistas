@@ -15,14 +15,27 @@ let trackingInterval = null;
 function renderCatalog() {
   const list = document.getElementById('catalog');
   const routes = state.routes.filter(r => (r.type || 'tour').toLowerCase() === 'tour');
+  const fmtUSD = (n) => `$${Number(n).toFixed(2)} usd`;
   list.innerHTML = routes.map(r => `
     <div class="tour-card">
       <div class="tour-media" style="background-image:url('${r.image || ''}')"></div>
       <div class="tour-body">
         <div class="badge">${r.type}</div>
         <h4>${r.name}</h4>
+        <div class="price-section">
+          <div class="price-title">General</div>
+          <div class="price-grid">
+            <div class="price-col">
+              <div class="price-label">Adultos</div>
+              <div class="price-value">${fmtUSD(r.basePrice)}</div>
+            </div>
+            <div class="price-col">
+              <div class="price-label">Niños</div>
+              <div class="price-value">${fmtUSD(r.basePrice * 0.40)}</div>
+            </div>
+          </div>
+        </div>
         <div class="actions">
-          <span class="price">$${r.basePrice}</span>
           <div style="display:flex; gap:8px;">
             <button class="btn ghost" data-view="${r.id}">Ver</button>
             <button class="btn primary" data-book="${r.id}">Reservar</button>
@@ -31,7 +44,7 @@ function renderCatalog() {
       </div>
     </div>`).join('');
   list.querySelectorAll('button[data-book]')?.forEach(btn => {
-    btn.addEventListener('click', () => createBooking(btn.getAttribute('data-book')));
+    btn.addEventListener('click', () => openBookingModal(btn.getAttribute('data-book')));
   });
   const modal = document.getElementById('routeModal');
   const backdrop = document.getElementById('routeBackdrop');
@@ -65,6 +78,82 @@ function createBooking(routeId) {
   notify('Reserva creada. Esperando asignación.', 'success');
 }
 
+// Modal de reserva con campos por modalidad
+let bookingRouteId = null;
+function openBookingModal(routeId) {
+  bookingRouteId = routeId;
+  const modal = document.getElementById('bookingModal');
+  const backdrop = document.getElementById('bookingBackdrop');
+  const title = document.getElementById('bookingTitle');
+  const hint = document.getElementById('bookingModeHint');
+  const route = state.routes.find(r => r.id === routeId);
+  title.textContent = `Reservar: ${route?.name || 'Ruta'}`;
+
+  const isPrivada = (state.routeMode || 'privada') === 'privada';
+  const elPrivada = document.getElementById('bkPrivadaOnly');
+  const elCompartida = document.getElementById('bkCompartidaOnly');
+  const elPunto = document.getElementById('bkPuntoEncuentroRow');
+  if (elPrivada) elPrivada.classList.toggle('hidden', !isPrivada);
+  if (elCompartida) elCompartida.classList.toggle('hidden', isPrivada);
+  if (elPunto) elPunto.classList.toggle('hidden', isPrivada);
+  hint.textContent = isPrivada ? 'Modalidad: Privada (se reserva el vehículo completo)' : 'Modalidad: Compartida (elige asientos y punto de encuentro)';
+
+  modal.classList.add('show');
+  backdrop.classList.add('show');
+}
+
+function closeBookingModal() {
+  document.getElementById('bookingModal').classList.remove('show');
+  document.getElementById('bookingBackdrop').classList.remove('show');
+}
+
+// Modal de checkout grande
+function openCheckoutModal(tempBooking) {
+  // Rellenar resumen
+  const route = state.routes.find(r => r.id === tempBooking.routeId);
+  const fecha = new Date(tempBooking.details?.fecha || tempBooking.createdAt || Date.now());
+  const fmt = (n) => n.toString().padStart(2, '0');
+  const fechaStr = `${fmt(fecha.getDate())}/${fmt(fecha.getMonth()+1)}/${fecha.getFullYear()}`;
+  const horaStr = `${fmt(fecha.getHours())}:${fmt(fecha.getMinutes())}`;
+  const pax = tempBooking.details?.pasajeros || 1;
+  document.getElementById('sumTour').textContent = route?.name || '-';
+  document.getElementById('sumFecha').textContent = fechaStr;
+  document.getElementById('sumHora').textContent = horaStr;
+  document.getElementById('sumPersonas').textContent = `${pax} ${pax===1?'Persona':'Personas'}`;
+  document.getElementById('sumSubtotal').textContent = `$${(route?.basePrice || 0).toFixed(2)} USD`;
+
+  const modal = document.getElementById('checkoutModal');
+  const backdrop = document.getElementById('checkoutBackdrop');
+  modal.classList.add('show');
+  backdrop.classList.add('show');
+
+  // Bind cierre/confirmación
+  const close = () => { modal.classList.remove('show'); backdrop.classList.remove('show'); };
+  const closeBtn = document.getElementById('closeCheckout');
+  const cancelBtn = document.getElementById('cancelCheckout');
+  if (closeBtn) closeBtn.onclick = close;
+  if (cancelBtn) cancelBtn.onclick = (e) => { e.preventDefault(); close(); };
+  const confirmBtn = document.getElementById('confirmCheckout');
+  if (confirmBtn) confirmBtn.onclick = (e) => {
+    e.preventDefault();
+    const payMethod = (document.getElementById('ckPago')?.value || '').toLowerCase();
+    if (payMethod === 'tarjeta') {
+      // Guardar borrador y navegar a pantalla de pago con tarjeta
+      Storage.save('draft:booking', tempBooking);
+      close();
+      window.location.href = 'pago-tarjeta.html';
+      return;
+    }
+    // Otros métodos: guardar de inmediato
+    const final = tempBooking;
+    state.bookings.push(final);
+    Storage.save('data:bookings', state.bookings);
+    notify('Reserva confirmada. Recibirás un correo de confirmación.', 'success');
+    close();
+    switchToReservations();
+  };
+}
+
 function renderBookings() {
   const user = Session.getUser();
   const containerPending = document.getElementById('myBookingsPending');
@@ -86,6 +175,7 @@ function renderBookings() {
 
   const makeCard = (b) => {
     const route = state.routes.find(r => r.id === b.routeId) || {};
+    const pax = b?.details?.pasajeros;
     return `
     <div class="booking-card">
       <div class="booking-media" style="background-image:url('${route.image || ''}')"></div>
@@ -99,10 +189,12 @@ function renderBookings() {
           <div><strong>Tipo:</strong> ${route.type || (b.serviceType || '-')}</div>
           <div><strong>Conductor:</strong> ${b.driverId || 'Sin asignar'}</div>
           <div><strong>Creada:</strong> ${fmtDate(b.createdAt)}</div>
+          ${pax ? `<div><strong>Pasajeros:</strong> ${pax}</div>` : ''}
         </div>
       </div>
       <div class="booking-aside">
         <div class="price">$${route.basePrice || '-'}</div>
+        <button class="btn danger" data-delete="${b.id}">Eliminar</button>
       </div>
     </div>`;
   };
@@ -131,6 +223,22 @@ function renderBookings() {
   if (containerConfirmed) containerConfirmed.innerHTML = renderList(confirmed);
   if (containerInProgress) containerInProgress.innerHTML = renderList(inProgress);
 
+  // Bind eliminar
+  document.querySelectorAll('button[data-delete]')?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-delete');
+      const ok = confirm('¿Seguro que deseas eliminar esta reserva?');
+      if (!ok) return;
+      const idx = state.bookings.findIndex(x => x.id === id);
+      if (idx >= 0) {
+        state.bookings.splice(idx, 1);
+        Storage.save('data:bookings', state.bookings);
+        notify('Reserva eliminada', 'success');
+        renderBookings();
+      }
+    });
+  });
+
   // Contadores en tabs internas
   const tabPend = document.querySelector('#innerTabs .tab[data-subtab="pendiente"]');
   const tabConf = document.querySelector('#innerTabs .tab[data-subtab="confirmado"]');
@@ -144,10 +252,15 @@ function renderBookings() {
   map.innerHTML = '';
   if (trackingInterval?.stop) { trackingInterval.stop(); trackingInterval = null; }
   if (current) {
-    startLeafletTracking(map, [-0.1807, -78.4678]).then(inst => { trackingInterval = inst; });
+    startLeafletTracking(map, [-0.1807, -78.4678]).then(inst => {
+      trackingInterval = inst;
+      setTimeout(() => { try { inst.map.invalidateSize(); } catch {} }, 50);
+    });
   } else {
     // Mostrar siempre un mapa real como base
-    initLeafletMap(map, { center: [-0.1807, -78.4678], zoom: 12 });
+    initLeafletMap(map, { center: [-0.1807, -78.4678], zoom: 12 }).then(m => {
+      setTimeout(() => { try { m.invalidateSize(); } catch {} }, 50);
+    });
   }
 }
 
@@ -233,15 +346,13 @@ function bindTabs() {
   });
 
   // Modalidad Rutas (Privada/Compartida)
-  const routeModeTabs = document.querySelectorAll('#routeModeTabs .tab');
-  routeModeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      routeModeTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      state.routeMode = tab.getAttribute('data-mode');
+  const routeModeSelect = document.getElementById('routeModeSelect');
+  if (routeModeSelect) {
+    routeModeSelect.addEventListener('change', () => {
+      state.routeMode = routeModeSelect.value;
       renderCatalog();
     });
-  });
+  }
 
   // Formularios de Catálogo: Encomienda, P2P y Aeropuerto
   const formEncomienda = document.getElementById('formEncomienda');
@@ -382,6 +493,61 @@ function main() {
   mountSharedChrome();
   bindTabs();
   renderCatalog();
+  // Bind modal booking
+  const closeBk = document.getElementById('closeBooking');
+  const cancelBk = document.getElementById('cancelBooking');
+  const submitBk = document.getElementById('submitBooking');
+  if (closeBk) closeBk.onclick = closeBookingModal;
+  if (cancelBk) cancelBk.onclick = (e) => { e.preventDefault(); closeBookingModal(); };
+  if (submitBk) submitBk.onclick = (e) => {
+    e.preventDefault();
+    const isPrivada = (state.routeMode || 'privada') === 'privada';
+    // Combinar fecha + hora
+    const fechaStr = document.getElementById('bkFechaDate')?.value;
+    const horaStr = document.getElementById('bkHora')?.value;
+    const fecha = (fechaStr && horaStr) ? new Date(`${fechaStr}T${horaStr}:00`).toISOString() : '';
+    const notas = document.getElementById('bkNotas')?.value || '';
+    const adultos = parseInt(document.getElementById('bkAdultos')?.value || '0', 10);
+    const ninos = parseInt(document.getElementById('bkNinos')?.value || '0', 10);
+    const infantes = parseInt(document.getElementById('bkInfantes')?.value || '0', 10);
+    const pasajeros = Math.max(0, adultos) + Math.max(0, ninos) + Math.max(0, infantes);
+    const asientos = parseInt(document.getElementById('bkAsientos')?.value || '1', 10);
+    const punto = document.getElementById('bkPuntoEncuentro')?.value || '';
+    if (!fecha) { notify('Selecciona fecha y hora', 'error'); return; }
+    if (pasajeros <= 0) { notify('Indica al menos 1 pasajero', 'error'); return; }
+    const user = Session.getUser();
+    const id = `b${Date.now()}`;
+    const payload = {
+      id,
+      userId: user.id,
+      routeId: bookingRouteId,
+      status: 'Pendiente',
+      driverId: null,
+      createdAt: new Date().toISOString(),
+      mode: state.routeMode,
+      serviceType: 'tour',
+      details: isPrivada 
+        ? { adultos, ninos, infantes, pasajeros, fecha, notas }
+        : { adultos, ninos, infantes, pasajeros, asientos, puntoEncuentro: punto, fecha, notas }
+    };
+    // No guardamos aún, abrimos checkout con un borrador
+    closeBookingModal();
+    openCheckoutModal(payload);
+  };
+  // Instrucciones dinámicas según método de pago
+  const paySelect = document.getElementById('ckPago');
+  const payInstruction = document.getElementById('payInstruction');
+  const setInstr = () => {
+    const v = (paySelect?.value || '').toLowerCase();
+    const map = {
+      efectivo: 'Paga en efectivo al final del viaje al conductor.',
+      transferencia: 'Realiza la transferencia y presenta el comprobante al conductor.',
+      voucher: 'Presenta tu voucher válido al conductor antes de iniciar el viaje.',
+      tarjeta: 'Serás dirigido a una pantalla para completar el pago con tarjeta.'
+    };
+    if (payInstruction) payInstruction.textContent = map[v] || '';
+  };
+  if (paySelect) { setInstr(); paySelect.addEventListener('change', setInstr); }
   // solo renderizar reservas e historial cuando toque su tab
   setInterval(() => { state.bookings = Storage.load('data:bookings', db.bookings); pollChanges(); }, 1000);
 }

@@ -1,74 +1,56 @@
-import { db, Storage, Session, mountSharedChrome, requireRole, getPriceWithEmpresa, notify } from '../shared/assets/scripts.js';
+// Loader que reutiliza la lógica de admin para el rol empresa
+// Carga admin/admin.js como texto, cambia requireRole('admin') -> requireRole('empresa')
+// y ajusta la ruta de imports para ejecutarlo como módulo ESM.
 
-const state = {
-  routes: Storage.load('data:routes', db.routes),
-  empresas: Storage.load('data:empresas', db.empresas),
-};
+(async () => {
+  try {
+    const adminModuleUrl = new URL('../admin/admin.js', import.meta.url).href;
+    const scriptsUrl = new URL('../shared/assets/scripts.js', import.meta.url).href;
 
-function getEmpresa() {
-  const user = Session.getUser();
-  return state.empresas.find(e => e.id === user.empresaId);
-}
+    const res = await fetch(adminModuleUrl);
+    if (!res.ok) throw new Error(`No se pudo cargar admin.js: ${res.status}`);
+    let code = await res.text();
 
-function renderServices() {
-  const user = requireRole('empresa'); if (!user) return;
-  mountSharedChrome();
-  const empresa = getEmpresa();
-  document.getElementById('markupVal').textContent = `${empresa.priceMarkupPercent || 0}%`;
-  document.getElementById('markupInput').value = empresa.priceMarkupPercent || 0;
-  const list = document.getElementById('services');
-  list.innerHTML = state.routes.map(r => {
-    const price = getPriceWithEmpresa(r, empresa.id);
-    return `
-      <div class="tour-card">
-        <div class="tour-media" style="background-image:url('${r.image || ''}')"></div>
-        <div class="tour-body">
-          <div class="badge">${r.type}</div>
-          <h4>${r.name}</h4>
-          <div class="actions">
-            <span class="price">$${price}</span>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <span class="muted">Base: $${r.basePrice}</span>
-              <button class="btn ghost" data-view="${r.id}">Ver</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
+    // Reemplazar import de scripts con URL absoluta para que funcione desde Blob URL
+    code = code.replace(
+      /from\s+['"]\.\.\/shared\/assets\/scripts\.js['"];?/,
+      `from '${scriptsUrl}';`
+    );
 
-  document.getElementById('saveMarkup').onclick = () => {
-    const val = Math.max(0, Math.min(100, parseInt(document.getElementById('markupInput').value || '0', 10)));
-    empresa.priceMarkupPercent = val;
-    Storage.save('data:empresas', state.empresas);
-    document.getElementById('markupVal').textContent = `${val}%`;
-    renderServices();
-    notify('Markup actualizado', 'success');
-  };
+    // Forzar el guard de rol a 'empresa'
+    code = code.replace(/requireRole\(['"]admin['"]\)/g, "requireRole('empresa')");
 
-  // Modal ver ruta
-  const modal = document.getElementById('routeModal');
-  const backdrop = document.getElementById('routeBackdrop');
-  const close = () => { modal.classList.remove('show'); backdrop.classList.remove('show'); };
-  document.getElementById('closeRoute').onclick = close;
-  document.getElementById('routeCloseBtn').onclick = close;
-  list.querySelectorAll('button[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const r = state.routes.find(x => x.id === btn.getAttribute('data-view'));
-      document.getElementById('routeTitle').textContent = r.name;
-      document.getElementById('routeBody').innerHTML = `
-        <div class="grid cols-2">
-          <div style="min-height:160px;background:url('${r.image||''}') center/cover;border-radius:8px;border:1px solid var(--border);"></div>
-          <div>
-            <p class="muted">Tipo: ${r.type}</p>
-            <p>${r.description || ''}</p>
-            <p><strong>Precio base:</strong> $${r.basePrice}</p>
-          </div>
-        </div>`;
-      modal.classList.add('show'); backdrop.classList.add('show');
-    });
-  });
-}
+    // Asegurar que main() se ejecute aunque DOMContentLoaded ya haya ocurrido
+    code = code.replace(
+      /document\.addEventListener\(['"]DOMContentLoaded['"],\s*main\s*\);?/,
+      "(document.readyState !== 'loading' ? main() : document.addEventListener('DOMContentLoaded', main));"
+    );
 
-document.addEventListener('DOMContentLoaded', renderServices);
+    // Omitir seccion de Usuarios en Empresa: quitar llamadas que dependen del DOM de usuarios
+    code = code.replace(/\n\s*renderUsers\(\);/g, '');
+    code = code.replace(/\n\s*initUserModals\(\);/g, '');
+
+    // En la sección de clientes, mostrar SOLO 'clienteEmpresa'
+    code = code.replace(
+      /\['cliente',\s*'clienteEmpresa'\]/g,
+      "['clienteEmpresa']"
+    );
+
+    // En Flota: eliminar botones Editar/Eliminar vehículo (dejar solo Ver)
+    code = code.replace(/<button\s+class=\"btn ghost\"[^>]*data-action=\"edit\"[^>]*title=\"Editar vehículo\"[^>]*>[^<]*<\/button>/g, '');
+    code = code.replace(/<button\s+class=\"btn ghost\"[^>]*data-action=\"del\"[^>]*title=\"Eliminar vehículo\"[^>]*>[^<]*<\/button>/g, '');
+
+    // En Conductores: eliminar botones Editar/Eliminar conductor (dejar solo Ver)
+    code = code.replace(/\n\s*<button class=\"btn ghost\"[^>]*title=\"Editar conductor\"[^>]*>[^<]*<\/button>\n/g, '\n');
+    code = code.replace(/\n\s*<button class=\"btn ghost\"[^>]*title=\"Eliminar conductor\"[^>]*>[^<]*<\/button>\n/g, '\n');
+
+    // Crear Blob y cargar como módulo
+    const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+    await import(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error('Error inicializando panel Empresa:', err);
+  }
+})();
 
 
