@@ -414,11 +414,6 @@ input:hover, select:hover {
   font-weight: 500;
 }
 
-/* Refuerzo de contraste en bordes de alertas */
-.alert.error { border-color: rgba(220, 38, 38, 0.4); }
-.alert.success { border-color: rgba(16, 185, 129, 0.45); }
-.alert.info { border-color: rgba(14, 165, 233, 0.45); }
-
 .alert::before {
   content: '';
   position: absolute;
@@ -990,7 +985,7 @@ h3 {
   transition: opacity 0.3s ease;
 }
 
-.tour-card:hover .tour-media::after { opacity: 0; }
+
 
 .tour-card:hover .tour-media {
   transform: scale(1.05);

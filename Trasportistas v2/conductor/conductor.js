@@ -5,7 +5,6 @@ const state = {
   routes: Storage.load('data:routes', db.routes),
 };
 
-// Eliminado tracking
 let assignmentFilter = 'Asignado';
 
 function myAssignments() {

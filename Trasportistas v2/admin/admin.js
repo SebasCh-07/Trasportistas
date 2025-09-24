@@ -1175,50 +1175,20 @@ function openEditVehicleModal(vehicleId) {
 
 // Función para mostrar el modal de añadir vehículo
 function showAddVehicleModal() {
-  console.log('=== EJECUTANDO showAddVehicleModal ===');
-  
   const modal = document.getElementById('addVehicleModal');
-  console.log('Modal encontrado:', modal);
-  
-  if (!modal) {
-    console.error('ERROR: No se encontró el modal addVehicleModal');
-    // Buscar todos los modales disponibles
-    const allModals = document.querySelectorAll('.modal');
-    console.log('Todos los modales encontrados:', allModals);
-    return;
-  }
-  
-  // Verificar si el modal está oculto
-  const currentDisplay = modal.style.display;
-  console.log('Display actual del modal:', currentDisplay);
-  
-  // Mostrar el modal
+  if (!modal) return;
   modal.style.display = 'block';
   modal.style.visibility = 'visible';
   modal.style.opacity = '1';
-  
-  console.log('Modal mostrado con display: block');
-  
-  // Verificar que se mostró
-  setTimeout(() => {
-    const computedStyle = window.getComputedStyle(modal);
-    console.log('Computed style display:', computedStyle.display);
-    console.log('Computed style visibility:', computedStyle.visibility);
-  }, 100);
-  
-  // Limpiar el formulario si existe
   const form = document.getElementById('addVehicleForm');
   if (form) {
     form.reset();
     const statusField = document.getElementById('addVehicleStatus');
     const yearField = document.getElementById('addVehicleYear');
     const mileageField = document.getElementById('addVehicleMileage');
-    
     if (statusField) statusField.value = 'disponible';
     if (yearField) yearField.value = new Date().getFullYear();
     if (mileageField) mileageField.value = '0';
-    
-    console.log('Formulario limpiado');
   }
 }
 
@@ -1308,8 +1278,6 @@ function initVehicleModals() {
   }
   
   // Botón para añadir vehículo - usar event delegation para evitar conflictos
-  console.log('Configurando event delegation para addVehicle');
-  
   // Remover event listeners anteriores si existen
   const existingListener = document.getElementById('addVehicle');
   if (existingListener) {
@@ -1319,7 +1287,6 @@ function initVehicleModals() {
   // Usar event delegation en el documento
   document.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'addVehicle') {
-      console.log('Botón addVehicle clickeado via delegation');
       e.preventDefault();
       e.stopPropagation();
       showAddVehicleModal();
@@ -2328,46 +2295,7 @@ window.showAddVehicleModal = showAddVehicleModal;
 window.createVehicle = createVehicle;
 
 // Función de prueba para el modal
-window.testAddVehicleModal = function() {
-  console.log('=== PROBANDO MODAL MANUALMENTE ===');
-  const modal = document.getElementById('addVehicleModal');
-  console.log('Modal encontrado:', modal);
-  
-  if (modal) {
-    // Forzar el modal a mostrarse
-    modal.style.display = 'block !important';
-    modal.style.visibility = 'visible !important';
-    modal.style.opacity = '1 !important';
-    modal.style.zIndex = '9999 !important';
-    modal.style.position = 'fixed !important';
-    
-    // Agregar clase visible si existe
-    modal.classList.add('visible');
-    modal.classList.remove('hidden');
-    
-    console.log('Modal forzado a mostrarse');
-    
-    // Verificar estilos después de un momento
-    setTimeout(() => {
-      const computedStyle = window.getComputedStyle(modal);
-      console.log('Estilos computados:');
-      console.log('- display:', computedStyle.display);
-      console.log('- visibility:', computedStyle.visibility);
-      console.log('- opacity:', computedStyle.opacity);
-      console.log('- z-index:', computedStyle.zIndex);
-      console.log('- position:', computedStyle.position);
-    }, 100);
-  } else {
-    console.error('Modal no encontrado');
-    
-    // Buscar todos los modales
-    const allModals = document.querySelectorAll('[id*="Vehicle"]');
-    console.log('Modales relacionados con vehículos:', allModals);
-    
-    const allModals2 = document.querySelectorAll('.modal');
-    console.log('Todos los modales:', allModals2);
-  }
-};
+// Eliminada función de prueba testAddVehicleModal por no ser necesaria en producción
 
 // Inicializar event listeners para modales
 function initModalEventListeners() {
@@ -2605,23 +2533,19 @@ function main() {
   renderAssignments();
   
   // Inicializar modales inmediatamente
-  console.log('Inicializando modales inmediatamente...');
   initClientModals();
   initVehicleModals();
   initRouteModals();
   initDriverModals();
   initCouponModals();
-  console.log('Modales inicializados inmediatamente');
   
   // También inicializar después de un delay por si acaso
   setTimeout(() => {
-    console.log('Inicializando modales con delay...');
     initClientModals();
     initVehicleModals();
     initRouteModals();
     initDriverModals();
     initCouponModals();
-    console.log('Modales inicializados con delay');
   }, 100);
   // El mapa se inicializa solo cuando se accede a la pestaña GPS
 }

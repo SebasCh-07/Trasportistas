@@ -123,9 +123,8 @@
       </div>
     </div>
 
-    <script type="module" src="shared/assets/scripts.js"></script>
     <script type="module">
-        import { Auth, registerUser } from './shared/assets/scripts.js';
+        import { Auth, registerUser, notify } from './shared/assets/scripts.js';
 
         document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -179,7 +178,6 @@
 
         // Registro
         let pickedPoint = null;
-        const openMapBtn = document.getElementById('openMap');
         const mapModal = document.getElementById('mapModal');
         const mapBackdrop = document.getElementById('mapBackdrop');
         const mapPicker = document.getElementById('mapPicker');
@@ -205,7 +203,6 @@
         }
         document.getElementById('closeMap').onclick = closeMap;
         document.getElementById('cancelMap').onclick = closeMap;
-        openMapBtn.onclick = openMap;
         let mapPickerInstance = null; let mapPickerMarker = null;
         document.getElementById('openMap').addEventListener('click', async () => {
           openMap();
@@ -253,6 +250,7 @@
 
         registerForm.addEventListener('submit', (e) => {
           e.preventDefault();
+          const roleEl = document.getElementById('regRole');
           const payload = {
             nombres: document.getElementById('regNombres').value.trim(),
             apellidos: document.getElementById('regApellidos').value.trim(),
@@ -260,7 +258,7 @@
             telefono: document.getElementById('regTelefono').value.trim(),
             direccion: document.getElementById('regDireccion').value.trim(),
             email: document.getElementById('regEmail').value.trim(),
-            role: document.getElementById('regRole').value,
+            role: roleEl ? roleEl.value : 'cliente',
             password: document.getElementById('regPass').value,
             password2: document.getElementById('regPass2').value,
             location: pickedPoint,

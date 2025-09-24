@@ -365,19 +365,22 @@ function renderBookings() {
 
   const current = my.find(b => b.status === 'En Curso' && b.driverId);
   const map = document.getElementById('trackingMap');
+  if (!map) return;
   map.innerHTML = '';
   if (trackingInterval?.stop) { trackingInterval.stop(); trackingInterval = null; }
-  if (current) {
-    startLeafletTracking(map, [-0.1807, -78.4678]).then(inst => {
-      trackingInterval = inst;
-      setTimeout(() => { try { inst.map.invalidateSize(); } catch {} }, 50);
-    });
-  } else {
-    // Mostrar siempre un mapa real como base
-    initLeafletMap(map, { center: [-0.1807, -78.4678], zoom: 12 }).then(m => {
-      setTimeout(() => { try { m.invalidateSize(); } catch {} }, 50);
-    });
-  }
+  (async () => {
+    try {
+      await ensureLeaflet();
+      if (current) {
+        const inst = await startLeafletTracking(map, [-0.1807, -78.4678]);
+        trackingInterval = inst;
+        setTimeout(() => { try { inst.map.invalidateSize(); } catch {} }, 50);
+      } else {
+        const m = await initLeafletMap(map, { center: [-0.1807, -78.4678], zoom: 12 });
+        setTimeout(() => { try { m.invalidateSize(); } catch {} }, 50);
+      }
+    } catch {}
+  })();
 }
 
 function renderHistory() {
