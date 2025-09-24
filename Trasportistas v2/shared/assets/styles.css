@@ -27,6 +27,11 @@
   --radius-lg: 1rem;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.15s ease-out;
+  /* Variables de alto contraste (opcional) */
+  --hc-text: #0b1220;
+  --hc-on-dark: #ffffff;
+  --hc-border: #94a3b8;
+  --hc-focus: #111827;
 }
 
 * { 
@@ -49,6 +54,18 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Foco visible accesible */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--primary-700);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.25);
+}
+
+.hc :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--hc-focus);
+  box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.35);
 }
 
 .auth-page { 
@@ -228,6 +245,11 @@ input, select {
   font-family: inherit;
 }
 
+/* Placeholders con mejor contraste */
+input::placeholder, select::placeholder {
+  color: #475569;
+}
+
 input:focus, select:focus { 
   border-color: var(--primary); 
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -323,6 +345,13 @@ input:hover, select:hover {
   transform: translateY(-1px);
 }
 
+/* Estado deshabilitado accesible */
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+}
+
 .btn.success { 
   background: linear-gradient(135deg, var(--success), var(--success-light)); 
   color: white;
@@ -384,6 +413,11 @@ input:hover, select:hover {
   animation: slideDown 0.3s ease-out;
   font-weight: 500;
 }
+
+/* Refuerzo de contraste en bordes de alertas */
+.alert.error { border-color: rgba(220, 38, 38, 0.4); }
+.alert.success { border-color: rgba(16, 185, 129, 0.45); }
+.alert.info { border-color: rgba(14, 165, 233, 0.45); }
 
 .alert::before {
   content: '';
@@ -1902,7 +1936,7 @@ tbody tr:hover td::before {
 
 /* Enlaces */
 a { color: var(--primary); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 2px; }
 
 /* Scrollbar */
 * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
@@ -2201,6 +2235,7 @@ a:hover { text-decoration: underline; }
   }
 }
 
+
 /* Mejoras de accesibilidad */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -2208,6 +2243,31 @@ a:hover { text-decoration: underline; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Enlaces con subrayado más notorio en dark */
+@media (prefers-color-scheme: dark) {
+  a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+}
+
+/* Preferencia de más contraste */
+@media (prefers-contrast: more) {
+  :root { --border: var(--hc-border); --text: var(--hc-text); }
+  .card, .checkout-form, .summary-card, .section-box { border-color: var(--hc-border); box-shadow: none; }
+  .tabs { background: #ffffff; }
+  .tab { color: var(--text); border-color: var(--border); }
+  .tab.active { filter: saturate(1.1) contrast(1.15); }
+  .alert { border-width: 2px; }
+  .btn.primary { filter: contrast(1.15) saturate(1.05); }
+  .btn.ghost { border-color: var(--hc-border); }
+}
+
+/* Alto contraste del sistema (Windows) */
+@media (forced-colors: active) {
+  :root { --border: CanvasText; }
+  .btn, .card, .alert, input, select { border: 1px solid CanvasText; }
+  .btn.primary { background: Highlight; color: HighlightText; }
+  .tab.active { background: Highlight; color: HighlightText; }
 }
 
 /* Responsivo mejorado */
