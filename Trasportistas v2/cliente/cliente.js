@@ -1,4 +1,4 @@
-import { db, Storage, mountSharedChrome, requireRole, Session, notify, startLeafletTracking, initLeafletMap, ensureLeaflet } from '../shared/assets/scripts.js';
+import { db, Storage, mountSharedChrome, requireRole, Session, notify, startLeafletTracking, initLeafletMap, ensureLeaflet, getPriceForUser } from '../shared/assets/scripts.js';
 
 const state = {
   routes: Storage.load('data:routes', db.routes),
@@ -32,8 +32,12 @@ function getOrResetLeafletMap(container, center, zoom) {
 function renderCatalog() {
   const list = document.getElementById('catalog');
   const routes = state.routes.filter(r => (r.type || 'tour').toLowerCase() === 'tour');
+  const userRole = Session.getUser()?.role || 'cliente';
   const fmtUSD = (n) => `$${Number(n).toFixed(2)} usd`;
-  list.innerHTML = routes.map(r => `
+  list.innerHTML = routes.map(r => {
+    const displayPrice = getPriceForUser(r, userRole);
+    const childPrice = (typeof r.childPrice === 'number' && isFinite(r.childPrice)) ? r.childPrice : null;
+    return `
     <div class="tour-card">
       <div class="tour-media" style="background-image:url('${r.image || ''}')"></div>
       <div class="tour-body">
@@ -44,11 +48,11 @@ function renderCatalog() {
           <div class="price-grid">
             <div class="price-col">
               <div class="price-label">Adultos</div>
-              <div class="price-value">${fmtUSD(r.basePrice)}</div>
+              <div class="price-value">${fmtUSD(displayPrice)}</div>
             </div>
             <div class="price-col">
               <div class="price-label">Niños</div>
-              <div class="price-value">${fmtUSD(r.basePrice * 0.40)}</div>
+              <div class="price-value">${childPrice !== null ? fmtUSD(childPrice) : '-'}</div>
             </div>
           </div>
         </div>
@@ -59,7 +63,8 @@ function renderCatalog() {
           </div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   list.querySelectorAll('button[data-book]')?.forEach(btn => {
     btn.addEventListener('click', () => openBookingModal(btn.getAttribute('data-book')));
   });
@@ -71,6 +76,9 @@ function renderCatalog() {
   list.querySelectorAll('button[data-view]').forEach(btn => {
     btn.addEventListener('click', () => {
       const r = state.routes.find(x => x.id === btn.getAttribute('data-view'));
+      const userRole = Session.getUser()?.role || 'cliente';
+      const displayPrice = getPriceForUser(r, userRole);
+      const childPrice = (typeof r.childPrice === 'number' && isFinite(r.childPrice)) ? r.childPrice : null;
       document.getElementById('routeTitle').textContent = r.name;
       document.getElementById('routeBody').innerHTML = `
         <div class="grid cols-2">
@@ -78,7 +86,8 @@ function renderCatalog() {
           <div>
             <p class="muted">Tipo: ${r.type}</p>
             <p>${r.description || ''}</p>
-            <p><strong>Precio:</strong> $${r.basePrice}</p>
+            <p><strong>Adultos:</strong> $${Number(displayPrice).toFixed(2)} usd</p>
+            ${childPrice !== null ? `<p><strong>Niños:</strong> $${Number(childPrice).toFixed(2)} usd</p>` : ''}
           </div>
         </div>`;
       modal.classList.add('show'); backdrop.classList.add('show');
@@ -236,7 +245,9 @@ function openCheckoutModal(tempBooking) {
   document.getElementById('sumFecha').textContent = fechaStr;
   document.getElementById('sumHora').textContent = horaStr;
   document.getElementById('sumPersonas').textContent = `${pax} ${pax===1?'Persona':'Personas'}`;
-  document.getElementById('sumSubtotal').textContent = `$${(route?.basePrice || 0).toFixed(2)} USD`;
+  const userRole = Session.getUser()?.role || 'cliente';
+  const displayPrice = getPriceForUser(route, userRole);
+  document.getElementById('sumSubtotal').textContent = `$${(displayPrice || 0).toFixed(2)} USD`;
 
   const modal = document.getElementById('checkoutModal');
   const backdrop = document.getElementById('checkoutBackdrop');
@@ -363,7 +374,7 @@ function renderBookings() {
   if (tabConf) tabConf.innerHTML = `Confirmado <span class="tab-count">${confirmed.length}</span>`;
   if (tabCurso) tabCurso.innerHTML = `En Curso <span class="tab-count">${inProgress.length}</span>`;
 
-  const current = my.find(b => b.status === 'En Curso' && b.driverId);
+  const current = my.find(b => (b.status || '').toLowerCase() === 'en curso' && b.driverId);
   const map = document.getElementById('trackingMap');
   if (!map) return;
   map.innerHTML = '';
@@ -855,6 +866,10 @@ function pollChanges() {
         if (prevStatus !== 'en curso' && nowStatus === 'en curso') {
           notify(`Tu reserva ${now.id} ya está en curso.`, 'info');
         }
+        // Notificación al pasar a Completado
+        if (prevStatus !== 'completado' && nowStatus === 'completado') {
+          notify(`Tu reserva ${now.id} ha finalizado. ¡Gracias por viajar con nosotros!`, 'success');
+        }
       });
     } catch {}
     // Re-render en cualquier cambio
@@ -886,8 +901,7 @@ function main() {
     const notas = document.getElementById('bkNotas')?.value || '';
     const adultos = parseInt(document.getElementById('bkAdultos')?.value || '0', 10);
     const ninos = parseInt(document.getElementById('bkNinos')?.value || '0', 10);
-    const infantes = parseInt(document.getElementById('bkInfantes')?.value || '0', 10);
-    const pasajeros = Math.max(0, adultos) + Math.max(0, ninos) + Math.max(0, infantes);
+    const pasajeros = Math.max(0, adultos) + Math.max(0, ninos);
     const asientos = parseInt(document.getElementById('bkAsientos')?.value || '1', 10);
     const ubicacionTxt = document.getElementById('bkUbicacion')?.value || '';
     if (!fecha) { notify('Selecciona fecha y hora', 'error'); return; }
@@ -908,8 +922,8 @@ function main() {
       mode: state.routeMode,
       serviceType: 'tour',
       details: isPrivada 
-        ? { adultos, ninos, infantes, pasajeros, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
-        : { adultos, ninos, infantes, pasajeros, asientos, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
+        ? { adultos, ninos, pasajeros, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
+        : { adultos, ninos, pasajeros, asientos, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
     };
     // No guardamos aún, abrimos checkout con un borrador
     closeBookingModal();

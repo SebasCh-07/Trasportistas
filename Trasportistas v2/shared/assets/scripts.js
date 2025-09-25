@@ -122,6 +122,38 @@ export function getPriceWithEmpresa(route, empresaId) {
   return Math.round(route.basePrice * (1 + (emp.priceMarkupPercent || 0) / 100));
 }
 
+// Obtener precio según el rol del usuario (clienteEmpresa ve precio total, otros ven precio base)
+export function getPriceForUser(route, userRole) {
+  if (!route) return 0;
+  
+  // Solo el rol clienteEmpresa ve el precio total (base + surcharge)
+  if (userRole === 'clienteEmpresa') {
+    const basePrice = parseFloat(route.basePrice) || 0;
+    const surcharge = parseFloat(route.surcharge) || 0;
+    return basePrice + surcharge;
+  }
+  
+  // Todos los demás roles ven solo el precio base
+  return parseFloat(route.basePrice) || 0;
+}
+
+// Obtener precio para niños según el rol del usuario (clienteEmpresa ve precio total con tarifa)
+export function getChildPriceForUser(route, userRole) {
+  if (!route) return null;
+  
+  const childBasePrice = parseFloat(route.childPrice) || null;
+  if (childBasePrice === null) return null;
+  
+  // Solo el rol clienteEmpresa ve el precio total para niños (childPrice + surcharge)
+  if (userRole === 'clienteEmpresa') {
+    const surcharge = parseFloat(route.surcharge) || 0;
+    return childBasePrice + surcharge;
+  }
+  
+  // Todos los demás roles ven solo el precio base para niños
+  return childBasePrice;
+}
+
 // Leaflet loader y utilidades de mapas reales
 let leafletLoading = null;
 export async function ensureLeaflet() {

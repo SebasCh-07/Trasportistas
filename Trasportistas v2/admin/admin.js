@@ -10,6 +10,8 @@ const state = {
   clients: Storage.load('data:clients', []),
 };
 
+let __lastBookingsSnapshot = null;
+
 // Agregar conductores de ejemplo si no existen
 function ensureSampleDrivers() {
   if (state.drivers.length <= 1) {
@@ -184,7 +186,8 @@ function renderDrivers() {
 
 function renderRoutes() {
   const container = document.getElementById('routesTable');
-  const rows = state.routes.map(r => `
+  const routesToShow = state.routes.filter(r => !['transfer','aeropuerto'].includes((r.type || '').toLowerCase()));
+  const rows = routesToShow.map(r => `
     <tr>
       <td>
         <span class="route-type ${r.type}">${r.type.toUpperCase()}</span>
@@ -194,6 +197,7 @@ function renderRoutes() {
         <strong>${r.name}</strong>
       </td>
       <td><span class="price">$${r.basePrice}</span></td>
+      <td>${typeof r.childPrice === 'number' ? `$${r.childPrice}` : '-'}</td>
       <td>
         <span class="status-badge ${r.status || 'activo'}">${(r.status || 'activo').toUpperCase()}</span>
       </td>
@@ -204,7 +208,7 @@ function renderRoutes() {
       </td>
     </tr>`).join('');
   
-  container.innerHTML = table(['Tipo','Nombre','Precio','Estado','Acciones'], rows);
+  container.innerHTML = table(['Tipo','Nombre','Precio','Niños','Estado','Acciones'], rows);
   
   container.querySelectorAll('button[data-action]')?.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -332,6 +336,7 @@ function renderAssignmentTab(tabName) {
     const route = state.routes.find(r => r.id === b.routeId);
     const driver = b.driverId ? state.drivers.find(d => d.id === b.driverId) : null;
     const vehicle = driver?.vehicleId ? state.fleet.find(v => v.id === driver.vehicleId) : null;
+    const client = b.userId ? state.users.find(u => u.id === b.userId) : null;
     
     return `
       <tr>
@@ -342,6 +347,23 @@ function renderAssignmentTab(tabName) {
         <td>
           <div style="font-weight: 600;">${route?.name || 'Ruta no encontrada'}</div>
           <div style="font-size: 12px; color: var(--text-secondary);">$${route?.basePrice || 0}</div>
+        </td>
+        <td>
+          ${client ? `
+            <div class="driver-info">
+              <div class="driver-avatar">${(client.name || '?').charAt(0).toUpperCase()}</div>
+              <div class="driver-details">
+                <div class="driver-name">${client.name}</div>
+                <div class="driver-phone">${client.email || ''}</div>
+                <div>
+                  <span class="user-role-badge ${client.role}">${(client.role || '').toUpperCase()}</span>
+                  <button class="btn ghost" style="margin-left:8px; padding:4px 8px; font-size:12px;" onclick="openViewClientModal('${client.id}')">Ver</button>
+                </div>
+              </div>
+            </div>
+          ` : `
+            <div style="color: var(--text-secondary); font-style: italic;">Cliente no encontrado</div>
+          `}
         </td>
         <td>
           <span class="status-badge ${b.status.toLowerCase().replace(' ', '-')}">${b.status}</span>
@@ -398,6 +420,7 @@ function renderAssignmentTab(tabName) {
         <tr>
           <th>Reserva</th>
           <th>Ruta</th>
+          <th>Cliente</th>
           <th>Estado</th>
           <th>Conductor</th>
           <th>Acciones</th>
@@ -885,6 +908,7 @@ function openViewRouteModal(routeId) {
           <p><strong>Nombre:</strong> ${route.name}</p>
           <p><strong>Tipo:</strong> ${route.type.toUpperCase()}</p>
           <p><strong>Precio Base:</strong> $${route.basePrice}</p>
+          ${typeof route.childPrice === 'number' ? `<p><strong>Precio Niños:</strong> $${route.childPrice}</p>` : ''}
           <p><strong>Estado:</strong> <span class="status-badge ${route.status || 'activo'}">${(route.status || 'activo').toUpperCase()}</span></p>
         </div>
       </div>
@@ -929,6 +953,7 @@ function openEditRouteModal(routeId) {
   document.getElementById('editRouteType').value = route.type;
   document.getElementById('editRouteName').value = route.name;
   document.getElementById('editRoutePrice').value = route.basePrice;
+  document.getElementById('editRouteChildPrice').value = route.childPrice || '';
   document.getElementById('editRouteDescription').value = route.description || '';
   document.getElementById('editRouteImage').value = route.image || '';
   document.getElementById('editRouteStatus').value = route.status || 'activo';
@@ -956,6 +981,7 @@ function createRoute() {
   const type = formData.get('type').trim();
   const name = formData.get('name').trim();
   const basePrice = parseFloat(formData.get('basePrice')) || 0;
+  const childPrice = formData.get('childPrice') ? parseFloat(formData.get('childPrice')) : null;
   const description = formData.get('description').trim();
   const image = formData.get('image').trim();
   
@@ -975,6 +1001,7 @@ function createRoute() {
     type: type.toLowerCase(),
     name,
     basePrice,
+    childPrice,
     description: description || null,
     image: image || null,
     status: 'activo',
@@ -1038,6 +1065,7 @@ function initRouteModals() {
       route.type = document.getElementById('editRouteType').value.toLowerCase();
       route.name = document.getElementById('editRouteName').value.trim();
       route.basePrice = parseFloat(document.getElementById('editRoutePrice').value) || 0;
+  route.childPrice = document.getElementById('editRouteChildPrice').value ? parseFloat(document.getElementById('editRouteChildPrice').value) : null;
       route.description = document.getElementById('editRouteDescription').value.trim() || null;
       route.image = document.getElementById('editRouteImage').value.trim() || null;
       route.status = document.getElementById('editRouteStatus').value;
@@ -2293,6 +2321,7 @@ window.closeModal = closeModal;
 window.showModal = showModal;
 window.showAddVehicleModal = showAddVehicleModal;
 window.createVehicle = createVehicle;
+window.openViewClientModal = openViewClientModal;
 
 // Función de prueba para el modal
 // Eliminada función de prueba testAddVehicleModal por no ser necesaria en producción
@@ -2326,6 +2355,14 @@ function initModalEventListeners() {
       ensureSampleRoutes();
       renderRoutes();
       notify('Rutas de ejemplo cargadas correctamente', 'success');
+    });
+  }
+  
+  // Botón para actualizar precios de niños
+  const updateChildPricesBtn = document.getElementById('updateChildPrices');
+  if (updateChildPricesBtn) {
+    updateChildPricesBtn.addEventListener('click', () => {
+      updateChildPrices();
     });
   }
   
@@ -2422,11 +2459,37 @@ function renderSystemStatus() {
   container.innerHTML = table(['Componente','Estado'], rows);
 }
 
+// Función para actualizar precios de ejemplo para niños en rutas existentes
+function updateChildPrices() {
+  let updated = false;
+  state.routes.forEach(route => {
+    if (typeof route.childPrice !== 'number' || route.childPrice === null || route.childPrice === undefined) {
+      // Calcular precio de niños como 60% del precio base
+      route.childPrice = Math.round(route.basePrice * 0.6 * 100) / 100;
+      updated = true;
+    }
+  });
+  
+  if (updated) {
+    saveAll();
+    renderRoutes();
+    notify('Precios de ejemplo para niños actualizados', 'success');
+  }
+}
+
 function ensureSampleRoutes() {
+  // Asegurar que todas las rutas tengan precios de ejemplo para niños
+  state.routes.forEach(route => {
+    if (typeof route.childPrice !== 'number') {
+      // Calcular precio de niños como 60% del precio base
+      route.childPrice = Math.round(route.basePrice * 0.6 * 100) / 100;
+    }
+  });
+  
   // Forzar creación de rutas de ejemplo siempre
-  if (state.routes.length === 0 || state.routes.length < 6) {
-    // Limpiar rutas existentes si hay menos de 6
-    if (state.routes.length < 6) {
+  if (state.routes.length === 0 || state.routes.length < 8) {
+    // Limpiar rutas existentes si hay menos de 8
+    if (state.routes.length < 8) {
       state.routes = [];
     }
     const sampleRoutes = [
@@ -2435,6 +2498,7 @@ function ensureSampleRoutes() {
         type: 'tour',
         name: 'Tour Centro Histórico de Quito',
         basePrice: 25.00,
+        childPrice: 15.00,
         description: 'Tour por el centro histórico de Quito.',
         image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop',
         status: 'activo',
@@ -2445,6 +2509,7 @@ function ensureSampleRoutes() {
         type: 'tour',
         name: 'Mitad del Mundo y Teleférico',
         basePrice: 45.00,
+        childPrice: 27.00,
         description: 'Visita el monumento de la Mitad del Mundo y disfruta de las vistas panorámicas desde el Teleférico de Quito. Una experiencia única en la línea ecuatorial.',
         image: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5d?w=800&h=600&fit=crop',
         status: 'activo',
@@ -2455,6 +2520,7 @@ function ensureSampleRoutes() {
         type: 'transfer',
         name: 'Transfer Aeropuerto - Centro',
         basePrice: 15.00,
+        childPrice: 9.00,
         description: 'Traslado directo desde el aeropuerto Mariscal Sucre hacia el centro de Quito. Servicio confiable y puntual.',
         image: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?w=800&h=600&fit=crop',
         status: 'activo',
@@ -2465,6 +2531,7 @@ function ensureSampleRoutes() {
         type: 'aeropuerto',
         name: 'Transfer Aeropuerto - Hoteles',
         basePrice: 20.00,
+        childPrice: 12.00,
         description: 'Servicio de transfer desde/hacia el aeropuerto a los principales hoteles de Quito. Incluye asistencia con equipaje.',
         image: 'https://images.unsplash.com/photo-1556388158-158ea5ccacbd?w=800&h=600&fit=crop',
         status: 'activo',
@@ -2475,6 +2542,7 @@ function ensureSampleRoutes() {
         type: 'tour',
         name: 'Tour Gastronómico Quito',
         basePrice: 35.00,
+        childPrice: 21.00,
         description: 'Descubre la rica gastronomía quiteña visitando mercados tradicionales y restaurantes locales. Incluye degustaciones.',
         image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=600&fit=crop',
         status: 'activo',
@@ -2485,8 +2553,31 @@ function ensureSampleRoutes() {
         type: 'transfer',
         name: 'Transfer Centro - Aeropuerto',
         basePrice: 15.00,
+        childPrice: 9.00,
         description: 'Traslado desde el centro de Quito hacia el aeropuerto Mariscal Sucre. Reserva con anticipación para garantizar disponibilidad.',
         image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=800&h=600&fit=crop',
+        status: 'activo',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'r7',
+        type: 'tour',
+        name: 'Tour Parque Nacional Cotopaxi',
+        basePrice: 55.00,
+        childPrice: 33.00,
+        description: 'Excursión al Parque Nacional Cotopaxi, uno de los volcanes activos más altos del mundo. Incluye senderismo y avistamiento de fauna.',
+        image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        status: 'activo',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'r8',
+        type: 'transfer',
+        name: 'Transfer Ciudad - Valle de Los Chillos',
+        basePrice: 18.00,
+        childPrice: 11.00,
+        description: 'Traslado al hermoso Valle de Los Chillos, perfecto para un día de descanso en la naturaleza.',
+        image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
         status: 'activo',
         createdAt: new Date().toISOString()
       }
@@ -2531,6 +2622,46 @@ function main() {
   renderRoutes();
   renderCoupons();
   renderAssignments();
+  // Polling de cambios de reservas para notificaciones en tiempo real
+  setInterval(() => {
+    try {
+      state.bookings = Storage.load('data:bookings', db.bookings);
+      const minimal = state.bookings.map(b => ({ id: b.id, status: b.status || '', driverId: b.driverId || null }));
+      const snapshot = JSON.stringify(minimal);
+      if (__lastBookingsSnapshot) {
+        const prev = JSON.parse(__lastBookingsSnapshot);
+        const prevMap = new Map(prev.map(x => [x.id, x]));
+        minimal.forEach(now => {
+          const before = prevMap.get(now.id);
+          if (!before) return;
+          const prevStatus = (before.status || '').toLowerCase();
+          const nowStatus = (now.status || '').toLowerCase();
+          if (!before.driverId && now.driverId) {
+            notify(`Reserva ${now.id} asignada a un conductor.`, 'info');
+          }
+          if (prevStatus !== 'confirmado' && nowStatus === 'confirmado') {
+            notify(`Reserva ${now.id} confirmada por el conductor.`, 'success');
+          }
+          if (prevStatus !== 'en curso' && nowStatus === 'en curso') {
+            notify(`Reserva ${now.id} en curso. GPS activo.`, 'info');
+          }
+          if (prevStatus !== 'completado' && nowStatus === 'completado') {
+            notify(`Reserva ${now.id} completada.`, 'success');
+          }
+        });
+        if (__lastBookingsSnapshot !== snapshot) {
+          updateAssignmentCounts();
+          // Re-render pestaña activa de asignaciones para reflejar cambios
+          const activePane = document.querySelector('.assignment-tab-pane.active');
+          const activeId = activePane ? activePane.id : 'pendiente';
+          renderAssignmentTab(activeId);
+          renderRecentBookings();
+          renderStats();
+        }
+      }
+      __lastBookingsSnapshot = snapshot;
+    } catch {}
+  }, 1000);
   
   // Inicializar modales inmediatamente
   initClientModals();

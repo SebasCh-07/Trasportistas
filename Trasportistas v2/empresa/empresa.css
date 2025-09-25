@@ -24,7 +24,7 @@
 .empresa-theme { background: radial-gradient(1200px 800px at 10% 0%, rgba(34,197,94,.10), transparent 60%), radial-gradient(1000px 600px at 100% 100%, rgba(59,130,246,.06), transparent 60%), var(--bg); }
 .empresa-theme .logo-circle { background: linear-gradient(135deg, var(--primary), #0ea5e9); }
 .empresa-theme .tour-card:hover { border-color: rgba(34,197,94,.35); }
-.empresa-theme .btn.primary { background: linear-gradient(135deg, var(--primary), #0ea5e9); }
+.empresa-theme .btn.primary { background: linear-gradient(135deg, #34d399, #22d3ee); }
 .empresa-theme .navbar { background: rgba(255,255,255,.85); border-bottom-color: rgba(34,197,94,.25); }
 .empresa-theme .footer { background: rgba(255,255,255,.85); border-top-color: rgba(34,197,94,.25); }
 .empresa-theme .badge { border-color: rgba(34,197,94,.35); color: #14532d; background: #ecfdf5; }
@@ -81,7 +81,7 @@
 
 .empresa-theme .tour-card .btn.primary {
   color: #ffffff !important;
-  background: linear-gradient(135deg, var(--primary), #0ea5e9) !important;
+  background: linear-gradient(135deg, #34d399, #22d3ee) !important;
 }
 
 /* Forzar todos los textos en tour-card a ser oscuros */
@@ -123,6 +123,7 @@ body.empresa-theme .tour-card .btn.ghost {
 
 body.empresa-theme .tour-card .btn.primary {
   color: #ffffff !important;
+  background: linear-gradient(135deg, #34d399, #22d3ee) !important;
 }
 
 body.empresa-theme .tour-card .badge {
@@ -181,63 +182,63 @@ body.empresa-theme .tour-card .badge {
 
 /* Mejoras específicas para listas en tema empresa */
 .empresa-theme .list-container {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
+  background: linear-gradient(135deg, rgba(248,250,252,0.95), rgba(240,253,244,0.8));
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 6px 18px rgba(52, 211, 153, 0.08);
 }
 
 .empresa-theme .list-container::before {
-  background: linear-gradient(90deg, var(--primary), #0ea5e9);
+  background: linear-gradient(90deg, #34d399, #22d3ee);
 }
 
 .empresa-theme .list-item:hover {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(14, 165, 233, 0.05));
-  box-shadow: inset 4px 0 0 var(--primary);
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(34, 211, 238, 0.08));
+  box-shadow: inset 4px 0 0 #34d399;
 }
 
 .empresa-theme .booking-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.8));
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
+  background: linear-gradient(135deg, rgba(248,250,252,0.95), rgba(240,253,244,0.8));
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 6px 18px rgba(52, 211, 153, 0.08);
 }
 
 .empresa-theme .booking-card:hover {
-  border-color: var(--primary);
-  box-shadow: 0 12px 30px rgba(34, 197, 94, 0.15);
-  background: linear-gradient(135deg, rgba(255,255,255,1), rgba(248,250,252,0.9));
+  border-color: #34d399;
+  box-shadow: 0 8px 24px rgba(52, 211, 153, 0.12);
+  background: linear-gradient(135deg, rgba(248,250,252,1), rgba(240,253,244,0.9));
 }
 
 .empresa-theme .booking-card::before {
-  background: linear-gradient(90deg, var(--primary), #0ea5e9);
+  background: linear-gradient(90deg, #34d399, #22d3ee);
 }
 
 .empresa-theme .booking-media::after {
-  background: linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(14, 165, 233, 0.05));
+  background: linear-gradient(45deg, rgba(52, 211, 153, 0.1), rgba(34, 211, 238, 0.05));
 }
 
 .empresa-theme .booking-aside .price {
-  background: linear-gradient(135deg, var(--primary), #0ea5e9);
+  background: linear-gradient(135deg, #34d399, #22d3ee);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .empresa-theme .action-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(34, 197, 94, 0.1);
+  border-color: #34d399;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
 }
 
 .empresa-theme .action-btn.edit:hover {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: var(--primary);
-  color: var(--primary);
+  background: rgba(52, 211, 153, 0.15);
+  border-color: #34d399;
+  color: #34d399;
 }
 
 .empresa-theme .list-status.active {
-  background: rgba(34, 197, 94, 0.1);
-  color: var(--primary);
-  border-color: var(--primary);
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  border-color: #34d399;
 }
 
 /* Overrides del layout Admin para el tema Empresa */
@@ -262,35 +263,36 @@ body.empresa-theme .tour-card .badge {
 
 /* Botones y acentos */
 .empresa-theme .btn.primary {
-  background: linear-gradient(135deg, #10b981, #0ea5e9);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  background: linear-gradient(135deg, #34d399, #22d3ee);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25);
 }
 
 .empresa-theme .btn.primary:hover {
-  background: linear-gradient(135deg, #059669, #0284c7);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+  box-shadow: 0 6px 18px rgba(52, 211, 153, 0.35);
 }
 
 .empresa-theme .discount-badge,
 .empresa-theme .tab-count,
 .empresa-theme .drivers-table .btn.ghost:hover,
 .empresa-theme .map-control-btn:hover {
-  background: #10b981;
+  background: #34d399;
   color: #ffffff;
-  border-color: #10b981;
+  border-color: #34d399;
 }
 
 /* Tablas y encabezados */
 .empresa-theme .admin-theme th,
 .empresa-theme .assignment-table th {
-  background: linear-gradient(135deg, #047857, #10b981);
+  background: linear-gradient(135deg, #34d399, #22d3ee);
 }
 
 .empresa-theme .assignment-table tbody tr:hover td,
 .empresa-theme .drivers-table tbody tr:hover td,
 .empresa-theme .admin-theme tbody tr:hover td {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(14,165,233,0.05));
-  box-shadow: inset 4px 0 0 #10b981;
+  background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(34,211,238,0.10)) !important;
+  box-shadow: inset 4px 0 0 #34d399;
+  color: #14532d !important;
 }
 
 /* Badges de estado */
@@ -396,29 +398,29 @@ body.empresa-theme .tour-card .badge {
 /* Tablas y listas (TODAS)   */
 /* ========================= */
 .empresa-theme table {
-  background: #ffffff;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: #f0fdf4 !important;
+  border: 1px solid rgba(52, 211, 153, 0.2);
   border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.10);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.1);
   overflow: hidden;
 }
 
 .empresa-theme thead th {
-  background: linear-gradient(135deg, #10b981, #0ea5e9);
+  background: linear-gradient(135deg, #34d399, #22d3ee);
   color: #ffffff !important;
   border-bottom: none;
 }
 
 .empresa-theme tbody td {
-  background: #ffffff;
-  color: #0f172a;
-  border-bottom: 1px solid #e2e8f0;
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+  border-bottom: 1px solid #dcfce7;
 }
 
 .empresa-theme tbody tr:hover td {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(14,165,233,0.05));
-  box-shadow: inset 4px 0 0 #10b981;
-  color: #0f172a !important;
+  background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(34,211,238,0.10)) !important;
+  box-shadow: inset 4px 0 0 #34d399;
+  color: #14532d !important;
 }
 
 /* Evitar que el hover baje el contraste del contenido */
@@ -426,6 +428,32 @@ body.empresa-theme .tour-card .badge {
 .empresa-theme .drivers-table tbody tr:hover td * {
   color: inherit !important;
   opacity: 1 !important;
+}
+
+/* FORZAR fondos claros en TODAS las tablas del tema empresa */
+.empresa-theme tbody tr td,
+.empresa-theme .drivers-table tbody tr td,
+.empresa-theme .assignment-table tbody tr td,
+.empresa-theme .admin-theme tbody tr td,
+.empresa-theme table tbody tr td {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+}
+
+/* FORZAR fondos claros en todas las celdas de datos */
+.empresa-theme tbody tr,
+.empresa-theme .drivers-table tbody tr,
+.empresa-theme .assignment-table tbody tr,
+.empresa-theme .admin-theme tbody tr {
+  background: #f0fdf4 !important;
+}
+
+.empresa-theme tbody tr td,
+.empresa-theme .drivers-table tbody tr td,
+.empresa-theme .assignment-table tbody tr td,
+.empresa-theme .admin-theme tbody tr td {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
 }
 
 /* Mantener badges y botones legibles en hover */
@@ -443,16 +471,44 @@ body.empresa-theme .tour-card .badge {
 .empresa-theme .section-header h3 { color: #065f46; }
 .empresa-theme .card { border: 1px solid rgba(16,185,129,.18); background: #ffffff; }
 
+/* FORZAR fondos claros en tablas del dashboard y todas las pantallas */
+.empresa-theme #recentBookings table tbody tr td,
+.empresa-theme #systemStatus table tbody tr td,
+.empresa-theme #clientsTable table tbody tr td,
+.empresa-theme #fleetTable table tbody tr td,
+.empresa-theme #driversTable table tbody tr td,
+.empresa-theme #routesTable table tbody tr td,
+.empresa-theme #assignments-pendiente table tbody tr td,
+.empresa-theme #assignments-asignadas table tbody tr td,
+.empresa-theme #assignments-en-curso table tbody tr td,
+.empresa-theme #assignments-completadas table tbody tr td {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+}
+
+.empresa-theme #recentBookings table tbody tr,
+.empresa-theme #systemStatus table tbody tr,
+.empresa-theme #clientsTable table tbody tr,
+.empresa-theme #fleetTable table tbody tr,
+.empresa-theme #driversTable table tbody tr,
+.empresa-theme #routesTable table tbody tr,
+.empresa-theme #assignments-pendiente table tbody tr,
+.empresa-theme #assignments-asignadas table tbody tr,
+.empresa-theme #assignments-en-curso table tbody tr,
+.empresa-theme #assignments-completadas table tbody tr {
+  background: #f0fdf4 !important;
+}
+
 /* Acciones en tablas */
 .empresa-theme .table-actions .btn.ghost {
-  background: #ffffff;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
+  background: #f8fafc;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
 }
 .empresa-theme .table-actions .btn.ghost:hover {
-  background: #10b981;
+  background: #34d399;
   color: #ffffff;
-  border-color: #10b981;
+  border-color: #34d399;
 }
 
 /* Badges específicas de tablas */
@@ -463,65 +519,87 @@ body.empresa-theme .tour-card .badge {
 
 /* Listas y tarjetas de listas (adaptación al tema Empresa) */
 .empresa-theme .list-container {
-  background: linear-gradient(135deg, #ffffff, #f0fdf4);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.12);
+  background: linear-gradient(135deg, #f8fafc, #f0fdf4);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 6px 18px rgba(52, 211, 153, 0.08);
 }
 
 .empresa-theme .list-container::before {
-  background: linear-gradient(90deg, #10b981, #0ea5e9);
+  background: linear-gradient(90deg, #34d399, #22d3ee);
 }
 
 .empresa-theme .list-item {
-  background: #ffffff;
-  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: #f8fafc;
+  border: 1px solid rgba(52, 211, 153, 0.15);
+  color: #1e293b;
 }
 
 .empresa-theme .list-item:hover {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(14,165,233,0.05));
-  box-shadow: inset 4px 0 0 #10b981;
-  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(34,211,238,0.08));
+  box-shadow: inset 4px 0 0 #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #1e293b;
 }
 
 /* Listas de conductores (remover look oscuro y usar paleta empresa) */
 .empresa-theme .drivers-list {
-  background: #ffffff;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.12);
+  background: #f8fafc;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.08);
 }
 
-.empresa-theme .drivers-cards-container { padding: 16px; background: linear-gradient(180deg, #ffffff, #f0fdf4); }
+.empresa-theme .drivers-cards-container { padding: 16px; background: linear-gradient(180deg, #f8fafc, #f0fdf4); }
 
 .empresa-theme .driver-card-item {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #064e3b;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
 }
 
 .empresa-theme .driver-card-item:hover {
-  background: #d1fae5;
-  border-color: #34d399;
+  background: #dcfce7;
+  border-color: #4ade80;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.18);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15);
+  color: #14532d;
 }
 
 .empresa-theme .driver-card-header { margin-bottom: 10px; }
-.empresa-theme .driver-name { color: #065f46; }
+.empresa-theme .driver-name { color: #14532d; }
 
 .empresa-theme .driver-status-badge {
-  background: #a7f3d0;
-  color: #065f46;
+  background: #bbf7d0;
+  color: #14532d;
 }
 .empresa-theme .driver-status-badge.libre {
-  background: #10b981;
+  background: #34d399;
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 2px 6px rgba(52, 211, 153, 0.3);
 }
 .empresa-theme .driver-status-badge.ocupado { background: #ef4444; color: #ffffff; }
 .empresa-theme .driver-status-badge.en-ruta { background: #f59e0b; color: #ffffff; }
 
-.empresa-theme .driver-description { color: #0f766e; }
-.empresa-theme .action-btn { background: #ffffff; border: 1px solid #a7f3d0; color: #065f46; }
-.empresa-theme .action-btn:hover { background: #10b981; border-color: #10b981; color: #ffffff; }
+.empresa-theme .driver-description { color: #166534; }
+.empresa-theme .action-btn { background: #f8fafc; border: 1px solid #bbf7d0; color: #14532d; }
+.empresa-theme .action-btn:hover { background: #34d399; border-color: #34d399; color: #ffffff; }
+
+/* REGLA GLOBAL para forzar fondos claros en TODAS las tablas del tema empresa */
+.empresa-theme table tbody tr td {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+}
+
+.empresa-theme table tbody tr {
+  background: #f0fdf4 !important;
+}
+
+/* Sobrescribir cualquier estilo inline que pueda estar aplicando fondos oscuros */
+.empresa-theme table tbody tr[style*="background"] {
+  background: #f0fdf4 !important;
+}
+
+.empresa-theme table tbody tr td[style*="background"] {
+  background: #f0fdf4 !important;
+}
 
 

@@ -74,7 +74,7 @@
       }`
     );
 
-    // 2) Reemplazar el submit del formulario de edición para sumar solo la tarifa adicional al precio
+    // 2) Reemplazar el submit del formulario de edición para guardar SOLO la tarifa adicional (precio niños lo define Admin)
     code = code.replace(
       /if \(editForm\) \{[\s\S]*?editForm\.addEventListener\('submit',[\s\S]*?\}\);[\s\S]*?\}/,
       `if (editForm) {
@@ -87,7 +87,7 @@
           const surchargeEl = document.getElementById('editRouteSurcharge');
           const surcharge = surchargeEl ? parseFloat(surchargeEl.value) || 0 : 0;
           if (surcharge < 0) { notify('La tarifa adicional no puede ser negativa', 'error'); return; }
-          route.basePrice = (parseFloat(route.basePrice) || 0) + surcharge;
+          route.surcharge = surcharge;
           route.updatedAt = new Date().toISOString();
           saveAll();
           renderRoutes();
@@ -106,43 +106,94 @@
       });
     `;
 
-    // 4) Ajustes robustos post-render para Rutas: precio con tarifa, asegurar botón Editar y sin Eliminar
+    // 4) Sobrescribir completamente renderRoutes para mostrar precio total correcto
     code += `
       (function(){
+        // Guardar la función original
         const __origRenderRoutes = renderRoutes;
-        renderRoutes = function(){
-          __origRenderRoutes();
-          try {
-            const container = document.getElementById('routesTable');
-            if (!container) return;
-            const rows = container.querySelectorAll('tbody tr');
-            rows.forEach(tr => {
-              const viewBtn = tr.querySelector('button[data-action="view"]');
-              const id = viewBtn ? viewBtn.getAttribute('data-id') : null;
-              if (!id) return;
-              const route = state.routes.find(r => r.id === id);
-              if (!route) return;
-              const priceEl = tr.querySelector('.price');
-              if (priceEl) {
-                const total = (parseFloat(route.basePrice) || 0) + (parseFloat(route.surcharge) || 0);
-                priceEl.textContent = '$' + total;
-              }
-              tr.querySelectorAll('button[data-action="del"]').forEach(b => b.remove());
-              let editBtn = tr.querySelector('button[data-action="edit"]');
-              const actionsTd = tr.querySelector('td.table-actions');
-              if (!editBtn && actionsTd) {
-                editBtn = document.createElement('button');
-                editBtn.className = 'btn ghost';
-                editBtn.setAttribute('data-action','edit');
-                editBtn.setAttribute('data-id', id);
-                editBtn.title = 'Editar ruta';
-                editBtn.textContent = '✏️';
-                editBtn.addEventListener('click', () => openEditRouteModal(id));
-                actionsTd.appendChild(editBtn);
+        const __origTable = table;
+        
+        // Sobrescribir la función table para interceptar la creación de tablas de rutas
+        table = function(headers, rows) {
+          const result = __origTable(headers, rows);
+          
+          // Si es la tabla de rutas, actualizar los precios
+          if (headers && headers.includes('Precio')) {
+            // Buscar todos los elementos de precio y actualizarlos
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = result;
+            
+            const priceElements = tempDiv.querySelectorAll('.price');
+            priceElements.forEach(el => {
+              const row = el.closest('tr');
+              const viewBtn = row?.querySelector('button[data-action="view"]');
+              if (viewBtn) {
+                const routeId = viewBtn.getAttribute('data-id');
+                const route = state.routes.find(r => r.id === routeId);
+                if (route) {
+                  const totalPrice = (parseFloat(route.basePrice) || 0) + (parseFloat(route.surcharge) || 0);
+                  el.textContent = '$' + totalPrice;
+                }
               }
             });
-          } catch(e) { console.error('Patch renderRoutes empresa:', e); }
+            
+            return tempDiv.innerHTML;
+          }
+          
+          return result;
         };
+        
+        // Sobrescribir renderRoutes (mostrar también precio niños + tarifa)
+        renderRoutes = function(){
+          const container = document.getElementById('routesTable');
+          if (!container) return;
+          
+          const rows = state.routes.map(r => {
+            const totalPrice = (parseFloat(r.basePrice) || 0) + (parseFloat(r.surcharge) || 0);
+            const childTotal = (typeof r.childPrice === 'number') ? ((parseFloat(r.childPrice) || 0) + (parseFloat(r.surcharge) || 0)) : null;
+            return '<tr>' +
+              '<td>' +
+                '<span class="route-type ' + r.type + '">' + r.type.toUpperCase() + '</span>' +
+                (r.image ? '<br><small class="muted">📷 Con imagen</small>' : '') +
+              '</td>' +
+              '<td>' +
+                '<strong>' + r.name + '</strong>' +
+              '</td>' +
+              '<td><span class="price">$' + totalPrice + '</span></td>' +
+              '<td>' + (childTotal !== null ? ('$' + childTotal) : '-') + '</td>' +
+              '<td>' +
+                '<span class="status-badge ' + (r.status || 'activo') + '">' + (r.status || 'activo').toUpperCase() + '</span>' +
+              '</td>' +
+              '<td class="table-actions">' +
+                '<button class="btn ghost" data-action="view" data-id="' + r.id + '" title="Ver ruta">👁️</button>' +
+                '<button class="btn ghost" data-action="edit" data-id="' + r.id + '" title="Editar ruta">✏️</button>' +
+              '</td>' +
+            '</tr>';
+          }).join('');
+          
+          container.innerHTML = table(['Tipo','Nombre','Adulto','Niños','Estado','Acciones'], rows);
+          
+          container.querySelectorAll('button[data-action]')?.forEach(btn => {
+            btn.addEventListener('click', () => {
+              const id = btn.getAttribute('data-id');
+              const action = btn.getAttribute('data-action');
+              const route = state.routes.find(r => r.id === id);
+              
+              if (action === 'view') {
+                openViewRouteModal(id);
+              } else if (action === 'edit') {
+                openEditRouteModal(id);
+              }
+            });
+          });
+        };
+        
+        // Forzar la ejecución inicial
+        setTimeout(() => {
+          if (document.getElementById('routesTable')) {
+            renderRoutes();
+          }
+        }, 100);
       })();
     `;
 
@@ -157,7 +208,7 @@
           try {
             const form = document.getElementById('editRouteForm');
             if (!form) return;
-            const toDisable = ['editRouteType','editRouteName','editRoutePrice','editRouteDescription','editRouteImage','editRouteStatus'];
+            const toDisable = ['editRouteType','editRouteName','editRoutePrice','editRouteChildPrice','editRouteDescription','editRouteImage','editRouteStatus'];
             toDisable.forEach(id => { const el = document.getElementById(id); if (el) { el.setAttribute('disabled','disabled'); el.setAttribute('readonly','readonly'); }});
             if (!document.getElementById('editRouteSurcharge')){
               const grp = document.createElement('div');
@@ -169,6 +220,9 @@
             const route = state.routes.find(r => r.id === routeId);
             const surchargeEl = document.getElementById('editRouteSurcharge');
             if (surchargeEl) surchargeEl.value = (route && typeof route.surcharge === 'number') ? route.surcharge : 0;
+            // Pre-cargar precio niños si existe
+            const childEl = document.getElementById('editRouteChildPrice');
+            if (childEl && route) childEl.value = (typeof route.childPrice === 'number') ? route.childPrice : '';
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
             newForm.addEventListener('submit', (event) => {
@@ -187,27 +241,76 @@
           } catch(err) { console.error('Override openEditRouteModal empresa:', err); }
         };
 
-        const __origOpenViewRouteModal = (typeof openViewRouteModal === 'function') ? openViewRouteModal : window.openViewRouteModal;
         openViewRouteModal = function(routeId){
-          if (typeof __origOpenViewRouteModal === 'function') {
-            __origOpenViewRouteModal(routeId);
-          }
-          try {
-            const content = document.getElementById('viewRouteContent');
-            if (!content) return;
-            const route = state.routes.find(r => r.id === routeId);
-            const base = route?.basePrice || 0;
-            const extra = route?.surcharge || 0;
-            const total = base + extra;
-            const block = document.createElement('div');
-            block.className = 'route-info-item';
-            block.innerHTML = '<h4>Tarifa</h4><div class="info-details">'
-              + '<p><strong>Precio base:</strong> $' + base + '</p>'
-              + '<p><strong>Tarifa adicional (empresa):</strong> $' + extra + '</p>'
-              + '<p><strong>Total mostrado al cliente:</strong> $' + total + '</p>'
-              + '</div>';
-            content.appendChild(block);
-          } catch(err) { console.error('Override openViewRouteModal empresa:', err); }
+          const route = state.routes.find(r => r.id === routeId);
+          if (!route) return;
+          
+          const content = document.getElementById('viewRouteContent');
+          const base = parseFloat(route.basePrice) || 0;
+          const extra = parseFloat(route.surcharge) || 0;
+          const total = base + extra;
+          const childBase = (typeof route.childPrice === 'number') ? (parseFloat(route.childPrice) || 0) : null;
+          const childTotal = (childBase !== null) ? (childBase + extra) : null;
+          
+          content.innerHTML = 
+            '<div class="route-header">' +
+              '<div class="route-icon">🛣️</div>' +
+              '<div class="route-title">' +
+                '<h2>' + route.name + '</h2>' +
+                '<p class="route-type-badge">' + route.type.toUpperCase() + '</p>' +
+              '</div>' +
+            '</div>' +
+            
+            '<div class="route-info-grid">' +
+              '<div class="route-info-item">' +
+                '<h4>Información Básica</h4>' +
+                '<div class="info-details">' +
+                  '<p><strong>Nombre:</strong> ' + route.name + '</p>' +
+                  '<p><strong>Tipo:</strong> ' + route.type.toUpperCase() + '</p>' +
+                  '<p><strong>Estado:</strong> <span class="status-badge ' + (route.status || 'activo') + '">' + (route.status || 'activo').toUpperCase() + '</span></p>' +
+                '</div>' +
+              '</div>' +
+              
+              '<div class="route-info-item">' +
+                '<h4>Tarifas</h4>' +
+                '<div class="info-details">' +
+                  '<p><strong>Precio adulto (base):</strong> $' + base + '</p>' +
+                  '<p><strong>Precio niño:</strong> ' + (childBase !== null ? ('$' + childBase) : '-') + '</p>' +
+                  '<p><strong>Tarifa adicional (empresa):</strong> $' + extra + '</p>' +
+                  '<p><strong>Precio adulto (tarifa):</strong> <span style="font-weight: bold; color: var(--primary);">$' + total + '</span></p>' +
+                  '<p><strong>Precio niño (tarifa):</strong> ' + (childTotal !== null ? ('<span style="font-weight: bold; color: var(--primary);">$' + childTotal + '</span>') : '-') + '</p>' +
+                '</div>' +
+              '</div>' +
+              
+              '<div class="route-info-item">' +
+                '<h4>Descripción</h4>' +
+                '<div class="info-details">' +
+                  '<p>' + (route.description || 'Sin descripción disponible') + '</p>' +
+                '</div>' +
+              '</div>' +
+              
+              '<div class="route-info-item">' +
+                '<h4>Imagen</h4>' +
+                '<div class="info-details">' +
+                  (route.image ? 
+                    '<div class="route-image-preview">' +
+                      '<img src="' + route.image + '" alt="' + route.name + '" style="max-width: 100%; height: 200px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color);">' +
+                    '</div>' : 
+                    '<p>Sin imagen disponible</p>') +
+                '</div>' +
+              '</div>' +
+              
+              '<div class="route-info-item">' +
+                '<h4>ID de la Ruta</h4>' +
+                '<div class="info-details">' +
+                  '<p><strong>Código:</strong> ' + route.id + '</p>' +
+                  '<p><strong>Creada:</strong> ' + new Date(route.createdAt).toLocaleDateString() + '</p>' +
+                  (route.updatedAt ? '<p><strong>Actualizada:</strong> ' + new Date(route.updatedAt).toLocaleDateString() + '</p>' : '') +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          
+          document.getElementById('viewRouteModal').style.display = 'block';
         };
       })();
     `;
@@ -243,6 +346,44 @@
             } catch(e) { /* noop */ }
           };
         }
+      })();
+    `;
+
+    // 7) Inicializar tarifas adicionales para rutas existentes
+    code += `
+      (function(){
+        // Asegurar que todas las rutas tengan el campo surcharge inicializado
+        state.routes.forEach(route => {
+          if (typeof route.surcharge === 'undefined') {
+            route.surcharge = 0;
+          }
+        });
+        saveAll();
+        
+        // Función simple para actualizar precios en la tabla
+        function updateRoutePrices() {
+          const routesTable = document.getElementById('routesTable');
+          if (!routesTable) return;
+          
+          const priceElements = routesTable.querySelectorAll('.price');
+          priceElements.forEach(el => {
+            const row = el.closest('tr');
+            const viewBtn = row?.querySelector('button[data-action="view"]');
+            if (viewBtn) {
+              const routeId = viewBtn.getAttribute('data-id');
+              const route = state.routes.find(r => r.id === routeId);
+              if (route) {
+                const totalPrice = (parseFloat(route.basePrice) || 0) + (parseFloat(route.surcharge) || 0);
+                el.textContent = '$' + totalPrice;
+              }
+            }
+          });
+        }
+        
+        // Actualizar precios después de un tiempo para asegurar que la tabla se haya renderizado
+        setTimeout(updateRoutePrices, 200);
+        setTimeout(updateRoutePrices, 500);
+        setTimeout(updateRoutePrices, 1000);
       })();
     `;
 

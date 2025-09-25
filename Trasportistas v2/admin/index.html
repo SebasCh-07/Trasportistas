@@ -603,6 +603,7 @@
               <h3>Gestión de Rutas</h3>
               <div style="display: flex; gap: 8px;">
                 <button id="loadSampleRoutes" class="btn secondary">Cargar Rutas de Ejemplo</button>
+                <button id="updateChildPrices" class="btn secondary">Actualizar Precios Niños</button>
                 <button id="addRoute" class="btn primary">Añadir Ruta</button>
               </div>
             </div>
@@ -648,6 +649,10 @@
                 <div class="form-group">
                   <label for="editRoutePrice">Precio Base ($):</label>
                   <input type="number" id="editRoutePrice" name="basePrice" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                  <label for="editRouteChildPrice">Precio Niños ($):</label>
+                  <input type="number" id="editRouteChildPrice" name="childPrice" min="0" step="0.01" placeholder="Opcional">
                 </div>
                 <div class="form-group">
                   <label for="editRouteDescription">Descripción:</label>
@@ -698,6 +703,10 @@
                 <div class="form-group">
                   <label for="addRoutePrice">Precio Base ($):</label>
                   <input type="number" id="addRoutePrice" name="basePrice" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                  <label for="addRouteChildPrice">Precio Niños ($):</label>
+                  <input type="number" id="addRouteChildPrice" name="childPrice" min="0" step="0.01" placeholder="Opcional">
                 </div>
                 <div class="form-group">
                   <label for="addRouteDescription">Descripción:</label>

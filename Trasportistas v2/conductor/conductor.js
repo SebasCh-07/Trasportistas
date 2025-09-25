@@ -3,6 +3,7 @@ import { db, Storage, mountSharedChrome, requireRole, Session, notify } from '..
 const state = {
   bookings: Storage.load('data:bookings', db.bookings),
   routes: Storage.load('data:routes', db.routes),
+  drivers: Storage.load('data:drivers', db.drivers),
 };
 
 let assignmentFilter = 'Asignado';
@@ -23,12 +24,35 @@ function renderAssignments() {
   container.querySelectorAll('button[data-next]')?.forEach(btn => btn.addEventListener('click', () => advance(btn.getAttribute('data-next'))));
 }
 
+function setDriverStatus(newStatus) {
+  try {
+    const user = Session.getUser();
+    if (!user || !user.driverId) return;
+    // Cargar última versión de drivers por si otro módulo los actualizó
+    state.drivers = Storage.load('data:drivers', db.drivers);
+    const idx = state.drivers.findIndex(d => d.id === user.driverId);
+    if (idx >= 0) {
+      state.drivers[idx] = { ...state.drivers[idx], status: newStatus };
+      Storage.save('data:drivers', state.drivers);
+    }
+  } catch {}
+}
+
 function advance(id) {
   const b = state.bookings.find(x => x.id === id);
   if (!b) return;
-  if (b.status === 'Asignado') b.status = 'Confirmado';
-  else if (b.status === 'Confirmado') b.status = 'En Curso';
-  else if (b.status === 'En Curso') b.status = 'Finalizado';
+  if (b.status === 'Asignado') {
+    b.status = 'Confirmado';
+  } else if (b.status === 'Confirmado') {
+    b.status = 'En Curso';
+    // Al iniciar viaje: activar GPS (simulado) marcando conductor "En Ruta"
+    setDriverStatus('En Ruta');
+  } else if (b.status === 'En Curso') {
+    // Finalizar viaje
+    b.status = 'Completado';
+    // Al finalizar: desactivar GPS (simulado) marcando conductor "Libre"
+    setDriverStatus('Libre');
+  }
   Storage.save('data:bookings', state.bookings);
   notify(`Estado actualizado: ${b.status}`, 'success');
   renderAssignments();
@@ -43,7 +67,7 @@ function renderDashboard() {
   const total = mine.length;
   const enCurso = mine.filter(b => b.status === 'En Curso').length;
   const pendientes = mine.filter(b => b.status === 'Asignado' || b.status === 'Confirmado').length;
-  const finalizados = mine.filter(b => b.status === 'Finalizado').length;
+  const finalizados = mine.filter(b => b.status === 'Completado').length;
   container.innerHTML = `
     <div class="card"><div class="section-header"><h3>Total</h3></div><div class="metric">${total}</div></div>
     <div class="card"><div class="section-header"><h3>En curso</h3></div><div class="metric">${enCurso}</div></div>
@@ -109,7 +133,7 @@ function renderBookingItem(booking) {
         </div>
       </div>
       <div class="actions-col">
-        ${booking.status !== 'Finalizado' ? `<button class="btn primary" data-next="${booking.id}">${nextLabel}</button>` : ''}
+        ${booking.status !== 'Completado' ? `<button class="btn primary" data-next="${booking.id}">${nextLabel}</button>` : ''}
       </div>
     </div>
   `;
@@ -119,7 +143,7 @@ function statusToClass(status) {
   if (status === 'Asignado') return 'badge-assigned';
   if (status === 'Confirmado') return 'badge-confirmed';
   if (status === 'En Curso') return 'badge-inprogress';
-  if (status === 'Finalizado') return 'badge-done';
+  if (status === 'Completado') return 'badge-done';
   return '';
 }
 

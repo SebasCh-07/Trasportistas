@@ -1061,12 +1061,19 @@
   background: white;
   font-size: 13px;
   transition: all 0.3s ease;
+  color: #111827; /* Negro para legibilidad */
 }
 
 .assign-driver:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+/* Asegurar que las opciones del desplegable se vean en negro */
+.assign-driver option {
+  color: #111827;
+  background: #ffffff;
 }
 
 .driver-info {
