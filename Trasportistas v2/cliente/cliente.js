@@ -173,6 +173,32 @@ function openBookingModal(routeId) {
     document.getElementById('bkCloseMap').onclick = closeMap;
     document.getElementById('bkCancelMap').onclick = closeMap;
   };
+
+  // Cálculo dinámico de precios en el modal
+  const priceAdultEl = document.getElementById('bkPriceAdultos');
+  const priceChildEl = document.getElementById('bkPriceNinos');
+  const priceTotalEl = document.getElementById('bkPriceTotal');
+  const selAdultos = document.getElementById('bkAdultos');
+  const selNinos = document.getElementById('bkNinos');
+  const userRole = Session.getUser()?.role || 'cliente';
+  const baseAdult = getPriceForUser(route, userRole) || 0;
+  const baseChild = (typeof route?.childPrice === 'number' && isFinite(route.childPrice)) ? route.childPrice : null;
+  function fmt(n) { return `$${Number(n).toFixed(2)} USD`; }
+  function setOrDash(el, val) { if (el) el.textContent = (val === null || val === undefined) ? '-' : val; }
+  function recalcPrice() {
+    const adults = parseInt(selAdultos?.value || '0', 10);
+    const childs = parseInt(selNinos?.value || '0', 10);
+    const adultSubtotal = adults > 0 ? adults * baseAdult : null;
+    const childSubtotal = (baseChild !== null && childs > 0) ? childs * baseChild : (childs > 0 && baseChild === null ? 0 : null);
+    const total = (adultSubtotal || 0) + (childSubtotal || 0);
+    setOrDash(priceAdultEl, adults > 0 ? fmt(adultSubtotal) : '-');
+    setOrDash(priceChildEl, childs > 0 ? (baseChild !== null ? fmt(childSubtotal) : '-') : '-');
+    const showTotal = (adults > 0) || (childs > 0 && baseChild !== null);
+    setOrDash(priceTotalEl, showTotal ? fmt(total) : '-');
+  }
+  if (selAdultos) selAdultos.addEventListener('change', recalcPrice);
+  if (selNinos) selNinos.addEventListener('change', recalcPrice);
+  recalcPrice();
 }
 
 // Mapa para Encomienda: origen/destino
@@ -247,7 +273,8 @@ function openCheckoutModal(tempBooking) {
   document.getElementById('sumPersonas').textContent = `${pax} ${pax===1?'Persona':'Personas'}`;
   const userRole = Session.getUser()?.role || 'cliente';
   const displayPrice = getPriceForUser(route, userRole);
-  document.getElementById('sumSubtotal').textContent = `$${(displayPrice || 0).toFixed(2)} USD`;
+  const draftTotal = typeof tempBooking?.details?.total === 'number' ? tempBooking.details.total : null;
+  document.getElementById('sumSubtotal').textContent = draftTotal !== null ? `$${draftTotal.toFixed(2)} USD` : `$${(displayPrice || 0).toFixed(2)} USD`;
 
   const modal = document.getElementById('checkoutModal');
   const backdrop = document.getElementById('checkoutBackdrop');
@@ -303,6 +330,7 @@ function renderBookings() {
   const makeCard = (b) => {
     const route = state.routes.find(r => r.id === b.routeId) || {};
     const pax = b?.details?.pasajeros;
+    const total = b?.details?.total;
     return `
     <div class="booking-card">
       <div class="booking-media" style="background-image:url('${route.image || ''}')"></div>
@@ -317,10 +345,11 @@ function renderBookings() {
           <div><strong>Conductor:</strong> ${b.driverId || 'Sin asignar'}</div>
           <div><strong>Creada:</strong> ${fmtDate(b.createdAt)}</div>
           ${pax ? `<div><strong>Pasajeros:</strong> ${pax}</div>` : ''}
+          ${typeof total === 'number' ? `<div><strong>Total:</strong> $${total.toFixed(2)} USD</div>` : ''}
         </div>
       </div>
       <div class="booking-aside">
-        <div class="price">$${route.basePrice || '-'}</div>
+        <div class="price">${typeof total === 'number' ? `$${total.toFixed(2)} USD` : (route.basePrice ? `$${route.basePrice}` : '-')}</div>
         <button class="btn danger" data-delete="${b.id}">Eliminar</button>
       </div>
     </div>`;
@@ -912,6 +941,12 @@ function main() {
     }
     const user = Session.getUser();
     const id = `b${Date.now()}`;
+    // Calcular total según cantidades y tarifas
+    const route = state.routes.find(r => r.id === bookingRouteId);
+    const userRole = user?.role || 'cliente';
+    const baseAdult = getPriceForUser(route, userRole) || 0;
+    const baseChild = (typeof route?.childPrice === 'number' && isFinite(route.childPrice)) ? route.childPrice : null;
+    const total = (Math.max(0, adultos) * baseAdult) + (Math.max(0, ninos) * (baseChild || 0));
     const payload = {
       id,
       userId: user.id,
@@ -922,8 +957,8 @@ function main() {
       mode: state.routeMode,
       serviceType: 'tour',
       details: isPrivada 
-        ? { adultos, ninos, pasajeros, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
-        : { adultos, ninos, pasajeros, asientos, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt }
+        ? { adultos, ninos, pasajeros, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt, total }
+        : { adultos, ninos, pasajeros, asientos, fecha, notas, pickup: pickupPoint, ubicacion: ubicacionTxt, total }
     };
     // No guardamos aún, abrimos checkout con un borrador
     closeBookingModal();

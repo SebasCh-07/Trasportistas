@@ -337,6 +337,7 @@ function renderAssignmentTab(tabName) {
     const driver = b.driverId ? state.drivers.find(d => d.id === b.driverId) : null;
     const vehicle = driver?.vehicleId ? state.fleet.find(v => v.id === driver.vehicleId) : null;
     const client = b.userId ? state.users.find(u => u.id === b.userId) : null;
+    const total = typeof b?.details?.total === 'number' ? b.details.total : null;
     
     return `
       <tr>
@@ -346,7 +347,7 @@ function renderAssignmentTab(tabName) {
         </td>
         <td>
           <div style="font-weight: 600;">${route?.name || 'Ruta no encontrada'}</div>
-          <div style="font-size: 12px; color: var(--text-secondary);">$${route?.basePrice || 0}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${total !== null ? `Total: $${total.toFixed(2)} USD` : `$${route?.basePrice || 0}`}</div>
         </td>
         <td>
           ${client ? `
