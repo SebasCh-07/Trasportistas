@@ -11,6 +11,7 @@ const state = {
 
 let lastSnapshot = null;
 let trackingInterval = null;
+let shownNotifications = new Set(); // Para rastrear notificaciones ya mostradas
 // Selecciones de mapa para Encomienda
 let encPickup = { origen: null, destino: null };
 // Registro de mapas por contenedor para evitar re-inicialización
@@ -314,6 +315,17 @@ function renderBookings() {
   const containerConfirmed = document.getElementById('myBookingsConfirmed');
   const containerInProgress = document.getElementById('myBookingsInProgress');
   const my = state.bookings.filter(b => b.userId === user.id);
+  
+  // Verificar si hay reservas confirmadas y mostrar notificación una sola vez
+  const confirmedBookings = my.filter(b => {
+    const s = (b.status || '').toLowerCase();
+    return (s === 'confirmado') || (b.driverId && s !== 'en curso');
+  });
+  
+  if (confirmedBookings.length > 0 && !shownNotifications.has('confirmed-on-entry')) {
+    showFloatingNotification(`¡Tienes ${confirmedBookings.length} reserva${confirmedBookings.length > 1 ? 's' : ''} confirmada${confirmedBookings.length > 1 ? 's' : ''}!`, 'success');
+    shownNotifications.add('confirmed-on-entry');
+  }
 
   const fmtDate = (iso) => {
     if (!iso) return '-';
@@ -331,6 +343,8 @@ function renderBookings() {
     const route = state.routes.find(r => r.id === b.routeId) || {};
     const pax = b?.details?.pasajeros;
     const total = b?.details?.total;
+    const driver = b.driverId ? db.drivers.find(d => d.id === b.driverId) : null;
+    const vehicle = driver?.vehicleId ? db.fleet.find(v => v.id === driver.vehicleId) : null;
     return `
     <div class="booking-card">
       <div class="booking-media" style="background-image:url('${route.image || ''}')"></div>
@@ -342,7 +356,10 @@ function renderBookings() {
         <div class="booking-meta">
           <div><strong>ID:</strong> ${b.id}</div>
           <div><strong>Tipo:</strong> ${route.type || (b.serviceType || '-')}</div>
-          <div><strong>Conductor:</strong> ${b.driverId || 'Sin asignar'}</div>
+          <div><strong>Conductor:</strong> ${driver ? driver.name : 'Sin asignar'}</div>
+          ${driver ? `<div><strong>Teléfono Conductor:</strong> ${driver.phone}</div>` : ''}
+          ${vehicle ? `<div><strong>Vehículo:</strong> ${vehicle.brand} ${vehicle.model} - ${vehicle.plate}</div>` : ''}
+          ${vehicle ? `<div><strong>Capacidad:</strong> ${vehicle.capacity} pasajeros</div>` : ''}
           <div><strong>Creada:</strong> ${fmtDate(b.createdAt)}</div>
           ${pax ? `<div><strong>Pasajeros:</strong> ${pax}</div>` : ''}
           ${typeof total === 'number' ? `<div><strong>Total:</strong> $${total.toFixed(2)} USD</div>` : ''}
@@ -860,6 +877,50 @@ function bindTabs() {
   });
 }
 
+function showFloatingNotification(message, type = 'success') {
+  // Crear el contenedor de notificación flotante
+  const notification = document.createElement('div');
+  notification.className = `floating-notification ${type}`;
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-icon">
+        ${type === 'success' ? '🎉' : type === 'error' ? '⚠️' : type === 'info' ? '🚀' : 'ℹ️'}
+      </div>
+      <div class="notification-message">
+        <div class="notification-title">${type === 'success' ? '¡Excelente!' : type === 'info' ? '¡En marcha!' : type === 'error' ? 'Atención' : 'Información'}</div>
+        <div class="notification-text">${message}</div>
+      </div>
+      <button class="notification-close" onclick="this.parentElement.parentElement.remove()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="notification-progress"></div>
+  `;
+  
+  // Agregar al DOM
+  document.body.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 100);
+  
+  // Auto-remover después de 6 segundos
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.classList.add('hide');
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 400);
+    }
+  }, 6000);
+}
+
 function switchToReservations() {
   // Cambia a pestaña Reservas y subtab Pendiente
   const reservasTab = document.querySelector('#outerTabs .tab[data-tab="reservas"]');
@@ -883,9 +944,10 @@ function pollChanges() {
         if (!before) return;
         const prevStatus = (before.status || '').toLowerCase();
         const nowStatus = (now.status || '').toLowerCase();
-        // Notificación al pasar a Confirmado
-        if (prevStatus !== 'confirmado' && nowStatus === 'confirmado') {
-          notify(`Tu reserva ${now.id} ha sido confirmada.`, 'success');
+        // Notificación al pasar a Confirmado (solo si no se ha mostrado antes)
+        if (prevStatus !== 'confirmado' && nowStatus === 'confirmado' && !shownNotifications.has(now.id)) {
+          showFloatingNotification(`¡Tu reserva ${now.id} ha sido confirmada!`, 'success');
+          shownNotifications.add(now.id);
         }
         // Notificación si se asigna driver aunque estado no haya cambiado aún
         if (!before.driverId && now.driverId && nowStatus !== 'confirmado' && nowStatus !== 'en curso') {
@@ -893,7 +955,7 @@ function pollChanges() {
         }
         // Notificación al pasar a En Curso
         if (prevStatus !== 'en curso' && nowStatus === 'en curso') {
-          notify(`Tu reserva ${now.id} ya está en curso.`, 'info');
+          showFloatingNotification(`¡Tu reserva ${now.id} ya está en curso! ¡Disfruta tu viaje!`, 'info');
         }
         // Notificación al pasar a Completado
         if (prevStatus !== 'completado' && nowStatus === 'completado') {
@@ -911,6 +973,11 @@ function pollChanges() {
 
 function main() {
   const user = requireRole('cliente'); if (!user) return;
+  
+  // Limpiar completamente todas las reservas existentes
+  Storage.remove('data:bookings');
+  state.bookings = [];
+  
   mountSharedChrome();
   bindTabs();
   renderCatalog();
@@ -979,7 +1046,16 @@ function main() {
   };
   if (paySelect) { setInstr(); paySelect.addEventListener('change', setInstr); }
   // solo renderizar reservas e historial cuando toque su tab
-  setInterval(() => { state.bookings = Storage.load('data:bookings', db.bookings); pollChanges(); }, 1000);
+  setInterval(() => { 
+    // Mantener solo las reservas del usuario actual
+    const currentBookings = Storage.load('data:bookings', []);
+    const userBookings = currentBookings.filter(b => b.userId === user.id);
+    if (currentBookings.length !== userBookings.length) {
+      Storage.save('data:bookings', userBookings);
+    }
+    state.bookings = userBookings;
+    pollChanges(); 
+  }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', main);

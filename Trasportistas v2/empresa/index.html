@@ -125,6 +125,36 @@
 
         
 
+        <!-- Modal para asignar conductor y vehículo -->
+        <div id="assignModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Asignar Conductor y Vehículo</h3>
+              <span class="modal-close" id="closeAssignModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="assignForm">
+                <div class="form-group">
+                  <label for="assignDriver">Conductor:</label>
+                  <select id="assignDriver" name="driverId" required>
+                    <option value="">Seleccionar conductor</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="assignVehicle">Vehículo:</label>
+                  <select id="assignVehicle" name="vehicleId" required>
+                    <option value="">Seleccionar vehículo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAssign">Cancelar</button>
+                  <button type="submit" class="btn primary">Asignar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <div id="gps" class="tab-pane"><div class="gps-container"><div class="gps-header"><h2>GPS en tiempo real</h2><div class="gps-controls"><div class="search-container"><input type="text" id="driverSearch" placeholder="Buscar conductor por nombre..." class="search-input"></div><div class="active-drivers"><span id="activeCount">0 activos</span></div></div></div><div class="gps-content"><div class="map-section"><div class="map" id="driversMap"></div></div><div class="driver-info-section"><div class="driver-card" id="driverCard"><div class="driver-header"><h3 id="driverName">Selecciona un conductor</h3><span id="driverStatus" class="status-badge">INACTIVO</span></div><div class="driver-details" id="driverDetails"><p>El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".</p></div></div><div id="driversListContainer" class="drivers-list-container"></div></div></div><div class="gps-footer"><p>El mapa muestra conductores con viajes en curso. El GPS se activa cuando el conductor presiona "Empezar viaje".</p></div></div></div>
       </div>
     </div>

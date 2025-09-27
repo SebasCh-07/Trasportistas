@@ -29,7 +29,6 @@
             <div class="panel-toolbar">
               <nav class="subtabs" id="assignmentTabs">
                 <button class="subtab active" data-status="Asignado">Asignado</button>
-                <button class="subtab" data-status="Confirmado">Confirmado</button>
                 <button class="subtab" data-status="En Curso">En Curso</button>
                 <button class="subtab" data-status="Finalizado">Finalizado</button>
               </nav>
@@ -43,6 +42,22 @@
     </div>
   </main>
   <div id="footer"></div>
+
+  <!-- Modal de Detalles -->
+  <div id="detailsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Detalles del Viaje</h3>
+        <button id="closeDetailsModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="detailsContent">
+          <!-- Contenido dinámico -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./conductor.js"></script>
 </body>
 </html>

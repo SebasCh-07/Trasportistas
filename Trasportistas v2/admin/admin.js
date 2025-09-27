@@ -186,7 +186,7 @@ function renderDrivers() {
 
 function renderRoutes() {
   const container = document.getElementById('routesTable');
-  const routesToShow = state.routes.filter(r => !['transfer','aeropuerto'].includes((r.type || '').toLowerCase()));
+  const routesToShow = state.routes; // Mostrar todas las rutas
   const rows = routesToShow.map(r => `
     <tr>
       <td>
@@ -311,7 +311,7 @@ function renderAssignmentTab(tabName) {
       filteredBookings = state.bookings.filter(b => b.status === 'Pendiente');
       break;
     case 'asignadas':
-      filteredBookings = state.bookings.filter(b => b.status === 'Asignado');
+      filteredBookings = state.bookings.filter(b => b.status === 'Asignado' || b.status === 'Confirmado');
       break;
     case 'en-curso':
       filteredBookings = state.bookings.filter(b => b.status === 'En Curso');
@@ -391,13 +391,10 @@ function renderAssignmentTab(tabName) {
         <td>
           <div class="assignment-actions">
             ${b.status === 'Pendiente' ? `
-          <select data-id="${b.id}" class="assign-driver">
-                <option value="">-- Asignar conductor --</option>
-                ${state.drivers.filter(d => d.status === 'Libre').map(d => 
-                  `<option value="${d.id}">${d.name}</option>`
-                ).join('')}
-          </select>
-            ` : b.status === 'Asignado' ? `
+              <button class="btn primary" onclick="openAssignModal('${b.id}')" style="font-size: 12px; padding: 6px 12px;">
+                📋 Asignar
+              </button>
+            ` : b.status === 'Asignado' || b.status === 'Confirmado' ? `
               <button class="btn primary" onclick="startTrip('${b.id}')" style="font-size: 12px; padding: 6px 12px;">
                 🚗 Iniciar Viaje
               </button>
@@ -433,28 +430,14 @@ function renderAssignmentTab(tabName) {
     </table>
   `;
 
-  // Agregar event listeners para los selects de asignación
-  container.querySelectorAll('.assign-driver').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const id = sel.getAttribute('data-id');
-      const booking = state.bookings.find(b => b.id === id);
-      if (booking && sel.value) {
-        booking.driverId = sel.value;
-        booking.status = 'Asignado';
-        saveAll();
-        updateAssignmentCounts();
-        renderAssignmentTab(tabName);
-        notify('Reserva asignada correctamente', 'success');
-      }
-    });
-  });
+  // Los event listeners para asignación ahora se manejan a través del modal
 }
 
 // Función para actualizar los contadores de las pestañas
 function updateAssignmentCounts() {
   const counts = {
     pendiente: state.bookings.filter(b => b.status === 'Pendiente').length,
-    asignadas: state.bookings.filter(b => b.status === 'Asignado').length,
+    asignadas: state.bookings.filter(b => b.status === 'Asignado' || b.status === 'Confirmado').length,
     'en-curso': state.bookings.filter(b => b.status === 'En Curso').length,
     completadas: state.bookings.filter(b => b.status === 'Completado').length
   };
@@ -470,11 +453,19 @@ function updateAssignmentCounts() {
 // Funciones para cambiar el estado de las reservas
 window.startTrip = function(bookingId) {
   const booking = state.bookings.find(b => b.id === bookingId);
-  if (booking) {
+  if (booking && (booking.status === 'Asignado' || booking.status === 'Confirmado')) {
     booking.status = 'En Curso';
+    
+    // Actualizar estado del conductor
+    const driver = state.drivers.find(d => d.id === booking.driverId);
+    if (driver) {
+      driver.status = 'En Ruta';
+    }
+    
     saveAll();
     updateAssignmentCounts();
     renderAssignmentTab('asignadas');
+    renderDrivers(); // Actualizar vista de conductores
     notify('Viaje iniciado', 'success');
   }
 };
@@ -483,9 +474,25 @@ window.completeTrip = function(bookingId) {
   const booking = state.bookings.find(b => b.id === bookingId);
   if (booking) {
     booking.status = 'Completado';
+    
+    // Actualizar estado del conductor y vehículo
+    const driver = state.drivers.find(d => d.id === booking.driverId);
+    const vehicle = state.fleet.find(v => v.id === driver?.vehicleId);
+    
+    if (driver) {
+      driver.status = 'Libre';
+      driver.vehicleId = null; // Desasignar vehículo
+    }
+    
+    if (vehicle) {
+      vehicle.status = 'disponible';
+    }
+    
     saveAll();
     updateAssignmentCounts();
     renderAssignmentTab('en-curso');
+    renderDrivers(); // Actualizar vista de conductores
+    renderFleet(); // Actualizar vista de flota
     notify('Viaje completado', 'success');
   }
 };
@@ -2317,18 +2324,129 @@ function initAllModals() {
   });
 }
 
+// Variables globales para el modal de asignación
+let currentBookingId = null;
+
+// Función para abrir el modal de asignación
+function openAssignModal(bookingId) {
+  currentBookingId = bookingId;
+  const modal = document.getElementById('assignModal');
+  const driverSelect = document.getElementById('assignDriver');
+  const vehicleSelect = document.getElementById('assignVehicle');
+  
+  // Limpiar selects
+  driverSelect.innerHTML = '<option value="">Seleccionar conductor</option>';
+  vehicleSelect.innerHTML = '<option value="">Seleccionar vehículo</option>';
+  
+  // Cargar conductores disponibles
+  const availableDrivers = state.drivers.filter(d => d.status === 'Libre');
+  availableDrivers.forEach(driver => {
+    const option = document.createElement('option');
+    option.value = driver.id;
+    option.textContent = `${driver.name} - ${driver.phone}`;
+    driverSelect.appendChild(option);
+  });
+  
+  // Cargar todos los vehículos
+  state.fleet.forEach(vehicle => {
+    const option = document.createElement('option');
+    option.value = vehicle.id;
+    const statusText = vehicle.status === 'disponible' ? 'Disponible' : 
+                      vehicle.status === 'en-uso' ? 'En Uso' : 
+                      vehicle.status === 'mantenimiento' ? 'Mantenimiento' : 'Inactivo';
+    option.textContent = `${vehicle.brand} ${vehicle.model} - ${vehicle.plate} (${statusText})`;
+    vehicleSelect.appendChild(option);
+  });
+  
+  // Mostrar modal
+  modal.style.display = 'block';
+}
+
+// Función para asignar conductor y vehículo
+function assignDriverAndVehicle() {
+  const driverId = document.getElementById('assignDriver').value;
+  const vehicleId = document.getElementById('assignVehicle').value;
+  
+  if (!driverId || !vehicleId) {
+    notify('Selecciona un conductor y un vehículo', 'error');
+    return;
+  }
+  
+  const booking = state.bookings.find(b => b.id === currentBookingId);
+  const driver = state.drivers.find(d => d.id === driverId);
+  const vehicle = state.fleet.find(v => v.id === vehicleId);
+  
+  if (!booking || !driver || !vehicle) {
+    notify('Error: datos no encontrados', 'error');
+    return;
+  }
+  
+  // Validar que el conductor esté libre
+  if (driver.status !== 'Libre') {
+    notify('El conductor seleccionado no está disponible', 'error');
+    return;
+  }
+  
+  // Validar que el vehículo no esté en mantenimiento o inactivo
+  if (vehicle.status === 'mantenimiento' || vehicle.status === 'inactivo') {
+    notify('El vehículo seleccionado no está disponible para asignación', 'error');
+    return;
+  }
+  
+  // Asignar conductor y vehículo
+  booking.driverId = driverId;
+  booking.status = 'Confirmado'; // Cambiar directamente a Confirmado para que el cliente lo vea
+  
+  // Actualizar estado del conductor
+  driver.status = 'Ocupado';
+  driver.vehicleId = vehicleId;
+  
+  // Actualizar estado del vehículo
+  vehicle.status = 'en-uso';
+  
+  // Guardar cambios
+  saveAll();
+  
+  // Cerrar modal
+  closeModal('assignModal');
+  
+  // Actualizar interfaz
+  updateAssignmentCounts();
+  const activePane = document.querySelector('.assignment-tab-pane.active');
+  const activeId = activePane ? activePane.id : 'pendiente';
+  renderAssignmentTab(activeId);
+  
+  // Actualizar otras vistas
+  renderDrivers();
+  renderFleet();
+  
+  notify(`Reserva ${booking.id} asignada a ${driver.name} con vehículo ${vehicle.brand} ${vehicle.model}`, 'success');
+}
+
 // Hacer las funciones globales para que funcionen desde HTML
 window.closeModal = closeModal;
 window.showModal = showModal;
 window.showAddVehicleModal = showAddVehicleModal;
 window.createVehicle = createVehicle;
 window.openViewClientModal = openViewClientModal;
+window.openAssignModal = openAssignModal;
+window.assignDriverAndVehicle = assignDriverAndVehicle;
 
 // Función de prueba para el modal
 // Eliminada función de prueba testAddVehicleModal por no ser necesaria en producción
 
 // Inicializar event listeners para modales
 function initModalEventListeners() {
+  // Botón para limpiar todas las reservas
+  const clearBookingsBtn = document.getElementById('clearBookings');
+  if (clearBookingsBtn) {
+    clearBookingsBtn.addEventListener('click', () => {
+      if (confirm('¿Estás seguro de que quieres eliminar todas las reservas? Esta acción no se puede deshacer.')) {
+        clearAllBookings();
+      }
+    });
+  }
+  
   // Botón para añadir usuario
   const addUserBtn = document.getElementById('addUser');
   if (addUserBtn) {
@@ -2488,9 +2606,9 @@ function ensureSampleRoutes() {
   });
   
   // Forzar creación de rutas de ejemplo siempre
-  if (state.routes.length === 0 || state.routes.length < 8) {
-    // Limpiar rutas existentes si hay menos de 8
-    if (state.routes.length < 8) {
+  if (state.routes.length === 0 || state.routes.length < 5) {
+    // Limpiar rutas existentes si hay menos de 5
+    if (state.routes.length < 5) {
       state.routes = [];
     }
     const sampleRoutes = [
@@ -2517,17 +2635,6 @@ function ensureSampleRoutes() {
         createdAt: new Date().toISOString()
       },
       {
-        id: 'r3',
-        type: 'transfer',
-        name: 'Transfer Aeropuerto - Centro',
-        basePrice: 15.00,
-        childPrice: 9.00,
-        description: 'Traslado directo desde el aeropuerto Mariscal Sucre hacia el centro de Quito. Servicio confiable y puntual.',
-        image: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?w=800&h=600&fit=crop',
-        status: 'activo',
-        createdAt: new Date().toISOString()
-      },
-      {
         id: 'r4',
         type: 'aeropuerto',
         name: 'Transfer Aeropuerto - Hoteles',
@@ -2550,17 +2657,6 @@ function ensureSampleRoutes() {
         createdAt: new Date().toISOString()
       },
       {
-        id: 'r6',
-        type: 'transfer',
-        name: 'Transfer Centro - Aeropuerto',
-        basePrice: 15.00,
-        childPrice: 9.00,
-        description: 'Traslado desde el centro de Quito hacia el aeropuerto Mariscal Sucre. Reserva con anticipación para garantizar disponibilidad.',
-        image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=800&h=600&fit=crop',
-        status: 'activo',
-        createdAt: new Date().toISOString()
-      },
-      {
         id: 'r7',
         type: 'tour',
         name: 'Tour Parque Nacional Cotopaxi',
@@ -2571,17 +2667,6 @@ function ensureSampleRoutes() {
         status: 'activo',
         createdAt: new Date().toISOString()
       },
-      {
-        id: 'r8',
-        type: 'transfer',
-        name: 'Transfer Ciudad - Valle de Los Chillos',
-        basePrice: 18.00,
-        childPrice: 11.00,
-        description: 'Traslado al hermoso Valle de Los Chillos, perfecto para un día de descanso en la naturaleza.',
-        image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
-        status: 'activo',
-        createdAt: new Date().toISOString()
-      }
     ];
     state.routes.push(...sampleRoutes);
     saveAll();
@@ -2589,17 +2674,17 @@ function ensureSampleRoutes() {
 }
 
 function ensureSampleBookings() {
-  if (state.bookings.length === 0 && state.routes.length > 0) {
-    // Crear reservas de ejemplo con diferentes estados
-    const sampleBookings = [
-      { id: 'b1', userId: 'u3', routeId: state.routes[0].id, status: 'Pendiente', driverId: null, createdAt: new Date().toISOString(), mode: 'privada', serviceType: 'tour' },
-      { id: 'b2', userId: 'u3', routeId: state.routes[1].id, status: 'Asignado', driverId: 'd2', createdAt: new Date().toISOString(), mode: 'compartida', serviceType: 'tour' },
-      { id: 'b3', userId: 'u3', routeId: state.routes[2].id, status: 'En Curso', driverId: 'd3', createdAt: new Date().toISOString(), mode: 'privada', serviceType: 'transfer' },
-      { id: 'b4', userId: 'u3', routeId: state.routes[0].id, status: 'Completado', driverId: 'd4', createdAt: new Date().toISOString(), mode: 'privada', serviceType: 'tour' }
-    ];
-    state.bookings.push(...sampleBookings);
-    saveAll();
-  }
+  // Función deshabilitada - no crear reservas de ejemplo automáticamente
+  // Las reservas solo se crean cuando los clientes realizan reservaciones reales
+}
+
+// Función para limpiar todas las reservas existentes
+function clearAllBookings() {
+  state.bookings = [];
+  saveAll();
+  updateAssignmentCounts();
+  renderAssignmentTab('pendiente');
+  notify('Todas las reservas han sido eliminadas', 'success');
 }
 
 function main() {
@@ -2670,6 +2755,7 @@ function main() {
   initRouteModals();
   initDriverModals();
   initCouponModals();
+  initAssignModal();
   
   // También inicializar después de un delay por si acaso
   setTimeout(() => {
@@ -2678,8 +2764,38 @@ function main() {
     initRouteModals();
     initDriverModals();
     initCouponModals();
+    initAssignModal();
   }, 100);
   // El mapa se inicializa solo cuando se accede a la pestaña GPS
+}
+
+// Función para inicializar el modal de asignación
+function initAssignModal() {
+  const modal = document.getElementById('assignModal');
+  const closeBtn = document.getElementById('closeAssignModal');
+  const cancelBtn = document.getElementById('cancelAssign');
+  const form = document.getElementById('assignForm');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => closeModal('assignModal'));
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => closeModal('assignModal'));
+  }
+  
+  if (modal) {
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal('assignModal');
+    });
+  }
+  
+  if (form) {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      assignDriverAndVehicle();
+    });
+  }
 }
 
 // Función específica para inicializar modales de usuarios usando event delegation

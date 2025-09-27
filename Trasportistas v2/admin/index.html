@@ -730,6 +730,7 @@
           <div class="card">
             <div class="section-header">
               <h3>Asignación de Reservas</h3>
+              <button id="clearBookings" class="btn secondary">Limpiar Todas las Reservas</button>
             </div>
             
             <!-- Pestañas de Estados -->
@@ -885,6 +886,36 @@
                 <div class="form-actions">
                   <button type="button" class="btn secondary" id="cancelAddCoupon">Cancelar</button>
                   <button type="submit" class="btn primary">Crear Cupón</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para asignar conductor y vehículo -->
+        <div id="assignModal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Asignar Conductor y Vehículo</h3>
+              <span class="modal-close" id="closeAssignModal">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="assignForm">
+                <div class="form-group">
+                  <label for="assignDriver">Conductor:</label>
+                  <select id="assignDriver" name="driverId" required>
+                    <option value="">Seleccionar conductor</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="assignVehicle">Vehículo:</label>
+                  <select id="assignVehicle" name="vehicleId" required>
+                    <option value="">Seleccionar vehículo</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn secondary" id="cancelAssign">Cancelar</button>
+                  <button type="submit" class="btn primary">Asignar</button>
                 </div>
               </form>
             </div>

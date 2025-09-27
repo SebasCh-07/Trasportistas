@@ -129,7 +129,7 @@
               const viewBtn = row?.querySelector('button[data-action="view"]');
               if (viewBtn) {
                 const routeId = viewBtn.getAttribute('data-id');
-                const route = state.routes.find(r => r.id === routeId);
+                const route = state.routes.find(r => r.id === routeId && (r.type || '').toLowerCase() !== 'transfer');
                 if (route) {
                   const totalPrice = (parseFloat(route.basePrice) || 0) + (parseFloat(route.surcharge) || 0);
                   el.textContent = '$' + totalPrice;
@@ -143,12 +143,15 @@
           return result;
         };
         
-        // Sobrescribir renderRoutes (mostrar también precio niños + tarifa)
+        // Sobrescribir renderRoutes (mostrar también precio niños + tarifa, excluir transfer)
         renderRoutes = function(){
           const container = document.getElementById('routesTable');
           if (!container) return;
           
-          const rows = state.routes.map(r => {
+          // Filtrar rutas para excluir transfer en empresa
+          const routesToShow = state.routes.filter(r => (r.type || '').toLowerCase() !== 'transfer');
+          
+          const rows = routesToShow.map(r => {
             const totalPrice = (parseFloat(r.basePrice) || 0) + (parseFloat(r.surcharge) || 0);
             const childTotal = (typeof r.childPrice === 'number') ? ((parseFloat(r.childPrice) || 0) + (parseFloat(r.surcharge) || 0)) : null;
             return '<tr>' +
@@ -324,6 +327,20 @@
       "state.bookings.filter(b => b.status === 'En Curso' && (state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa'))");
     code = code.replace(/state\.bookings\.filter\(b => b\.status === 'Completado'\)/g,
       "state.bookings.filter(b => b.status === 'Completado' && (state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa'))");
+    
+    // Filtrar también las combinaciones de estados
+    code = code.replace(/state\.bookings\.filter\(b => b\.status === 'Asignado' \|\| b\.status === 'Confirmado'\)/g,
+      "state.bookings.filter(b => (b.status === 'Asignado' || b.status === 'Confirmado') && (state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa'))");
+    
+    // Filtrar reservas recientes para mostrar solo clienteEmpresa
+    code = code.replace(/state\.bookings\.slice\(-5\)\.reverse\(\)/g,
+      "state.bookings.filter(b => state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa').slice(-5).reverse()");
+    
+    // Filtrar estadísticas para mostrar solo reservas de clienteEmpresa
+    code = code.replace(/state\.bookings\.length/g,
+      "state.bookings.filter(b => state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa').length");
+    code = code.replace(/state\.bookings\.reduce\(\(acc, b\) => \{[\s\S]*?\}, 0\)/g,
+      "state.bookings.filter(b => state.users.find(u => u.id === b.userId)?.role === 'clienteEmpresa').reduce((acc, b) => { const r = state.routes.find(r => r.id === b.routeId); return acc + (r ? r.basePrice : 0); }, 0)");
 
     // 7) Asignación: Empty state amigable si no hay items tras el filtro
     code += `
@@ -352,15 +369,15 @@
     // 7) Inicializar tarifas adicionales para rutas existentes
     code += `
       (function(){
-        // Asegurar que todas las rutas tengan el campo surcharge inicializado
-        state.routes.forEach(route => {
+        // Asegurar que todas las rutas tengan el campo surcharge inicializado (excluir transfer)
+        state.routes.filter(r => (r.type || '').toLowerCase() !== 'transfer').forEach(route => {
           if (typeof route.surcharge === 'undefined') {
             route.surcharge = 0;
           }
         });
         saveAll();
         
-        // Función simple para actualizar precios en la tabla
+        // Función simple para actualizar precios en la tabla (excluir transfer)
         function updateRoutePrices() {
           const routesTable = document.getElementById('routesTable');
           if (!routesTable) return;
@@ -371,7 +388,7 @@
             const viewBtn = row?.querySelector('button[data-action="view"]');
             if (viewBtn) {
               const routeId = viewBtn.getAttribute('data-id');
-              const route = state.routes.find(r => r.id === routeId);
+              const route = state.routes.find(r => r.id === routeId && (r.type || '').toLowerCase() !== 'transfer');
               if (route) {
                 const totalPrice = (parseFloat(route.basePrice) || 0) + (parseFloat(route.surcharge) || 0);
                 el.textContent = '$' + totalPrice;
@@ -385,6 +402,14 @@
         setTimeout(updateRoutePrices, 500);
         setTimeout(updateRoutePrices, 1000);
       })();
+    `;
+
+    // 8) Las funciones de asignación ya están disponibles desde admin.js
+    // No necesitamos duplicarlas, solo asegurar que estén expuestas globalmente
+    code += `
+      // Las funciones de asignación ya están disponibles desde admin.js
+      // Solo nos aseguramos de que estén expuestas globalmente
+      console.log('Funciones de asignación disponibles desde admin.js');
     `;
 
     // Crear Blob y cargar como módulo

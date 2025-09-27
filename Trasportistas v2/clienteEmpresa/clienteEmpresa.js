@@ -330,6 +330,8 @@ function renderBookings() {
     const route = state.routes.find(r => r.id === b.routeId) || {};
     const pax = b?.details?.pasajeros;
     const total = b?.details?.total;
+    const driver = b.driverId ? db.drivers.find(d => d.id === b.driverId) : null;
+    const vehicle = driver?.vehicleId ? db.fleet.find(v => v.id === driver.vehicleId) : null;
     return `
     <div class="booking-card">
       <div class="booking-media" style="background-image:url('${route.image || ''}')"></div>
@@ -341,7 +343,10 @@ function renderBookings() {
         <div class="booking-meta">
           <div><strong>ID:</strong> ${b.id}</div>
           <div><strong>Tipo:</strong> ${route.type || (b.serviceType || '-')}</div>
-          <div><strong>Conductor:</strong> ${b.driverId || 'Sin asignar'}</div>
+          <div><strong>Conductor:</strong> ${driver ? driver.name : 'Sin asignar'}</div>
+          ${driver ? `<div><strong>Teléfono Conductor:</strong> ${driver.phone}</div>` : ''}
+          ${vehicle ? `<div><strong>Vehículo:</strong> ${vehicle.brand} ${vehicle.model} - ${vehicle.plate}</div>` : ''}
+          ${vehicle ? `<div><strong>Capacidad:</strong> ${vehicle.capacity} pasajeros</div>` : ''}
           <div><strong>Creada:</strong> ${fmtDate(b.createdAt)}</div>
           ${pax ? `<div><strong>Pasajeros:</strong> ${pax}</div>` : ''}
           ${typeof total === 'number' ? `<div><strong>Total:</strong> $${total.toFixed(2)} USD</div>` : ''}

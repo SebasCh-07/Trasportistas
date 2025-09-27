@@ -1015,7 +1015,8 @@ h3 {
 .price-label { font-weight: 600; color: #374151; }
 .price-value { font-weight: 800; color: #000000; }
 
-.tour-card h3 {
+.tour-card h3,
+.tour-card h4 {
   font-weight: 700;
   color: #000000;
   font-size: 1.1rem;
